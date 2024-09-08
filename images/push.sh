@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=5.0-beta
+VERSION=$(cat ../VERSION)
 
 # Need login
 # docker login

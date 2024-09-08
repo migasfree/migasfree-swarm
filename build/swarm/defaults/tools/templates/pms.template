@@ -1,6 +1,6 @@
 
     {{PMS}}:
-        image: migasfree/{{PMS}}:5.0-beta
+        image: migasfree/{{PMS}}:{{TAG}}
         hostname: '{{TASK}}'
         environment:
             - TZ={{TZ}}

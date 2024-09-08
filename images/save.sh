@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_VERSION=5.0-beta
+_VERSION=$(cat ../VERSION)
 for _IMG in swarm proxy public datashare datashare_console database database_console datastore datastore_console worker_console client certbot pms-apt pms-yum pms-winget pms-pacman
 do
     docker save --output ./migasfree-${_IMG}-${_VERSION}.tar migasfree/${_IMG}:${_VERSION}

@@ -1,4 +1,7 @@
-FROM archlinux:base-20240101.0.204074
+ARG TAG=latest
+FROM migasfree/core:${TAG} AS core
+
+FROM archlinux:base-20240825.0.257728
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 COPY VERSION /VERSION
@@ -29,7 +32,7 @@ RUN _TAG=$(cat /VERSION) && \
     mkdir /pms && \
     rm -rf /var/tmp/* /usr/share/man/* /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
 
-COPY --from=migasfree/core:5.0-beta /migasfree /pms/migasfree
+COPY --from=core /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
 
 COPY defaults/healthcheck.sh /healthcheck.sh

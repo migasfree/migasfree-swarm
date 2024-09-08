@@ -9,12 +9,13 @@ function build
         cp scripts/* $_CONTEXT/defaults/usr/bin/
         
         pushd "$_CONTEXT" > /dev/null
-        local _TAG=$(cat VERSION)
+        local _TAG=$(cat ../../VERSION)
+        echo -n "${_TAG}" > ./VERSION
         echo
         echo
         echo "BUILD: ${_CONTEXT}:${_TAG}"
         echo "============================================================================"
-        docker build . -t "migasfree/${_CONTEXT}:${_TAG}"
+        docker --debug build . --build-arg TAG=${_TAG} -t "migasfree/${_CONTEXT}:${_TAG}"
         popd > /dev/null
     fi
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_IMAGE="migasfree/swarm:5.0-beta"
+_IMAGE="migasfree/swarm:@@TAG@@"
 _COMMAND="$1"
 
 VOLUME=migasfree-swarm

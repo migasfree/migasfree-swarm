@@ -23,7 +23,7 @@ COPY defaults/usr/share/ca-certificates/ca.crt /usr/share/ca-certificates/ca.crt
 
 # DEBUG TRAITS
 COPY defaults/usr/share/migasfree-client /usr/share/migasfree-client
-COPY defaults/usr/local/lib/python3.10/dist-packages/migasfree_client-5.0-beta-py3.10.egg/migasfree_client/sync.py /usr/local/lib/python3.10/dist-packages/migasfree_client-5.0-beta-py3.10.egg/migasfree_client/sync.py
+COPY defaults/usr/local/lib/python3.10/dist-packages/migasfree_client-$(cat /VERSION)-py3.10.egg/migasfree_client/sync.py /usr/local/lib/python3.10/dist-packages/migasfree_client-5.0-beta-py3.10.egg/migasfree_client/sync.py
 
 
 RUN ln -s /usr/share/ca-certificates/ca.crt /usr/local/share/ca-certificates/ca.crt && \

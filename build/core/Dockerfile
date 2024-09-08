@@ -1,7 +1,7 @@
 FROM debian:12.4-slim AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
-COPY VERSION /VERSION
+COPY /VERSION /VERSION
 
 ENV TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \
@@ -44,7 +44,7 @@ RUN cd / && \
     . /venv/bin/activate && \
     git clone https://github.com/migasfree/migasfree-backend && \
     cd /migasfree-backend && \
-    git checkout 5.0-beta
+    git checkout $(cat /VERSION)
 
      
 
@@ -106,18 +106,6 @@ ENV TERM=xterm \
     _GID=890
 
 COPY --from=builder / /
-
-# DEBUG WINGET
-# ============
-#COPY defaults/migasfree/core/pms/winget.py /migasfree/core/pms/
-#COPY defaults/migasfree/core/pms/winget.py /venv/lib/python3.11/site-packages/migasfree_backend-5.0-py3.11.egg/migasfree/core/pms/
-
-#COPY defaults/migasfree/core/tasks.py /venv/lib/python3.11/site-packages/migasfree_backend-5.0-py3.11.egg/migasfree/core/
-#COPY defaults/migasfree/core/pms/tasks.py /venv/lib/python3.11/site-packages/migasfree_backend-5.0-py3.11.egg/migasfree/core/pms/
-
-
-
-
 
 COPY defaults/usr/bin /usr/bin
 

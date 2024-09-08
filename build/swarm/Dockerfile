@@ -3,10 +3,14 @@ LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 # https://docker-py.readthedocs.io/en/stable/plugins.html
 
-ARG BUILD_DEPENDS='py3-pip' \
+ARG TAG=latest \
+    BUILD_DEPENDS='py3-pip' \
     RUNTIME_DEPENDS='python3 py3-virtualenv ca-certificates openssl docker docker-cli-compose tzdata curl'  \
     RUNTIME_PIP='docker packaging jinja2 requests'
 
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
 
 RUN apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
     python3 -m venv /venv && \
@@ -18,5 +22,7 @@ RUN apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
 COPY defaults/usr/bin /usr/bin
 COPY defaults/tools /tools
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN sed -i "s/@@TAG@@/$TAG/g" /tools/migasfree-swarm
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

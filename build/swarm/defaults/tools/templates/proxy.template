@@ -3,7 +3,7 @@ version: "3.9"
 services:
 
     proxy:
-        image: migasfree/proxy:5.0-beta
+        image: migasfree/proxy:{{TAG}}
         ports:
             - published: {{PORT_HTTP}}
               target: 80

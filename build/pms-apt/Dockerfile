@@ -1,3 +1,6 @@
+ARG TAG=latest
+FROM migasfree/core:${TAG} AS core
+
 FROM debian:12.4-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
@@ -32,7 +35,7 @@ RUN _TAG=$(cat /VERSION) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=migasfree/core:5.0-beta /migasfree /pms/migasfree
+COPY --from=core /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
 
 COPY defaults/healthcheck.sh /healthcheck.sh

@@ -1,3 +1,6 @@
+ARG TAG=latest
+FROM migasfree/core:${TAG} AS core
+
 FROM debian:11.4-slim AS builder
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl nano git ca-certificates gnupg wget git git-lfs make cmake clang libicu-dev zlib1g-dev
@@ -71,7 +74,7 @@ RUN _TAG=$(cat /VERSION) && \
     rm -rf /var/lib/apt/lists/* 
 
 
-COPY --from=migasfree/core:5.0-beta /migasfree /pms/migasfree
+COPY --from=core /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
 
 COPY defaults/healthcheck.sh /healthcheck.sh

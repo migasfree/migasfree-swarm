@@ -1,3 +1,6 @@
+ARG TAG=latest
+FROM migasfree/core:${TAG} AS core
+
 #FROM nginx:alpine
 FROM cmoore1776/nginx:latest
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
@@ -11,9 +14,9 @@ RUN apk --no-cache add bind-tools curl shadow tzdata && \
 COPY defaults/var/migasfree /var/migasfree
 
 # STATIC FILES
-COPY --from=migasfree/core:5.0-beta /static/admin  /var/migasfree/static/admin
-COPY --from=migasfree/core:5.0-beta /static/drf-yasg /var/migasfree/static/drf-yasg
-COPY --from=migasfree/core:5.0-beta /static/rest_framework /var/migasfree/static/rest_framework
+COPY --from=core /static/admin  /var/migasfree/static/admin
+COPY --from=core /static/drf-yasg /var/migasfree/static/drf-yasg
+COPY --from=core /static/rest_framework /var/migasfree/static/rest_framework
 COPY defaults/var/migasfree/static /var/migasfree/static
 
 RUN chown -R 890:890 /var/migasfree/

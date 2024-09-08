@@ -4,7 +4,7 @@ services:
 
 #    s3:
 #        # https://min.io/docs/minio/linux/integrations/setup-nginx-proxy-with-minio.html
-#        image: migasfree/s3:5.0-beta
+#        image: migasfree/s3:{{TAG}}
 #        command: server /data --console-address ":9001"
 #        deploy:
 #            replicas: 1
@@ -52,7 +52,7 @@ services:
     {% endfor %}
 
     public:
-        image: migasfree/public:5.0-beta
+        image: migasfree/public:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -76,7 +76,7 @@ services:
             - proxy
 
     console:
-        image: migasfree/console:5.0-beta
+        image: migasfree/console:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}:{{PORT_HTTPS}}
@@ -97,7 +97,7 @@ services:
             - proxy
 
     core:
-        image: migasfree/core:5.0-beta
+        image: migasfree/core:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -131,7 +131,7 @@ services:
             - proxy
 
     worker:
-        image: migasfree/core:5.0-beta
+        image: migasfree/core:{{TAG}}
         hostname: '{{TASK}}'
         environment:
             - TZ={{TZ}}
@@ -165,7 +165,7 @@ services:
             - proxy
 
     beat:
-        image: migasfree/core:5.0-beta
+        image: migasfree/core:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -198,7 +198,7 @@ services:
             - proxy
 
     database:
-        image: migasfree/database:5.0-beta
+        image: migasfree/database:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -234,7 +234,7 @@ services:
             - proxy
 
     datastore:
-        image: migasfree/datastore:5.0-beta
+        image: migasfree/datastore:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -260,7 +260,7 @@ services:
             - proxy
 
 #    swarm:
-#        image: migasfree/swarm:5.0-beta
+#        image: migasfree/swarm:{{TAG}}
 #        environment:
 #            - TZ={{TZ}}
 #            - FQDN={{FQDN}}
@@ -283,7 +283,7 @@ services:
 
 
     database_console:
-        image: migasfree/database_console:5.0-beta
+        image: migasfree/database_console:{{TAG}}
         environment:
             - TZ={{TZ}}
             - STACK={{STACK}}
@@ -309,7 +309,7 @@ services:
             - proxy
 
     datastore_console:
-        image: migasfree/datastore_console:5.0-beta
+        image: migasfree/datastore_console:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -333,7 +333,7 @@ services:
             - proxy
 
     datashare_console:
-        image: migasfree/datashare_console:5.0-beta
+        image: migasfree/datashare_console:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -360,7 +360,7 @@ services:
             - proxy
 
     worker_console:
-        image: migasfree/worker_console:5.0-beta
+        image: migasfree/worker_console:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
