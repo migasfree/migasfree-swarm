@@ -1,0 +1,412 @@
+version: "3.9"
+
+services:
+
+#    s3:
+#        # https://min.io/docs/minio/linux/integrations/setup-nginx-proxy-with-minio.html
+#        image: migasfree/s3:5.0-beta
+#        command: server /data --console-address ":9001"
+#        deploy:
+#            replicas: 1
+#            restart_policy:
+#                condition: on-failure
+#                delay: 5s
+#                max_attempts: 5
+#                window: 120s
+#            placement:
+#                constraints:
+#                    - node.labels.datashare == true
+#        environment:
+#            - TZ={{TZ}}
+#            - STACK={{STACK}}
+#            - FQDN={{FQDN}}
+#            - MINIO_ROOT_USER_FILE=/run/secrets/{{STACK}}_superadmin_name
+#            - MINIO_ROOT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
+#            - MINIO_USERNAME=migasfree
+#            - MINIO_GROUPNAME=migasfree
+#            - MINIO_SERVER_URL=http://datashare:9000
+#
+#            - MINIO_UID=890
+#            - MINIO_GID=890
+#
+#        # 32000 necessary for plugin 
+#        ports:  
+#            - 32000:9000
+#        secrets:
+#            - source: {{STACK}}_superadmin_name
+#            - source: {{STACK}}_superadmin_pass
+#        volumes:
+#            - {{DATASHARE_PATH}}:/data  # RAW S3
+#            
+#        networks:
+#            - network
+#            - proxy
+
+
+
+
+    {% for PMS in PMS_ENABLED.split(",") %}
+#{% set PMS_ = 'REPLICAS_' ~ PMS|replace("-", "_") %}
+#{% set REPLICAS_PMS = context()[PMS_] if PMS_ in context() else REPLICAS_pms_others %}
+{% include "pms.template" %}
+    {% endfor %}
+
+    public:
+        image: migasfree/public:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+        deploy:
+            replicas: {{REPLICAS_public}}
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        depends_on:
+            - core
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+        networks:
+            - network
+            - proxy
+
+    console:
+        image: migasfree/console:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}:{{PORT_HTTPS}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+        deploy:
+            replicas: {{REPLICAS_console}}
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        depends_on:
+            - core
+        networks:
+            - network
+            - proxy
+
+    core:
+        image: migasfree/core:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+        deploy:
+            replicas: {{REPLICAS_core}}
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - database
+            - datastore
+        volumes:
+            -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+        networks:
+            - network
+            - proxy
+
+    worker:
+        image: migasfree/core:5.0-beta
+        hostname: '{{TASK}}'
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+        deploy:
+            replicas:  {{REPLICAS_worker}}
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - public
+        volumes:
+            -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+        networks:
+            - network
+            - proxy
+
+    beat:
+        image: migasfree/core:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - core
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+        networks:
+            - network
+            - proxy
+
+    database:
+        image: migasfree/database:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - POSTGRES_CRON='{{POSTGRES_CRON}}'
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+            placement:
+                constraints:
+                    - node.labels.database == true
+#        depends_on:
+#            - datashare
+        volumes:
+            - database:/var/lib/postgresql/data
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
+        networks:
+            - network
+            - proxy
+
+    datastore:
+        image: migasfree/datastore:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+            placement:
+                constraints:
+                    - node.labels.datastore == true
+        volumes:
+            - datastore:/data
+        networks:
+            - network
+            - proxy
+
+#    swarm:
+#        image: migasfree/swarm:5.0-beta
+#        environment:
+#            - TZ={{TZ}}
+#            - FQDN={{FQDN}}
+#            - STACK={{STACK}}
+#            - NODE={{NODE}}
+#            - SERVICE={{SERVICE}}
+#            - DATASHARE_SERVER={{DATASHARE_SERVER}}
+#            - DATASHARE_PORT={{DATASHARE_PORT}}
+#        secrets:
+#            - source: {{STACK}}_superadmin_name        
+#            - source: {{STACK}}_superadmin_pass
+#        volumes:
+#            - /var/run/docker.sock:/var/run/docker.sock
+#        networks:
+#            - network
+#            - proxy
+#        deploy:
+#            mode: global
+
+
+
+    database_console:
+        image: migasfree/database_console:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - PGADMIN_DEFAULT_EMAIL={{EMAIL}} 
+            - PGADMIN_DEFAULT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
+            - PGADMIN_LISTEN_PORT=5050
+            - PGADMIN_LISTEN_ADDRESS=0.0.0.0
+        deploy:
+            replicas: 1
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        volumes:
+#            - database_console:/var/lib/pgadmin
+#            - datashare:{{DATASHARE_MOUNT_PATH}}
+             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/database:/var/lib/pgadmin
+        depends_on:
+            - database
+        networks:
+            - network
+            - proxy
+
+    datastore_console:
+        image: migasfree/datastore_console:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - RI_APP_FOLDER_ABSOLUTE_PATH={{DATASHARE_MOUNT_PATH}}/consoles/datastore
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+        deploy:
+            replicas: 1
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - datastore
+        networks:
+            - network
+            - proxy
+
+    datashare_console:
+        image: migasfree/datashare_console:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH=/srv
+            - DATASHARE_FS={{DATASHARE_FS}}
+            - HTTPSMODE={{HTTPSMODE}}
+
+        restart: "on-failure"
+        volumes:
+            - migasfree-swarm:/mnt/cluster
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/srv
+            
+        
+        secrets:
+            - source: {{STACK}}_superadmin_name
+            - source: {{STACK}}_superadmin_pass
+            - source: ca.crt
+
+        networks:
+            - network
+            - proxy
+
+    worker_console:
+        image: migasfree/worker_console:5.0-beta
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+        restart: "on-failure"
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/worker:/data
+        networks:
+            - network
+            - proxy
+        secrets:
+            - source: {{STACK}}_superadmin_name
+            - source: {{STACK}}_superadmin_pass
+
+
+networks:
+    network:
+        driver: overlay
+        attachable: true
+        name: {{STACK}}_network
+    proxy:
+        external: true   
+
+
+secrets:
+    {{STACK}}_superadmin_name:
+        external: true
+    {{STACK}}_superadmin_pass:
+        external: true
+    {{STACK}}_pms_pass:  
+        external: true
+    ca.crt:  
+        external: true
+
+
+volumes:
+    database:
+        driver: local
+
+    datastore:
+        driver: local
+
+    migasfree-swarm:
+        external: true
+
+

@@ -1,0 +1,333 @@
+global
+    maxconn 4096
+    maxpipes 1024
+    log fd@2 local2
+    # log 127.0.0.1 local0
+    # log 127.0.0.1 local1 notice
+    # tune.bufsize 32768  # workaround -> 414 Request-URI Too Large
+    tune.ssl.default-dh-param 2048
+    ssl-server-verify none
+    
+
+
+
+    master-worker
+
+    # https://www.haproxy.com/blog/enabling-cors-in-haproxy
+    lua-load /etc/haproxy/cors.lua
+
+
+defaults
+    log global
+    mode http
+    option forwardfor
+    option httplog
+    option dontlognull
+    option http-keep-alive
+    timeout connect 20s
+    timeout client 10m
+    timeout server 10m
+
+
+http-errors myerrors
+    # https://github.com/Jonathan-Rosewood/haproxy-custom-errors
+    errorfile 502 /etc/haproxy/errors-custom/502.http
+    errorfile 503 /etc/haproxy/errors-custom/503.http
+    errorfile 401 /etc/haproxy/errors-custom/401.http
+    errorfile 403 /etc/haproxy/errors-custom/403.http
+    errorfile 404 /etc/haproxy/errors-custom/404.http
+    errorfile 429 /etc/haproxy/errors-custom/429.http
+
+
+userlist users_cluster
+{{USERLIST_CLUSTER}}    
+
+userlist users_stack
+{{USERLIST_STACK}}    
+
+
+listen stats
+    # https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery#haproxy-configuration
+    bind *:8404 ssl crt /run/secrets/{{FQDN}}.pem
+    acl auth_ok http_auth(users_cluster) 
+    stats http-request auth unless auth_ok
+    mode http
+    stats enable
+    stats hide-version
+    stats uri /stats
+    stats refresh 10s   
+    stats admin if auth_ok
+
+
+
+frontend http
+    bind *:80
+    bind *:443 ssl crt /run/secrets/{{FQDN}}.pem
+
+    http-request set-header X-Forwarded-For %[src]
+
+    errorfiles myerrors
+    http-response return  status 429  default-errorfiles  if { status 429 }
+    http-response return  status 502  default-errorfiles  if { status 502 }
+    http-response return  status 503  default-errorfiles  if { status 503 }
+    http-response return  status 403  default-errorfiles  if { status 403 }
+    http-response return  status 404  default-errorfiles  if { status 404 }
+        
+    http-request add-header X-Forwarded-Proto https
+
+    # CORS (for error pages)
+#    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
+    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
+    http-response lua.cors    
+
+
+    # Is FQDN
+    acl is_fqdn hdr(host) -i {{FQDN}}
+
+    # Stats HAProxy
+    acl is_stats path_beg /stats    
+
+
+    # ACL Certbot
+    acl certbot path_beg /.well-known/acme-challenge/
+
+    mode http
+    # acl certificates_check url_beg /.well-known
+    # use_backend certificates if certificates_check
+
+    # DDOS
+    http-request track-sc0 src table per_ip_rates
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 500 }
+
+    http-request set-var(txn.path) path  # for services_cache
+
+    # WEBSOCKETS. Routing based on websocket protocol header
+    acl hdr_connection_upgrade hdr(Connection) -i upgrade
+    acl hdr_upgrade_websocket hdr(Upgrade) -i websocket
+
+    acl url_core path_beg /api/ /rest-auth/ /token-auth-jwt/ /token-auth/ /token-refresh/ /admin/ /grapelly/ /markdownx/ /redocs/ /graphql/ /docs/ /api-docs/ /redoc/ /alerts/
+
+    # api v4 COMPATIBILITY
+    acl url_core path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
+    http-request replace-path /admin/server/computer/(.*)/change /computers/results/\1    # migasfree-play 1.x
+
+
+
+    # console
+    # ========
+    acl url_root path /
+    acl url_empty path_len 0
+    # acl url_console path_beg /app/
+
+    # public
+    # ======
+    acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
+
+
+    # services static
+    # ===============
+    acl url_services path_beg /services
+    acl url_services_static path_beg /services-static /favicon.ico
+
+    acl is_GET method GET
+
+    # external sources
+    # ================
+    acl url_src path_beg /src/
+    # acl url_packages path_end .deb .rpm .yaml .msix
+    acl url_packages path_end {{ extensions }}
+
+
+
+    # datashare
+    # =========
+    acl url_datashare_console hdr(host) -i datashare.{{FQDN}}
+
+    # datastore_console
+    # =================
+    acl url_datastore_console hdr(host) -i datastore.{{FQDN}}
+
+
+    # database_console
+    # ================
+    #acl url_database_console path_beg /database/
+    acl url_database_console hdr(host) -i database.{{FQDN}}
+
+
+    # worker_console
+    # ==============
+    acl url_worker_console  hdr(host) -i worker.{{FQDN}}
+
+
+    # portainer
+    # =========
+    acl url_portainer_console  hdr(host) -i portainer.{{FQDN}}
+
+
+
+
+
+    # USE BACKENDS SECTION
+    # Warning: The order is important !!!
+    # ===================================
+
+    use_backend datastore_console if url_datastore_console
+    use_backend database_console if url_database_console
+    use_backend datashare_console if url_datashare_console
+    use_backend worker_console if url_worker_console
+    use_backend portainer_console if url_portainer_console
+    use_backend mf_console if url_root or url_empty
+    use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket
+    use_backend services if is_GET url_services || url_services_static
+    use_backend mf_public if url_public || url_packages || url_src
+
+    use_backend stats if is_fqdn is_stats
+
+
+{% if certbot %}
+    use_backend mfbl_certbot if certbot
+{% endif %}
+
+    default_backend mf_console
+    # default_backend services
+
+{% if certbot %}
+    backend mfbl_certbot
+    server mfbl_certbot mfbl_certbot:380
+{% endif %}
+
+
+backend mf_public
+    mode http
+    balance leastconn
+
+    # checks
+    # option external-check
+    # external-check command /usr/bin/check-public
+
+    option tcp-check
+
+    # NODES
+    # ======
+    {% for node in mf_public %}
+        server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
+    {% endfor %}
+
+    server 127.0.0.1 127.0.0.1:8001 backup
+
+backend mf_core
+    mode http
+    balance leastconn
+
+    # For SWAGGER and REST-FRAMEWORK. It is also necessary "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')" in settings.py
+    http-request add-header X-Forwarded-Proto https
+
+    # option forwardfor
+    # http-request set-header X-Forwarded-For %[src]
+
+    # sticky-sessions
+    #cookie SRVNAME insert secure # https://thisinterestsme.com/haproxy-sticky-sessions/
+    #cookie SRVID insert indirect
+    cookie SRVNAME insert
+
+    option tcp-check
+
+    # NODES
+    # ======
+    {% for node in mf_core %}
+        # server {{ node }} {{ node }}:8080 cookie BE_{{ node }} check inter 2000 rise 1 fall 1
+        server {{ node }} {{ node }}:8080 check port 8080 inter 2000 rise 1 fall 1
+    {% endfor %}
+
+    # server 127.0.0.1 127.0.0.1:8001 backup
+
+
+backend mf_console
+    mode http
+    balance leastconn
+
+    # http-request redirect scheme https unless { ssl_fc }
+
+    # redirect scheme https code 307 if !{ ssl_fc }
+
+    option tcp-check
+
+    # NODES
+    # ======
+    {% for node in mf_console %}
+        server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
+    {% endfor %}
+
+    server 127.0.0.1 127.0.0.1:8001 backup
+
+#backend s3  # MINIO
+#    mode http
+#    {% for node in mf_s3_console %}
+#        server {{ node }} {{ node }}:9001 check 
+#    {% endfor %}
+
+
+backend database_console  # PGADMIN
+    mode http
+    balance leastconn
+
+    {% for node in mf_database_console %}
+        server {{ node }} {{ node }}:5050 check 
+    {% endfor %}
+
+
+
+backend datastore_console  # REDISINSIGHT
+    mode http
+    balance leastconn
+
+    acl auth_ok http_auth(users_stack)
+    http-request auth realm datastore_console_realm if !auth_ok
+    mode http
+    {% for node in mf_datastore_console %}
+        server {{ node }} {{ node }}:5540 check 
+    {% endfor %}
+   
+backend datashare_console  # migasfree/datashare_console (filebrowser) 
+    mode http
+    balance leastconn
+    {% for node in mf_datashare_console %}
+        server {{ node }} {{ node }}:80 check 
+    {% endfor %}
+
+
+backend portainer_console  # PORTAINER
+    mode http
+    balance leastconn
+    {% for node in mf_portainer_console %}
+        server {{ node }} {{ node }}:9000 check 
+    {% endfor %}
+
+
+
+backend worker_console  # Celery Flower
+    acl auth_ok http_auth(users_stack)
+    http-request auth realm worker_console_realm if !auth_ok
+    mode http
+    balance leastconn
+    {% for node in mf_worker_console %}
+        server {{ node }} {{ node }}:5555 check 
+    {% endfor %}
+
+
+
+
+backend services
+    mode http
+
+    acl url_services_cache var(txn.path) -m beg /services-static /favicon.ico
+    acl url_status var(txn.path) -m beg /services/status
+
+    # balance roundrobin
+    http-response set-header Cache-Control public,max-age=604800,immutable if url_services_cache || url_status
+
+    server 127.0.0.1 127.0.0.1:8001
+
+
+backend per_ip_rates
+    stick-table type ip size 1m expire 10m store http_req_rate(10s)

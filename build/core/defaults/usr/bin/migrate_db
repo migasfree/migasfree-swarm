@@ -1,0 +1,13 @@
+#!/bin/bash
+
+export DJANGO_SETTINGS_MODULE=migasfree.settings.production 
+. /venv/bin/activate
+
+# Waiting worker
+while ! /healthcheck.sh
+do 
+    sleep 1
+done
+sleep 5
+
+celery -A migasfree call migasfree.core.tasks.migrate_db

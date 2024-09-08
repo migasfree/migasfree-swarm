@@ -1,0 +1,41 @@
+#!/bin/sh
+# https://www.pgadmin.org/docs/pgadmin4/8.4/import_export_servers.html
+
+while true
+do 
+    timeout 1 curl --fail --silent --head --request GET http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping > /dev/null
+    if [ $? = 0 ]
+    then
+        break
+    else
+        sleep 2    
+    fi
+done
+
+cat << EOF > /var/tmp/server.json
+{
+    "Servers": {
+        "1": {
+            "Name": "database",
+            "Group": "Servers",
+            "Host": "database",
+            "Port": 5432,
+            "MaintenanceDB": "postgres",
+            "Username": "migasfree",
+            "UseSSHTunnel": 0,
+            "TunnelPort": "22",
+            "TunnelAuthentication": 0,
+            "KerberosAuthentication": false,
+            "ConnectionParameters": {
+                "sslmode": "prefer",
+                "connect_timeout": 10,
+                "sslcert": "<STORAGE_DIR>/.postgresql/postgresql.crt",
+                "sslkey": "<STORAGE_DIR>/.postgresql/postgresql.key"
+            }
+        }
+    }
+}
+EOF
+
+cd /pgadmin4
+/venv/bin/python3 setup.py load-servers /var/tmp/server.json --user admin@domain.com --replace

@@ -1,0 +1,130 @@
+#!/usr/bin/python3
+
+# https://docker-py.readthedocs.io/en/stable/index.html
+import docker
+import requests
+import time
+import os 
+import sys
+
+# https://docker-py.readthedocs.io/en/stable/plugins.html
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+def getStatuscode(url):
+    try:
+        r = requests.head(url,verify=False,timeout=3) # it is faster to only request the header
+        return (r.status_code)
+    except:
+        return -1
+
+def get_swarm_node_ip_by_label(label_name):
+    client = docker.from_env()
+    nodes = client.nodes.list()
+    for node in nodes:
+        labels = node.attrs['Spec']['Labels']
+        if label_name in labels:
+            if labels[label_name] == "true":
+                node_info = client.nodes.get(node.id)
+                ip_address = node_info.attrs['Status']['Addr']
+                return ip_address
+    return ""
+
+
+STACK = os.environ["STACK"]
+FQDN = os.environ["FQDN"]
+
+DATASHARE_SERVER = os.environ["DATASHARE_SERVER"]
+DATASHARE_PORT = os.environ["DATASHARE_PORT"]
+
+if DATASHARE_SERVER == "":
+    DATASHARE_SERVER = get_swarm_node_ip_by_label("datashare")
+    DATASHARE_PORT = "32000"
+    
+    with open(f'/run/secrets/{STACK}_superadmin_name', 'r') as f:
+        SUPERADMIN_NAME = f.read()
+
+    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r') as f:
+        SUPERADMIN_PASS = f.read()
+    PROTOCOL="http"
+
+
+
+
+
+# EXTERNAL 
+# ========
+DATASHARE_SERVER = "play.min.io"
+DATASHARE_PORT = 9443
+SUPERADMIN_NAME = "Q3AM3UQ867SPQQA43P2F"
+SUPERADMIN_PASS = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+PROTOCOL = "https"
+
+
+
+
+
+
+PLUGIN = "rexray/s3fs:0.11.4"
+PLUGIN_NAME = f"{STACK}-plugin:latest"
+
+
+client = docker.from_env()
+
+plugin = None
+
+for element  in client.plugins.list():
+   if element.name == PLUGIN_NAME:
+        plugin = element
+
+if not plugin:
+    eprint(f"Installing {PLUGIN_NAME}")
+    plugin = client.plugins.install(PLUGIN, PLUGIN_NAME)
+    eprint(f"{plugin.name} installed")
+
+
+
+
+
+
+
+if plugin.enabled:
+    plugin.disable(force=True)
+
+eprint(f"{plugin.name} disabled")
+
+
+# Configure options
+settings={
+	"S3FS_OPTIONS": f'allow_other,use_path_request_style,nonempty,uid=890,gid=890,url={PROTOCOL}://{DATASHARE_SERVER}:{DATASHARE_PORT}',
+    "S3FS_ENDPOINT": f'{PROTOCOL}://{DATASHARE_SERVER}:{DATASHARE_PORT}',
+    "S3FS_ACCESSKEY": SUPERADMIN_NAME, 
+    "S3FS_SECRETKEY": SUPERADMIN_PASS
+}
+
+
+
+
+plugin.configure(settings)
+eprint(f"{plugin.name} configured.")
+
+while True:
+    if getStatuscode(f"{PROTOCOL}://{DATASHARE_SERVER}:{DATASHARE_PORT}") == 400 :
+        if plugin.enabled :
+            time.sleep(60)
+        else:
+            try:
+                plugin.enable()
+                eprint(f"{plugin.name} enabled")                
+            except Exception as e:
+                eprint(e)
+    else:
+        try:
+            if plugin.enabled :
+                plugin.disable(force=True)
+                eprint(f"{plugin.name} disabled")
+            else:
+                time.sleep(5)
+        except Exception as e:
+            eprint(e)

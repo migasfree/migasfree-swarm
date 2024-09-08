@@ -1,0 +1,62 @@
+FROM debian:12.4-slim AS builder
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl nano git ca-certificates gnupg wget git make cmake clang libicu-dev zlib1g-dev
+
+
+# https://github.com/microsoft/msix-packaging/archive/refs/heads/johnmcpms/signing.zip
+RUN git clone https://github.com/microsoft/msix-packaging --depth=1 && \
+    cd msix-packaging && \
+#    git checkout johnmcpms/signing && \
+    ./makelinux.sh --pack --validation-parser -b Release &&  \
+    cp ./.vs/bin/makemsix /usr/bin && \
+    cp ./.vs/bin/sign-msix /usr/bin &&
+    cp ./.vs/lib/libmsix.so /lib/x86_64-linux-gnu
+
+
+FROM debian:12.4-slim
+LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+COPY VERSION /VERSION
+
+COPY --from=builder /usr/bin/makemsix   /usr/bin/makemsix
+COPY --from=builder /usr/bin/sign-msix   /usr/bin/sign-msix
+COPY --from=builder /lib/x86_64-linux-gnu/libmsix.so   /lib/x86_64-linux-gnu/libmsix.so
+
+ENV TERM=xterm \
+    DEBIAN_FRONTEND=noninteractive \
+    USER=root \
+    LANGUAGE=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LC_CTYPE=C.UTF-8 \
+    LANG=C.UTF-8 \
+    _UID=890 \
+    _GID=890 
+
+RUN _TAG=$(cat /VERSION) && \
+    _BUILD_DEPENDS=' python3-setuptools python3-pip wget' && \
+    _DEPENDS='osslsigncode gnupg dpkg-dev gzip python3  python3-venv netcat-openbsd libicu72 curl apt-utils tzdata' && \
+    _PIP_DEPENDS='requests celery[redis] pyyaml importlib-metadata' && \
+    usermod -u $_UID www-data && \
+    groupmod -g $_GID www-data && \
+    chsh -s /bin/bash www-data && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends  $_DEPENDS && \
+    apt-get install -y --no-install-recommends  $_BUILD_DEPENDS && \
+    python3 -m venv /venv && \
+    . /venv/bin/activate  && \
+    pip install --upgrade pip setuptools && \
+    pip3 install $_PIP_DEPENDS && \
+    mkdir /pms && \
+    apt-get -y purge $_BUILD_DEPENDS && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* 
+
+
+COPY --from=migasfree/core:5.0-beta /migasfree /pms/migasfree
+
+RUN chown -R $_UID:$_GID /pms
+
+COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+COPY defaults/source.template /source.template
+
+ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]

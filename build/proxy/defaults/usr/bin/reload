@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ ! -f /var/run/haproxy/haproxy.pid ]
+then
+    echo -n "waiting to proxy, please wait "
+fi
+
+until [ -f /var/run/haproxy/haproxy.pid ]
+do 
+    echo -n "."
+    sleep 1
+done
+
+kill -SIGUSR2 $(cat /var/run/haproxy/haproxy.pid)

@@ -1,0 +1,32 @@
+
+    {{PMS}}:
+        image: migasfree/{{PMS}}:5.0-beta
+        hostname: '{{TASK}}'
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+        deploy:
+            #replicas: {{REPLICAS_PMS}}
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+        depends_on:
+            - core
+        secrets:
+            - source: {{STACK}}_pms_pass
+            - source: {{STACK}}_superadmin_pass            
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare      
+        networks:
+            - network
+            - proxy

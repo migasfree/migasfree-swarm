@@ -1,0 +1,22 @@
+#!/bin/bash
+
+
+LOG=/var/tmp/borrame.log
+echo $(date) > ${LOG}
+
+# environment
+. /usr/share/migasfree-client/events.d/.env
+
+
+# iter FRW
+for element in "${TRAIT_FRW[@]}"
+do
+    echo "FRW ${element}" >> ${LOG}
+done
+
+
+# iter SET
+for element in "${TRAIT_SET[@]}"
+do
+    echo "SET ${element}" >> ${LOG}
+done

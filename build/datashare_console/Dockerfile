@@ -1,0 +1,17 @@
+
+FROM filebrowser/filebrowser
+LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ENV RUNTIME_DEPENDS='tzdata' 
+
+RUN apk add --update --no-cache $RUNTIME_DEPENDS
+
+COPY defaults/etc /etc
+COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+
+COPY defaults/usr/bin /usr/bin
+
+COPY defaults/healthcheck.sh /healthcheck.sh
+HEALTHCHECK --start-period=2s --interval=5s --timeout=3s CMD /healthcheck.sh || exit 1
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3" IgnorableNamespaces="uap uap3">
+  <Identity Name="{fqdn}.{source}.Source" ProcessorArchitecture="neutral" Publisher="{subject}" Version="3000.805.8000.2" />
+  <!-- Commit in which this package was based on 3303383feb86c6946dec5c3fe8938fcecc32dbfe-->
+  <Properties>
+    <DisplayName>Source {source} (winget)</DisplayName>
+    <PublisherDisplayName>Migasfree Server: {fqdn}</PublisherDisplayName>
+    <Logo>Assets\AppPackageStoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.16299.0" MaxVersionTested="10.0.18287.0" />
+  </Dependencies>
+  <Applications>
+    <Application Id="SourceData">
+      <uap:VisualElements DisplayName="Source {source} (winget)" Square150x150Logo="Assets\AppPackageStoreLogo.scale-150.png" Square44x44Logo="Assets\AppPackageStoreLogo.scale-100.png" Description="Source {source} (winget)" BackgroundColor="#0078d7" AppListEntry="none" />
+      <Extensions>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.winget.source" Id="IndexDB" DisplayName="Source {source} (winget)" Description="Source {source} (winget)" PublicFolder="Public"></uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Resources>
+    <Resource Language="und" />
+  </Resources>
+</Package>

@@ -1,0 +1,12 @@
+#!/bin/sh
+MIGASFREE_SECRET_DIR=/var/run/secrets
+
+sleep 5
+
+# add the connection to datastore if not exist
+# ============================================
+curl -X GET -H "Content-Type: application/json" http://127.0.0.1:5540/api/databases|grep ',"name":"'${STACK}'",'
+if ! [ $? = 0 ]
+then
+    curl -X POST -H "Content-Type: application/json" -d '{"host": "datastore", "port": 6379, "name": "'${STACK}'", "username":"default", "password":"'$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)'"}' http://127.0.0.1:5540/api/databases
+fi

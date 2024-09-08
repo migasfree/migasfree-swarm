@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+
+    proxy:
+        image: migasfree/proxy:5.0-beta
+        ports:
+            - published: {{PORT_HTTP}}
+              target: 80
+              protocol: tcp
+              mode: host
+            - published: {{PORT_HTTPS}}
+              target: 443
+              protocol: tcp
+              mode: host
+
+        environment:
+            - TZ=Europe/Madrid
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - PORT_HTTP={{PORT_HTTP}}
+            - PORT_HTTPS={{PORT_HTTPS}}
+            - MIGASFREE_CONF_DIR=
+            - HTTPSMODE=manual
+            - PMS_ENABLED={{PMS_ENABLED}}
+        deploy:
+            #replicas: 1
+            mode: global
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 5
+                window: 120s
+            placement:
+                constraints:
+                    - node.labels.proxy == true
+        secrets:
+#            - source: proxy_credential
+            - source: {{STACK}}_superadmin_name
+            - source: {{STACK}}_superadmin_pass
+            - source: swarm-credential
+            - source: {{FQDN}}.pem
+        
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/usr/local/etc/haproxy/certificates
+            - migasfree-swarm:/mnt/cluster
+
+        networks:
+            - proxy
+
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+    migasfree-swarm:
+        external: true
+
+
+secrets:
+    swarm-credential:
+        external: true
+
+    {{STACK}}_superadmin_name:
+        external: true
+    {{STACK}}_superadmin_pass:
+        external: true
+
+    {{FQDN}}.pem:
+        external: true

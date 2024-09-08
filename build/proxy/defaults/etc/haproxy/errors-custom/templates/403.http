@@ -1,0 +1,53 @@
+HTTP/1.0 403 Forbidden
+Cache-Control: no-cache
+Connection: close
+Content-Type: text/html
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+          name="viewport"
+          content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"
+        />
+        <link rel="icon" href="https://{{FQDN}}/services-static/img/logo.svg" type="image/svg+xml">        
+        <style>
+            @font-face {
+            font-family: 'Virgil';
+            src: url('https://{{FQDN}}/services-static/fonts/Virgil.ttf') format('truetype');
+            }
+            body {
+                width: 100%;
+                margin: 0 auto;
+                font-family: 'Virgil', sans-serif;
+                color: #bbb;
+            }
+            .center {
+                position: absolute;
+                margin: auto;
+                top: -50%;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                height: 125px;
+                text-align: center;
+                align-items: center;
+                justify-content: center;
+            }
+            h1 {
+                font-size: 16vh;
+                margin: 0;
+            }
+        </style>
+        <title>403</title>
+    </head>
+    <body>
+        <main class="center">
+            <div id="info">
+                <h1 >Forbidden</h1>
+                <img id="spoon" src="https://{{FQDN}}/services-static/img/spoon-error.svg" alt="" title="proxy" />
+            </div>
+        </main>
+    </body>
+</html>

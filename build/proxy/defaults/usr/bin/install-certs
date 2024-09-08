@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -e
+
+IPCERT=$(dig +short $FQDN)
+if [ -z "$IPCERT" ]
+then
+    # it is assumed that FQDN is an IP
+    IPCERT=$FQDN
+fi
+
+# Create a self signed default certificate, so HAproxy can start
+pushd /usr/local/etc/haproxy/certificates
+
+echo "*************************"
+mount
+
+
+# Create your CA crt and key:
+openssl req -new -x509 -nodes -newkey rsa:4096 -extensions v3_ca -sha256 -days 3650 -subj "/C=ES/ST=ZARAGOZA/L=ZARAGOZA/O=migasfree/CN=Insecure Certificate Authority" -keyout ca.key -out ca.crt
+chmod 600 ca.key
+
+# Create a CSR:
+openssl req -newkey rsa:2048 -nodes -sha256 -keyout cert.key -out cert.csr -subj "/C=ES/ST=ZARAGOZA/L=ZARAGOZA/O=migasfree/OU=Core/CN=${FQDN}"
+
+# Check contents of CSR (optional):
+# openssl req -in cert.csr -text -noout
+
+# Sign the CSR, resulting in CRT and add the v3 SAN extension:
+#openssl x509 -req -in cert.csr -out cert.crt -CA ca.crt -CAkey ca.key -CAcreateserial -sha256 -days 1095 -extensions SAN -extfile <(cat  /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=@san_names\nbasicConstraints=CA:FALSE\nkeyUsage=nonRepudiation,digitalSignature,keyEncipherment\n[san_names]\nIP.1=${IPCERT}\n"))
+openssl x509 -req -in cert.csr -out cert.crt -CA ca.crt -CAkey ca.key -CAcreateserial -sha256 -days 1095 -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=@san_names\nbasicConstraints=CA:FALSE\nkeyUsage=nonRepudiation,digitalSignature,keyEncipherment\n[san_names]\nDNS.1=${FQDN}\n"))
+
+chmod 600 cert.key
+
+# Check contents of CRT (optional)
+openssl x509 -in cert.crt -text -noout
+
+# Certificate autosigned for SSL in haproxy
+cat cert.key cert.crt > ${FQDN}.pem
+
+popd

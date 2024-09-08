@@ -1,0 +1,41 @@
+#!/bin/bash
+
+_IMAGE="migasfree/swarm:5.0-beta"
+_COMMAND="$1"
+
+VOLUME=migasfree-swarm
+
+function create_volume_cluster {
+  if [ $DATASHARE_FS  = "nfs" ]
+  then
+      docker volume create \
+        --driver local \
+        --opt type=nfs \
+        --opt o=addr=$DATASHARE_SERVER,port=$DATASHARE_PORT,rw,vers=4 \
+        --opt device=:$DATASHARE_PATH \
+        $VOLUME > /dev/null
+  else # local
+      docker volume create $VOLUME > /dev/null
+  fi    
+}
+
+
+if ! [ -f ./env.py ]
+then
+  docker run --name migasfree-swarm \
+    --detach=false --rm -ti \
+    -v $(pwd):/stack \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    "$_IMAGE" "config"
+  
+fi
+
+. ./env.py
+create_volume_cluster
+
+docker run --name migasfree-swarm \
+  --detach=false --rm -ti \
+  -v $(pwd):/stack \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v $VOLUME:/mnt/cluster \
+  "$_IMAGE" "$_COMMAND"

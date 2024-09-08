@@ -1,0 +1,32 @@
+#FROM nginx:alpine
+FROM cmoore1776/nginx:latest
+LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+# change uid and gid for nginx user
+RUN apk --no-cache add bind-tools curl shadow tzdata && \
+    usermod -u 890 nginx && \
+    groupmod -g 890 nginx && \
+    apk del shadow
+
+COPY defaults/var/migasfree /var/migasfree
+
+# STATIC FILES
+COPY --from=migasfree/core:5.0-beta /static/admin  /var/migasfree/static/admin
+COPY --from=migasfree/core:5.0-beta /static/drf-yasg /var/migasfree/static/drf-yasg
+COPY --from=migasfree/core:5.0-beta /static/rest_framework /var/migasfree/static/rest_framework
+COPY defaults/var/migasfree/static /var/migasfree/static
+
+RUN chown -R 890:890 /var/migasfree/
+
+COPY defaults/usr/bin /usr/bin
+COPY defaults/etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
+COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+
+
+COPY defaults/healthcheck.sh /healthcheck.sh
+HEALTHCHECK --start-period=2s --interval=5s --timeout=3s CMD /healthcheck.sh || exit 1
+
+CMD [""]
+
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+
