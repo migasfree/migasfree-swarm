@@ -1,0 +1,17 @@
+build/certbot/VERSION
+build/console/VERSION
+build/core/VERSION
+build/database/VERSION
+build/database_console/VERSION
+build/datashare_console/VERSION
+build/datastore/VERSION
+build/datastore_console/VERSION
+build/pms-apt/VERSION
+build/pms-pacman/VERSION
+build/pms-winget/VERSION
+build/pms-yum/VERSION
+build/proxy/VERSION
+build/public/VERSION
+build/s3/VERSION
+build/swarm/VERSION
+build/worker_console/VERSION
