@@ -352,7 +352,7 @@ def deploy_migasfree(context):
     deploy_stack(file_yml, f"{context['STACK']}")
 
 
-    os.remove(file_yml)
+    #os.remove(file_yml)
 
     print()
 
