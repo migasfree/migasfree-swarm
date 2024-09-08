@@ -153,14 +153,6 @@ class ContextLoader:
         self.default("REPLICAS_public","1")
         self.default("REPLICAS_worker","1")
 
-
-        # Variables inside containers
-        # ===========================
-        # https://docs.docker.com/reference/cli/docker/service/create/#create-services-using-templates
-        self.default("NODE","{{.Node.Hostname}}")
-        self.default("SERVICE","{{.Service.Name}}")
-        self.default("TASK","{{.Task.Name}}")
-
     def environment(self):
         string = ""
         for key, value in self.context.items():
