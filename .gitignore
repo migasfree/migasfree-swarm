@@ -10,6 +10,7 @@ build/pms-apt/VERSION
 build/pms-pacman/VERSION
 build/pms-winget/VERSION
 build/pms-yum/VERSION
+build/pms-wpt/VERSION
 build/proxy/VERSION
 build/public/VERSION
 build/s3/VERSION
