@@ -66,5 +66,9 @@ mkdir -p /var/run/haproxy/
 
 message ""
 
+# Link certificates
+rm -rf /usr/local/etc/haproxy/certificates || :
+ln -s /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
+
 haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
     -p /var/run/haproxy/haproxy.pid

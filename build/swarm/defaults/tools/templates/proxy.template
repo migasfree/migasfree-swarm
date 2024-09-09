@@ -30,9 +30,9 @@ services:
             mode: global
             restart_policy:
                 condition: on-failure
-                delay: 5s
-                max_attempts: 5
-                window: 120s
+                delay: 10s
+                max_attempts: 0
+#                window: 180s
             placement:
                 constraints:
                     - node.labels.proxy == true
@@ -44,7 +44,6 @@ services:
             - source: {{FQDN}}.pem
         
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/usr/local/etc/haproxy/certificates
             - migasfree-swarm:/mnt/cluster
 
         networks:
