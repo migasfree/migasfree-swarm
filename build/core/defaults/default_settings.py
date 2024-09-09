@@ -2,7 +2,7 @@ import os
 
 
 def get_secret_pass():
-    stack=os.environ['STACK']
+    stack = os.environ['STACK']
     password = ''
     with open(f'/run/secrets/{stack}_superadmin_pass', 'r') as f:
         password = f.read()
@@ -81,7 +81,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [{
-                "host": REDIS_HOST, 
+                "host": REDIS_HOST,
                 "port": REDIS_PORT,
                 "password": get_secret_pass()
                 }]
@@ -106,7 +106,7 @@ EMAIL_HOST_PASSWORD = ""
 DEFAULT_FROM_EMAIL = "migasfree-server <noreply@mydomain.es>"
 ADMINS = [('mymame', 'myuser@mydomain.es'),]
 
-MEDIA_URL ="/public/"
+MEDIA_URL = "/public/"
 MIGASFREE_TMP_DIR = '/var/tmp'
 MIGASFREE_SECRET_DIR = '/var/run/secrets'
 
