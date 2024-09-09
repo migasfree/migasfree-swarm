@@ -2,7 +2,6 @@
 
 This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.docker.com/engine/swarm/).
 
-
 ## Project Directory Structure
 
 * `build`: Source code for the Docker images.
@@ -20,9 +19,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
 
 ## Production Environment Architecture
 
-
 ![cluster-production](doc/cluster-production.png)
-
 
 * The Swarm cluster handles both **port 80** and **port 443**; however, only port 443 is shown in the diagram for clarity.
 
@@ -30,12 +27,11 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
 
 * Data is stored on an `external NFS volume` outside the Swarm cluster, except for the `database volume` ([PostgreSQL](https://www.postgresql.org/)) and the `datastore volume` ([Redis](https://redis.io/)), which are kept local for better performance.
 
-
 ## Requirements
 
 #### 1. FQDN & DNS
 
-* Choose a suitable `FQDN` for your Migasfree server, e.g., `migasfree.mydomain.com`. 
+* Choose a suitable `FQDN` for your Migasfree server, e.g., `migasfree.mydomain.com`.
 
   The `FQDN` and the following `subdomains` must resolve to the server's IP. Configure them in your `Domain Name Service (DNS)`.
 
@@ -69,7 +65,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   ```txt
   DATASHARE_FS (local | nfs): local
   ```
-  
+
   In this `local mode`, data will only be accessible on the manager node where the deployment takes place, used for testing on a `single-node` Swarm cluster.
 
 #### 3. Swarm node hardware
@@ -78,15 +74,13 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
 * CPU >= 4
 * Disk SPACE SYSTEM >= 80 GB
 
-#### 4. Swarm node software 
+#### 4. Swarm node software
 
 * [Install docker engine](https://docs.docker.com/engine/install) on each Swarm node.
 
 ## Deployment
 
 * On the host that will act as the `Swarm manager`, create an empty directory and run:
-
-
 
   ```bash
   # Example of creating an empty directory
@@ -96,29 +90,27 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta config
   ```
 
-
 * Initial configuration:
   ```txt
   (for nfs)
 
   DATASHARE_FS (local | nfs): nfs
-  DATASHARE_SERVER (x.x.x.x): 172.0.0.20 
+  DATASHARE_SERVER (x.x.x.x): 172.0.0.20
   DATASHARE_PATH (/exports/migasfree-swarm):
   ```
-  
+
   ```txt
   (for local)
-  
+
   DATASHARE_FS (local | nfs): local
   ```
-
 
  * Two files will be created in the directory: `env.py` and `migasfree-swarm`.
 
   * Check the contents of `env.py`
-  
+
     ```bash
-    cat env.py 
+    cat env.py
     ```
     Example output:
 
@@ -128,6 +120,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
     DATASHARE_PATH='/exports/migasfree-swarm'
     DATASHARE_PORT='2049'
     ```
+
 ## Downloading images
 
 * Although it is not strictly necessary, you can pre-download the images we will need now.
@@ -136,7 +129,6 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   ./migasfree-swarm pull
   ```
 
-
 ## Deploying the Stack
 
   * Deploy the `Migasfree stack` by running:
@@ -144,10 +136,10 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
     ```bash
     ./migasfree-swarm deploy
     ```
-    
+
     During deployment:
     ```txt
-    STACK (): inv 
+    STACK (): inv
     FQDN (migasfree.acme.com): inv.org
 
     Warning! This system is not a Swarm node.
@@ -170,8 +162,6 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   ```bash
   ./migasfree-swarm deploy
   ```
-  
-
 
 ## Logins
 
@@ -193,7 +183,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
         admin:ajwtcC788fkipE5nh2ZU0Hcmlrj4tR
 
     ```
-  
+
     The format is `username:password`.
 
     ![consoles](doc/consoles.png)
@@ -207,7 +197,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   ```bash
   ./migasfree-swarm consoles-pro
   ```
-  
+
   This disables the database, datastore, and worker consoles.
 
 ## Development Consoles
@@ -231,18 +221,19 @@ Migasfree Swarm uses three volumes:
 1. `migasfree-swarm` (local|nfs)
 
     ```txt
-    * portainer       
+    * portainer
     * certificates
     * credentials
-    * datashares     
-      * inv    
+    * datashares
+      * inv
     ```
     This shared volume will be present on `all nodes` in the Swarm cluster.
 
 2. `inv_database`    (local)
 
    A single `local volume` on a specified Swarm node.
-3. `inv_datastore`   (local) 
+
+3. `inv_datastore`   (local)
 
    A single `local volume` on a specified Swarm node.
 
@@ -266,14 +257,14 @@ TODO backups
 
 * If you are testing Migasfree and no longer need the data on your Migasfree server, you can list and delete the volumes on a specific node by running the following commands:
 
-    To list volumes: 
-    
+    To list volumes:
+
     ```bash
     docker volume ls
     ```
 
-    To remove a volume: 
-    
+    To remove a volume:
+
     ```
     docker volume rm <volume>
     ```
@@ -289,4 +280,5 @@ TODO backups
   ```
 
 ## TODO
-  Refer to the [todo list](doc/todo)
+
+Refer to the [todo list](doc/todo.md)
