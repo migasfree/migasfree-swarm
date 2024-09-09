@@ -11,8 +11,8 @@ services:
 #            restart_policy:
 #                condition: on-failure
 #                delay: 5s
-#                max_attempts: 5
-#                window: 120s
+#                max_attempts: 10
+#                window: 180s
 #            placement:
 #                constraints:
 #                    - node.labels.datashare == true
@@ -65,8 +65,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
         depends_on:
             - core
         volumes:
@@ -88,8 +88,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
         depends_on:
             - core
         networks:
@@ -117,8 +117,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -152,8 +152,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -185,8 +185,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -219,8 +219,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
             placement:
                 constraints:
                     - node.labels.database == true
@@ -248,8 +248,8 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 5
-                window: 120s
+                max_attempts: 10
+                window: 180s
             placement:
                 constraints:
                     - node.labels.datastore == true
