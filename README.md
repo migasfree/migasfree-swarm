@@ -212,13 +212,13 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
 
 * In Docker, volumes provide data persistence by allowing data generated and used by containers to be stored outside the container's lifecycle. Even if a container is deleted or recreated, volumes persist on the host’s filesystem, ensuring that data is not lost. This allows containers to securely and efficiently access shared or persistent data, such as databases or configuration files, beyond the container's lifespan.
 
-  1. Migasfree Swarm uses two `local volumes` for storage:
+  1. Migasfree Swarm uses two **local volumes** for storage:
 
-     * `database volume`: Stores the PostgreSQL database.
+     * `database` volume: Stores the PostgreSQL database.
 
-     * `datastore volume`: Stores the Redis database.
+     * `datastore` volume: Stores the Redis database.
 
-     You can specify on which node of the Swarm cluster these volumes should reside by using `labels on the nodes`. The labels are:
+     You can specify on which node of the Swarm cluster these volumes should reside by using **labels on the nodes**. The labels are:
 
      * for the PostgreSQL volume.
 
@@ -232,23 +232,33 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
        datastore=true
        ```
 
-     Only `one instance` of each of these volumes can exist in the cluster at a time.
+     Only **one instance** of each of these volumes can exist in the cluster at a time.
 
-  2. There is also a third volume called `datashare`, which is used to store various types of information, including certificate files, Portainer data, credentials, and additional data like repositories and software packages managed by Migasfree.
+  2. There is also a third volume called `migasfree-swarm`, which is used to store various types of information, including certificate files, Portainer data, credentials, and additional data like repositories and software packages managed by Migasfree.
   
-     The `datashare volume` can be configured in two ways:
+     The `migasfree-swarm` volume can be configured in two ways:
 
-     * Local: Used for `testing` or when the Swarm cluster has only a single node. Configure this by setting the environment variable:
+     * Local: Used for **testing** or when the Swarm cluster has only **a single node**. Configure this by setting the environment variable:
 
        ```
        DATASHARE_FS=local
        ```
 
-     * NFS (Network File System): Used for multi-node setups. Data is stored on an NFS server, and each node in the cluster has an `NFS volume` pointing to the NFS server. Configure this by setting the environment variable:
-     
+     * NFS (Network File System): Used for multi-node setups. Data is stored on an NFS server, and **each node in the cluster** has an **volume of type NFS** pointing to the NFS server. Configure this by setting the environment variable:
+
        ```
        DATASHARE_FS=nfs
        ```
+
+  An example of what it would look like when listing volumes with Docker, when `STACK=inv`, would be: 
+
+  ```txt
+  # docker volume ls
+  DRIVER    VOLUME NAME
+  local     inv_database
+  local     inv_datastore
+  local     migasfree-swarm
+  ```
 
 ## Certificates
 
