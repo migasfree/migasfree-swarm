@@ -37,7 +37,7 @@ echo "
                           ●
                         ●●
 
-        migasfree database_console
+        $SERVICE ($TAG)
         pgadmin4
         Container: $HOSTNAME
         Time zome: $TZ $(date)

@@ -1,6 +1,10 @@
 FROM debian:12.4-slim AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
 COPY /VERSION /VERSION
 
 ENV TERM=xterm \
@@ -15,8 +19,7 @@ ENV TERM=xterm \
     _DEPENDS='procps libzmq5 gnupg rng-tools curl apt-utils bzip2 xz-utils python3 python3-venv python3-minimal python3-pip p7zip-full vim wget postgresql-client netcat-traditional libmagic1' \
     _PIP_DEPENDS='uvicorn[standard]==0.18.3'
 
-RUN _TAG=$(cat /VERSION) && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends apt-utils && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
     echo "es_ES.UTF-8 UTF-8" >> /etc/locale.gen && \
@@ -35,9 +38,6 @@ RUN _TAG=$(cat /VERSION) && \
     python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir --upgrade setuptools wheel 
 
-
-#RUN pip install --no-cache-dir $_PIP_DEPENDS
-
 RUN apt-get install -y swig 
 
 RUN cd / && \
@@ -45,8 +45,6 @@ RUN cd / && \
     git clone https://github.com/migasfree/migasfree-backend && \
     cd /migasfree-backend && \
     git checkout $(cat /VERSION)
-
-     
 
 RUN  cd / && \
     . /venv/bin/activate && \
@@ -56,12 +54,9 @@ RUN  cd / && \
     python3 setup.py install && \
     rm -rf /migasfree-backend 
 
-
-
 RUN cd / && \
     . /venv/bin/activate && \
     pip3 install --no-cache-dir uvicorn[standard]==0.22.0
-
 
 RUN . /venv/bin/activate && \
     # Symbolic links to be copied from other containers && \
@@ -95,6 +90,12 @@ COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
 FROM scratch
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY /VERSION /VERSION
 
 ENV TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \

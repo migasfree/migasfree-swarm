@@ -2,6 +2,12 @@
 FROM postgres:alpine3.19
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
+
 RUN apk add curl coreutils apk-cron musl-locales
 
 COPY defaults/usr /usr

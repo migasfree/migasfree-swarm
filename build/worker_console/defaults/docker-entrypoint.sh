@@ -70,7 +70,7 @@ echo "
                           ●
                         ●●
 
-        migasfree worker console
+        $SERVICE ($TAG)
         celery $(celery --version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

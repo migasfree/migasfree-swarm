@@ -71,7 +71,7 @@ echo "
                         ●●
 
 
-        migasfree PUBLIC
+        $SERVICE ($TAG)
         $(nginx -v 2>&1)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

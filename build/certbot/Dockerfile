@@ -1,5 +1,13 @@
 FROM certbot/certbot
 
+LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
+
 # Install socat
 RUN apk update && apk add socat
 

@@ -2,6 +2,12 @@
 
 FROM python:alpine
 
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
+
 # Get latest root certificates
 RUN apk add --no-cache ca-certificates tzdata curl && \
     update-ca-certificates

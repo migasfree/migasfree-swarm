@@ -117,7 +117,7 @@ echo "
                         ●●
 
 
-        migasfree service: ${SERVICE}
+        $SERVICE ($TAG)
         queues: ${QUEUES}
 
         celery $(celery --version)

@@ -101,7 +101,7 @@ echo "
                           ●
                         ●●
 
-        migasfree PMS-WPT
+        $SERVICE ($TAG)
         celery $(celery --version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

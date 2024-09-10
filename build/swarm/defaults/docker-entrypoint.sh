@@ -25,7 +25,7 @@ fi
 if [ -z ${COMMAND} ]
 then 
     echo "
-        migasfree swarm
+        $SERVICE ($TAG)
         Container: $HOSTNAME
         Time zome: $TZ $(date)
         Processes: $(nproc)"

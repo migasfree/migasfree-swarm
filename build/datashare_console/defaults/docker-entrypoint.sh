@@ -34,7 +34,7 @@ echo "
                           ●
                         ●●
 
-        migasfree datashare_console
+        $SERVICE ($TAG)
         $(/filebrowser version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

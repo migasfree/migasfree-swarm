@@ -4,9 +4,12 @@ FROM migasfree/core:${TAG} AS core
 FROM debian:12.4-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
 COPY VERSION /VERSION
 
-ENV TERM=xterm \
+ENV TAG=${TAG} \
+    TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \
     USER=root \
     LANGUAGE=C.UTF-8 \

@@ -52,7 +52,7 @@ echo "
                           ●
                         ●●
 
-        migasfree PROXY
+        $SERVICE ($TAG)
         $(haproxy -v | head -1)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

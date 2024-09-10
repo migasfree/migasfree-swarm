@@ -89,7 +89,7 @@ echo "
                           ●
                         ●●
 
-        migasfree ${SERVICE}
+        $SERVICE ($TAG)
         celery $(celery --version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

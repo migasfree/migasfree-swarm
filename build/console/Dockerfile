@@ -1,25 +1,35 @@
 #FROM node:18.16.1-alpine3.18 AS build-stage
 FROM node:22-alpine AS build-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
 COPY VERSION /VERSION
-RUN _TAG=$(cat /VERSION) && \
-        apk add git && \
-        git clone  https://github.com/migasfree/migasfree-frontend  && \
-        cd migasfree-frontend && \
-        git checkout $_TAG && \
-        echo 'MIGASFREE_SERVER=https://__FQDN__' > /migasfree-frontend/.env
+
+RUN apk add git && \
+    git clone  https://github.com/migasfree/migasfree-frontend  && \
+    cd migasfree-frontend && \
+    git checkout $TAG && \
+    echo 'MIGASFREE_SERVER=https://__FQDN__' > /migasfree-frontend/.env
 
 RUN cd migasfree-frontend && \
-        cp package*.json /app && \
-        yarn global add @quasar/cli && \
-        yarn && \
-        quasar build
+    cp package*.json /app && \
+    yarn global add @quasar/cli && \
+    yarn && \
+    quasar build
 
 FROM nginx:stable-alpine3.17 AS production-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
 COPY VERSION /VERSION
-RUN _TAG=$(cat /VERSION) && \
-    apk add curl
+
+RUN apk add curl
 
 # Copy application
 COPY --from=build-stage /migasfree-frontend/dist/spa /usr/share/nginx/html

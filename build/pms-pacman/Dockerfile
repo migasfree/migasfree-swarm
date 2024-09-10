@@ -4,9 +4,12 @@ FROM migasfree/core:${TAG} AS core
 FROM archlinux:base-20240825.0.257728
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
 COPY VERSION /VERSION
 
-ENV TERM=xterm \
+ENV TAG=${TAG} \
+    TERM=xterm \
     USER=root \
     LANGUAGE=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
@@ -16,8 +19,7 @@ ENV TERM=xterm \
     _GID=890 \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production 
 
-RUN _TAG=$(cat /VERSION) && \
-    _BUILD_DEPENDS='python-setuptools python-pip wget' && \
+RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
     _DEPENDS='gnupg gzip python3 python-virtualenv curl netcat python-requests python-redis python-celery python-dateutil' && \
 #    _PIP_DEPENDS='' && \
     useradd www-data &&\

@@ -68,7 +68,7 @@ echo "
                           ●
                         ●●
 
-        migasfree DATABASE
+        $SERVICE ($TAG)
         $(postgres -V)
         Container: $HOSTNAME
         Time zome: $TZ $(date)

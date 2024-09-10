@@ -4,9 +4,12 @@ FROM migasfree/core:${TAG} AS core
 FROM debian:12.4-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
 COPY VERSION /VERSION
 
-ENV TERM=xterm \
+ENV TAG=${TAG} \
+    TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \
     USER=root \
     LANGUAGE=C.UTF-8 \
@@ -17,8 +20,7 @@ ENV TERM=xterm \
     _GID=890 \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production 
 
-RUN _TAG=$(cat /VERSION) && \
-    _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
+RUN _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
     _DEPENDS='gnupg dpkg-dev gzip python3 python3-venv netcat-openbsd curl apt-utils tzdata' && \
     _PIP_DEPENDS='requests celery[redis]' && \
     usermod -u $_UID www-data && \

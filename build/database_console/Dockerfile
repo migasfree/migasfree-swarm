@@ -1,11 +1,15 @@
 
 #FROM dpage/pgadmin4:8.5
 FROM dpage/pgadmin4:8.11
-
+LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 # https://github.com/pgadmin-org/pgadmin4/blob/master/docs/en_US/container_deployment.rst
 
-LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
 
 ENV RUNTIME_DEPENDS='tzdata curl su-exec' 
 

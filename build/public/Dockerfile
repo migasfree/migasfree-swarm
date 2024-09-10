@@ -1,9 +1,14 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-#FROM nginx:alpine
 FROM cmoore1776/nginx:latest
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
 
 # change uid and gid for nginx user
 RUN apk --no-cache add bind-tools curl shadow tzdata && \

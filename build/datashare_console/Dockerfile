@@ -2,7 +2,12 @@
 FROM filebrowser/filebrowser
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
-ENV RUNTIME_DEPENDS='tzdata' 
+ARG TAG=latest
+
+ENV TAG=${TAG} \
+    RUNTIME_DEPENDS='tzdata' 
+
+COPY VERSION /VERSION
 
 RUN apk add --update --no-cache $RUNTIME_DEPENDS
 

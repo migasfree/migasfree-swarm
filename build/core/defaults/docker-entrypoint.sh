@@ -240,7 +240,7 @@ echo "
                           ●
                         ●●
 
-        migasfree $SERVICE
+        $SERVICE ($TAG)
         $_PROCESS
         Container: $HOSTNAME
         Time zome: $TZ $(date)

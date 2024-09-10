@@ -1,6 +1,11 @@
 FROM redis/redisinsight:2.42.0
-
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
+
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
 
 ENV RUNTIME_DEPENDS="tzdata curl"
 

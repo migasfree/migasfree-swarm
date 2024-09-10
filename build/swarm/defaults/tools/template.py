@@ -14,7 +14,7 @@ def render(path_templates, template, context):
     context['NODE']='{{.Node.Hostname}}'
     context['SERVICE']='{{.Service.Name}}'
     context['TASK']='{{.Task.Name}}'
-    
+
     env = Environment(loader=FileSystemLoader(path_templates))
     template = env.get_template(template)
     template.globals['context'] = get_context

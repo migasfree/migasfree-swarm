@@ -59,7 +59,7 @@ echo "
                           ●
                         ●●
 
-        migasfree datastore_console
+        $SERVICE ($TAG)
         redisinsight
         Container: $HOSTNAME
         Time zome: $TZ $(date)

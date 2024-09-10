@@ -25,7 +25,7 @@ FQDN = os.environ['FQDN']
 STACK = os.environ['STACK']
 PORT_HTTP = os.environ['PORT_HTTP']
 PORT_HTTPS = os.environ['PORT_HTTPS']
-
+TAG = os.environ['TAG']
 
 
 # Global Variable 
@@ -124,7 +124,8 @@ class message:
             'last_message': global_data['last_message'],
             'services': global_data['services'],
             'ok': global_data['ok'],
-            'stack': STACK
+            'stack': STACK,
+            'tag': f"migasfree {TAG}"
         })
 
     def POST(self):
@@ -397,9 +398,6 @@ body {
               //  message_serv = `${_stack}_${serv}`;
               //} 
 
-
-
-
               if (typeof(data) != "undefined") {
                 if (serv == "pms" && message_pms != "") {
                   message = data['services'][message_pms]['message'];
@@ -433,6 +431,8 @@ body {
                 $("#start_link").hide(200);
 
               }
+
+              $("#tag").text(data['tag']);
 
               if (message == "") {
                 $("#message").text('ready');
@@ -475,7 +475,6 @@ body {
         const welcome = ["salut!", "Hi!", "¡hola!", "¡hola, co!", "kaixo!", "ola!", "Hallo!"];
         $("#message").text(welcome[Math.floor(Math.random() * 7)]);
 
-
         // tooltips
         $("#proxy_link title").text('proxy statistics:' + String.fromCharCode(10) +'https://'+location.hostname+'/stats');
         $("#console_link title").text('migasfree console:' + String.fromCharCode(10) +'https://'+location.hostname);
@@ -513,10 +512,11 @@ body {
         </foreignObject>
       </switch>
 
-
-
-
-
+      <switch>
+        <foreignObject x="80" y="125" width="38" height="10" font-size="1.6" color="#999999">
+          <p class="" id="tag"> </p>
+        </foreignObject>
+      </switch>
 
 <!--
       <switch>
@@ -625,8 +625,6 @@ body {
       <circle id="datashare_console_link" cx="121" cy="117" r="7" style="fill: green; fill-opacity: 0.07;" onclick="$(location).attr('href','https://datashare.'+location.hostname);" >
         <title> datashare console </title>
       </circle>   
-
-
 
     </svg>
 

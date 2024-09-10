@@ -5,6 +5,11 @@ FROM debian:11.4-slim AS builder
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl nano git ca-certificates gnupg wget git git-lfs make cmake clang libicu-dev zlib1g-dev
 
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
+COPY VERSION /VERSION
 
 #RUN git clone --branch MSIX-Core-1.2-release --depth 1 https://github.com/microsoft/msix-packaging && \
 #    cd /msix-packaging && \
@@ -30,6 +35,8 @@ RUN git clone --branch johnmcpms/signing --depth 1 https://github.com/mozilla/ms
 FROM debian:11.4-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
+ARG TAG=latest
+
 COPY VERSION /VERSION
 
 COPY --from=builder /usr/bin/makemsix   /usr/bin/makemsix
@@ -41,8 +48,8 @@ COPY --from=builder /lib/x86_64-linux-gnu/libmsix.so   /lib/x86_64-linux-gnu/lib
 
 #COPY --from=builder /usr/bin/osslsigncode   /usr/bin/osslsigncode
 
-
-ENV TERM=xterm \
+ENV TAG=${TAG} \
+    TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \
     USER=root \
     LANGUAGE=C.UTF-8 \
@@ -53,8 +60,7 @@ ENV TERM=xterm \
     _GID=890 \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production
 
-RUN _TAG=$(cat /VERSION) && \
-    _BUILD_DEPENDS=' python3-setuptools python3-pip wget' && \
+RUN _BUILD_DEPENDS=' python3-setuptools python3-pip wget' && \
     _DEPENDS='gnupg dpkg-dev gzip python3  python3-venv netcat-openbsd libicu67 curl apt-utils tzdata' && \
     _PIP_DEPENDS='requests celery[redis] pyyaml importlib-metadata' && \
     usermod -u $_UID www-data && \
