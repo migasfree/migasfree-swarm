@@ -11,7 +11,7 @@ services:
 #            restart_policy:
 #                condition: on-failure
 #                delay: 5s
-#                max_attempts: 10
+#                max_attempts: 0
 #                window: 180s
 #            placement:
 #                constraints:
@@ -65,7 +65,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
         depends_on:
             - core
@@ -88,7 +88,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
         depends_on:
             - core
@@ -117,7 +117,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
@@ -152,7 +152,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
@@ -185,7 +185,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
         secrets:
             - source: {{STACK}}_superadmin_pass
@@ -219,7 +219,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
             placement:
                 constraints:
@@ -248,7 +248,7 @@ services:
             restart_policy:
                 condition: on-failure
                 delay: 5s
-                max_attempts: 10
+                max_attempts: 0
                 window: 180s
             placement:
                 constraints:
