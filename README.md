@@ -208,34 +208,51 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   ./migasfree-swarm consoles-dev
   ```
 
+## Data Persistence
+
+* In Docker, volumes provide data persistence by allowing data generated and used by containers to be stored outside the container's lifecycle. Even if a container is deleted or recreated, volumes persist on the host’s filesystem, ensuring that data is not lost. This allows containers to securely and efficiently access shared or persistent data, such as databases or configuration files, beyond the container's lifespan.
+
+  1. Migasfree Swarm uses two `local volumes` for storage:
+
+     * `database volume`: Stores the PostgreSQL database.
+
+     * `datastore volume`: Stores the Redis database.
+
+     You can specify on which node of the Swarm cluster these volumes should reside by using `labels on the nodes`. The labels are:
+
+     * for the PostgreSQL volume.
+
+       ```txt
+       database=true
+       ```
+
+     * for the Redis volume.
+
+       ```txt
+       datastore=true
+       ```
+
+     Only `one instance` of each of these volumes can exist in the cluster at a time.
+
+  2. There is also a third volume called `datashare`, which is used to store various types of information, including certificate files, Portainer data, credentials, and additional data like repositories and software packages managed by Migasfree.
+  
+     The `datashare volume` can be configured in two ways:
+
+     * Local: Used for `testing` or when the Swarm cluster has only a single node. Configure this by setting the environment variable:
+
+       ```
+       DATASHARE_FS=local
+       ```
+
+     * NFS (Network File System): Used for multi-node setups. Data is stored on an NFS server, and each node in the cluster has an `NFS volume` pointing to the NFS server. Configure this by setting the environment variable:
+     
+       ```
+       DATASHARE_FS=nfs
+       ```
+
 ## Certificates
 
 TODO Certicates
-
-## Persistence
-
-In Docker, volumes provide persistence by allowing data generated and used by containers to be stored outside the container's lifecycle. While a container can be deleted or recreated, volumes store data on the host’s filesystem, ensuring that it is not lost when the container no longer exists. By using volumes, containers can securely and efficiently access shared or persistent data, ensuring that critical information, such as databases or configuration files, remains intact beyond the lifespan of the container.
-
-Migasfree Swarm uses three volumes:
-
-1. `migasfree-swarm` (local|nfs)
-
-    ```txt
-    * portainer
-    * certificates
-    * credentials
-    * datashares
-      * inv
-    ```
-    This shared volume will be present on `all nodes` in the Swarm cluster.
-
-2. `inv_database`    (local)
-
-   A single `local volume` on a specified Swarm node.
-
-3. `inv_datastore`   (local)
-
-   A single `local volume` on a specified Swarm node.
 
 ## Backups
 
