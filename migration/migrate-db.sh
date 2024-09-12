@@ -20,27 +20,27 @@ function help {
     exit 1
 }
 
-if [ -z $OLD_HOST ]
+if [ -z "$OLD_HOST" ]
 then
     help
 fi
 
-if [ -z $OLD_PORT ]
+if [ -z "$OLD_PORT" ]
 then
     help
 fi
 
-if [ -z $OLD_DB ]
+if [ -z "$OLD_DB" ]
 then
     OLD_DB=migasfree
 fi
 
-if [ -z $OLD_USER ]
+if [ -z "$OLD_USER" ]
 then
     OLD_USER=migasfree
 fi
 
-if [ -z $OLD_PWD ]
+if [ -z "$OLD_PWD" ]
 then
     OLD_PWD=migasfree
 fi
@@ -56,19 +56,6 @@ then
     echo "DATA MIGRATION"
     echo "=============="
 
-<<<<<<< Updated upstream
-    _REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_backend)
-    _REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_frontend)
-    bash ../run/scale ${STACK}_backend 0
-    bash ../run/scale ${STACK}_frontend 0
-    echo "***** BACKEND & FRONTEND: DISABLED *****"
-
-    /usr/bin/time -f "Time DATA MIGRATION: %E" docker exec ${DB_V5} bash -c "echo yes| bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
-
-    bash ../run/scale ${STACK}_backend $_REPLICAS_BE
-    bash ../run/scale ${STACK}_frontend $_REPLICAS_FE
-    echo "***** BACKEND & FRONTEND: ENABLED *****"
-=======
     _REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_core)
     _REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_console)
     bash ../run/scale.sh ${STACK}_core 0
@@ -80,7 +67,6 @@ then
     bash ../run/scale.sh ${STACK}core $_REPLICAS_BE
     bash ../run/scale.sh ${STACK}_console $_REPLICAS_FE
     echo "***** CORE & CONSOLE: ENABLED *****"
->>>>>>> Stashed changes
 
     BE_V5=$(docker ps | grep ${STACK}_backend | awk '{print $1}' | head -n 1)
 
