@@ -1,6 +1,6 @@
 # Migasfree Swarm
 
-This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.docker.com/engine/swarm/).
+This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.docker.com/engine/swarm/).
 
 ## Project Directory Structure
 
@@ -87,7 +87,7 @@ This project runs the Migrasfree Server Suite 5 on [Docker Swarm](https://docs.d
   #     mkdir /data/cluster
   #     cd /data/cluster
 
-  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-1 config
+  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-2 config
   ```
 
 * Initial configuration:
