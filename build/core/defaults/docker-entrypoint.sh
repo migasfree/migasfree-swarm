@@ -216,11 +216,12 @@ set_TZ
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
+
+    touch /tmp/healthcheck.lock
     get_settings
-
     update_ca_certificates
-
     migasfree_init
+    rm  /tmp/healthcheck.lock
 
     _PROCESS=$(pip freeze | grep daphne)
 else

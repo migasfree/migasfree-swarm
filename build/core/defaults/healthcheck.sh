@@ -4,20 +4,17 @@ if [ "$SERVICE" = "${STACK}_core" ]
 then
 
     # core    
-    timeout 1 curl --fail --silent --head --request GET http://127.0.0.1:8080 > /dev/null
-    if [ $? -eq 0 ]
+
+    if ! [ -f /tmp/healthcheck.lock ]  # Disable the healthcheck during the database migration.
     then
-        if ! [ -f /var/tmp/healthy ]
+        timeout 5 curl --fail --silent --head --request GET http://127.0.0.1:8080 > /dev/null
+        if ! [ $? -eq 0 ]
         then
-            touch /var/tmp/healthy
-            send_message ""
-            # Important: Reconfigure in the background after 3 seconds; this container must be healthy first.
-            reload_proxy 3
+            send_message "Service Unavailable"
+            exit 1  
         fi
     else
-        rm /var/tmp/healthy || :
-        send_message "Service Unavailable"
-        exit 1  
+        send_message "Starting database."
     fi
 
 elif [ "$SERVICE" = "${STACK}_worker" ]
@@ -47,17 +44,8 @@ else
 
     # beat
     ps -p $(cat /var/tmp/celery.pid)
-    if [ $? -eq 0 ]
+    if ! [ $? -eq 0 ]
     then
-        if ! [ -f /var/tmp/healthy ]
-        then
-            touch /var/tmp/healthy
-            send_message ""
-            # Important: Reconfigure in the background after 3 seconds; this container must be healthy first.
-            reload_proxy 3
-        fi 
-    else
-        rm /var/tmp/healthy || :
         send_message "Unavailable"
         exit 1
     fi
