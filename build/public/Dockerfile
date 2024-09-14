@@ -11,7 +11,8 @@ ENV TAG=${TAG}
 COPY VERSION /VERSION
 
 # change uid and gid for nginx user
-RUN apk --no-cache add bind-tools curl shadow tzdata && \
+RUN apk upgrade --no-cache && \
+    apk --no-cache add bind-tools curl shadow tzdata && \
     usermod -u 890 nginx && \
     groupmod -g 890 nginx && \
     apk del shadow
