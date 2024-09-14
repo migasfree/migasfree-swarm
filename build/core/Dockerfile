@@ -1,4 +1,4 @@
-FROM debian:12.4-slim AS builder
+FROM debian:stable-slim AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -19,19 +19,17 @@ ENV TERM=xterm \
     _DEPENDS='procps libzmq5 gnupg rng-tools curl apt-utils bzip2 xz-utils python3 python3-venv python3-minimal python3-pip p7zip-full vim wget postgresql-client netcat-traditional libmagic1' \
     _PIP_DEPENDS='uvicorn[standard]==0.18.3'
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends apt-utils && \
+RUN apt update && \
+    apt dist-upgrade -y && \
+    apt install -y --no-install-recommends apt-utils && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
     echo "es_ES.UTF-8 UTF-8" >> /etc/locale.gen && \
-    apt-get install -y --no-install-recommends locales && \
+    apt install -y --no-install-recommends locales && \
     dpkg-reconfigure locales && \
     update-locale LANG=$LANG && \
-#    apt-get install -y --no-install-recommends ntp coreutils && \
-#    service ntp start && \
-#    update-rc.d ntp defaults && \
-    apt-get install -y --no-install-recommends chrony && \
-    apt-get install -y --no-install-recommends $_BUILD_DEPENDS  && \
-    apt-get install -y --no-install-recommends $_DEPENDS && \
+    apt install -y --no-install-recommends chrony && \
+    apt install -y --no-install-recommends $_BUILD_DEPENDS  && \
+    apt install -y --no-install-recommends $_DEPENDS && \
     python3 -m venv /venv && \
     . /venv/bin/activate  && \
     pip install --upgrade pip && \
@@ -78,8 +76,8 @@ RUN usermod -u $_UID www-data && \
     chsh -s /bin/bash www-data && \
     #. /venv/bin/activate &&\
     #django-admin collectstatic --noinput && \
-    apt-get -y --auto-remove purge $_BUILD_DEPENDS && \
-    apt-get clean && \
+    apt -y --auto-remove purge $_BUILD_DEPENDS && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/pip_build_root && \
     rm -rf /root/.cache
