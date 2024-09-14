@@ -9,7 +9,8 @@ ENV TAG=${TAG} \
 
 COPY VERSION /VERSION
 
-RUN apk add --update --no-cache $RUNTIME_DEPENDS
+RUN apk --no-cache upgrade && \
+    apk add --update --no-cache $RUNTIME_DEPENDS
 
 COPY defaults/etc /etc
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
