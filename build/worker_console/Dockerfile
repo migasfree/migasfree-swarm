@@ -9,7 +9,8 @@ ENV TAG=${TAG}
 COPY VERSION /VERSION
 
 # Get latest root certificates
-RUN apk add --no-cache ca-certificates tzdata curl && \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache ca-certificates tzdata curl && \
     update-ca-certificates
 
 # Install the required packages
