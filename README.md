@@ -27,6 +27,8 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 * Data is stored on an `external NFS volume` outside the Swarm cluster, except for the `database volume` ([PostgreSQL](https://www.postgresql.org/)) and the `datastore volume` ([Redis](https://redis.io/)), which are kept local for better performance.
 
+* `Multiple network interfaces`: If the node has more than one interface, you must specify the `advertise-addr`, which is the IP address of the network interface connected to the cluster network.
+
 ## Requirements
 
 #### 1. FQDN & DNS
