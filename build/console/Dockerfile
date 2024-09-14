@@ -8,7 +8,8 @@ ENV TAG=${TAG}
 
 COPY VERSION /VERSION
 
-RUN apk add git && \
+RUN apk upgrade --no-cache && \
+    apk add git && \
     git clone  https://github.com/migasfree/migasfree-frontend  && \
     cd migasfree-frontend && \
     git checkout $TAG && \
@@ -20,7 +21,7 @@ RUN cd migasfree-frontend && \
     yarn && \
     quasar build
 
-FROM nginx:stable-alpine3.17 AS production-stage
+FROM nginx:stable-alpine3.20 AS production-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -29,7 +30,8 @@ ENV TAG=${TAG}
 
 COPY VERSION /VERSION
 
-RUN apk add curl
+RUN apk upgrade --no-cache && \
+    apk add curl
 
 # Copy application
 COPY --from=build-stage /migasfree-frontend/dist/spa /usr/share/nginx/html
