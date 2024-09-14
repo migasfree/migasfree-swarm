@@ -527,7 +527,7 @@ body {
       </switch>
 
       <switch>
-        <foreignObject x="80" y="125" width="38" height="10" font-size="1.6" color="#999999">
+        <foreignObject x="78" y="125" width="38" height="10" font-size="1.6" color="#999999">
           <p class="" id="tag"> </p>
         </foreignObject>
       </switch>
