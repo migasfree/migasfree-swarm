@@ -1,5 +1,3 @@
-
-#FROM dpage/pgadmin4:8.5
 FROM dpage/pgadmin4:8.11
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
@@ -14,10 +12,11 @@ COPY VERSION /VERSION
 ENV RUNTIME_DEPENDS='tzdata curl su-exec' 
 
 USER root
-RUN apk add --update --no-cache $RUNTIME_DEPENDS && \
+RUN apk --no-cache upgrade && \
+    apk add --update --no-cache $RUNTIME_DEPENDS && \
     # explicity set uid/gid (890) to user pgadmin
     sed -i "s/pgadmin:x:[0-9]\+:/pgadmin:x:890:/" /etc/passwd && \
-    sed -i "s/pgadmin:x:[0-9]\+:/pgadmin:x:890:/" /etc/group
+    sed -i "s/pgadmin:x:[0-9]\+:/pgadmin:x:890:/" /etc/group 
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/entrypoint.sh /entrypoint.sh
