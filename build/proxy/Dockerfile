@@ -14,7 +14,8 @@ ENV TAG=${TAG} \
     RUNTIME_DEPENDS='bash tzdata inotify-tools openssl ca-certificates socat curl bind-tools python3 py3-virtualenv curl' \
     RUNTIME_PIP='web.py jinja2 dnspython requests'
 
-RUN apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
+RUN apk upgrade --no-cache && \
+    apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
     python3 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --no-cache-dir $RUNTIME_PIP && \
