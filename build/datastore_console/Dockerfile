@@ -1,4 +1,4 @@
-FROM redis/redisinsight:2.42.0
+FROM redis/redisinsight:2.56
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -11,7 +11,8 @@ ENV RUNTIME_DEPENDS="tzdata curl"
 
 USER root
 
-RUN apk add --update --no-cache $RUNTIME_DEPENDS && \
+RUN apk --no-cache upgrade && \
+    apk add --update --no-cache $RUNTIME_DEPENDS && \
     # explicity set uid/gid (890) to user node
     sed -i "s/node:x:[0-9]\+:[0-9]\+:/node:x:890:890:/" /etc/passwd && \
     sed -i "s/node:x:[0-9]\+:/node:x:890:/" /etc/group 
