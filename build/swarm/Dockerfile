@@ -12,7 +12,8 @@ ENV TAG=${TAG}
 
 COPY VERSION /VERSION
 
-RUN apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
+RUN apk upgrade --no-cache && \
+    apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
     python3 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --no-cache-dir $RUNTIME_PIP && \
