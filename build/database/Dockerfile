@@ -1,5 +1,5 @@
 #FROM postgres:13.2-alpine
-FROM postgres:alpine3.19
+FROM postgres:alpine3.20
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -8,7 +8,8 @@ ENV TAG=${TAG}
 
 COPY VERSION /VERSION
 
-RUN apk add curl coreutils apk-cron musl-locales
+RUN apk upgrade --no-cache && \
+    apk add curl coreutils apk-cron musl-locales
 
 COPY defaults/usr /usr
 COPY defaults/etc /etc
