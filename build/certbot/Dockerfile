@@ -1,4 +1,4 @@
-FROM certbot/certbot
+FROM certbot/certbot:latest
 
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
@@ -9,7 +9,8 @@ ENV TAG=${TAG}
 COPY VERSION /VERSION
 
 # Install socat
-RUN apk update && apk add socat
+RUN apk upgrade --no-cache && \
+    apk update && apk add socat
 
 # Copy scripts
 COPY defaults/usr/bin/* /usr/bin/
