@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM archlinux:base-20240825.0.257728
+FROM archlinux:base
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -26,7 +26,7 @@ RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
     usermod -u $_UID www-data && \
     groupmod -g $_GID www-data && \
     chsh -s /bin/bash www-data  && \
-    pacman -Sy  && \
+    pacman -Syu --noconfirm && \
     pacman --noconfirm --sync  $_DEPENDS  && \
     pacman --noconfirm --sync  $_BUILD_DEPENDS && \
 #    pip install $_PIP_DEPENDS && \
