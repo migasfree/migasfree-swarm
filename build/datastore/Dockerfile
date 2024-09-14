@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/redis/
-FROM redis:6.2.5-alpine
+FROM redis:alpine3.20
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -8,7 +8,8 @@ ENV TAG=${TAG}
 
 COPY VERSION /VERSION
 
-RUN apk add coreutils curl tzdata
+RUN apk --no-cache upgrade && \
+    apk add coreutils curl tzdata
 
 COPY defaults/docker-entrypoint.sh  /usr/local/bin/
 COPY defaults/usr/bin /usr/bin
