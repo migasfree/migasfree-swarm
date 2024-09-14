@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM debian:12.4-slim
+FROM debian:stable-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -26,15 +26,16 @@ RUN _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
     usermod -u $_UID www-data && \
     groupmod -g $_GID www-data && \
     chsh -s /bin/bash www-data && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends  $_DEPENDS && \
-    apt-get install -y --no-install-recommends  $_BUILD_DEPENDS && \
+    apt update && \
+    apt dist-upgrade -y && \
+    apt install -y --no-install-recommends  $_DEPENDS && \
+    apt install -y --no-install-recommends  $_BUILD_DEPENDS && \
     python3 -m venv /venv && \
     . /venv/bin/activate  && \
     pip3 install $_PIP_DEPENDS && \
     mkdir /pms && \
-    apt-get -y purge $_BUILD_DEPENDS && \
-    apt-get clean && \
+    apt -y purge $_BUILD_DEPENDS && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=core /migasfree /pms/migasfree
