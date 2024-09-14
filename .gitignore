@@ -17,3 +17,4 @@ build/s3/VERSION
 build/swarm/VERSION
 build/worker_console/VERSION
 images/migasfree-*.tar
+images/*.log
