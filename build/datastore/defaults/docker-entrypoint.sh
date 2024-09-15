@@ -52,3 +52,5 @@ reload_proxy 3
 
 redis-server --requirepass $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass) --protected-mode yes  --appendonly yes
 
+send_message "rebooting"
+sleep 1
