@@ -7,9 +7,6 @@ global
     # tune.bufsize 32768  # workaround -> 414 Request-URI Too Large
     tune.ssl.default-dh-param 2048
     ssl-server-verify none
-    
-
-
 
     master-worker
 
@@ -64,6 +61,8 @@ frontend http
     bind *:80
     bind *:443 ssl crt /run/secrets/{{FQDN}}.pem
 
+    acl network_mng src {{NETWORK_MNG}}
+
     http-request set-header X-Forwarded-For %[src]
 
     errorfiles myerrors
@@ -105,7 +104,8 @@ frontend http
     acl hdr_connection_upgrade hdr(Connection) -i upgrade
     acl hdr_upgrade_websocket hdr(Upgrade) -i websocket
 
-    acl url_core path_beg /api/ /rest-auth/ /token-auth-jwt/ /token-auth/ /token-refresh/ /admin/ /grapelly/ /markdownx/ /redocs/ /graphql/ /docs/ /api-docs/ /redoc/ /alerts/
+    acl url_core path_beg /api/ /rest-auth/ /token-auth-jwt/ /token-auth/ /token-refresh/ /alerts/
+    acl url_core_mng path_beg /admin/ /docs/ /grapelly/ /markdownx/ /graphql/ /api-docs/ /redoc/
 
     # api v4 COMPATIBILITY
     acl url_core path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
@@ -117,7 +117,6 @@ frontend http
     # ========
     acl url_root path /
     acl url_empty path_len 0
-    # acl url_console path_beg /app/
 
     # public
     # ======
@@ -134,9 +133,7 @@ frontend http
     # external sources
     # ================
     acl url_src path_beg /src/
-    # acl url_packages path_end .deb .rpm .yaml .msix
     acl url_packages path_end {{ extensions }}
-
 
 
     # datashare
@@ -150,7 +147,6 @@ frontend http
 
     # database_console
     # ================
-    #acl url_database_console path_beg /database/
     acl url_database_console hdr(host) -i database.{{FQDN}}
 
 
@@ -164,32 +160,31 @@ frontend http
     acl url_portainer_console  hdr(host) -i portainer.{{FQDN}}
 
 
-
-
-
     # USE BACKENDS SECTION
     # Warning: The order is important !!!
     # ===================================
+    use_backend datastore_console if network_mng url_datastore_console  
+    use_backend database_console if network_mng url_database_console 
+    use_backend datashare_console if network_mng url_datashare_console 
+    use_backend worker_console if network_mng url_worker_console 
+    use_backend portainer_console if network_mng url_portainer_console 
+    use_backend mf_console if network_mng url_root or url_empty 
+    
+    use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket 
+    use_backend mf_core if network_mng url_core_mng
 
-    use_backend datastore_console if url_datastore_console
-    use_backend database_console if url_database_console
-    use_backend datashare_console if url_datashare_console
-    use_backend worker_console if url_worker_console
-    use_backend portainer_console if url_portainer_console
-    use_backend mf_console if url_root or url_empty
-    use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket
-    use_backend services if is_GET url_services || url_services_static
+    use_backend services if network_mng is_GET url_services || url_services_static
     use_backend mf_public if url_public || url_packages || url_src
 
-    use_backend stats if is_fqdn is_stats
+    use_backend stats if is_fqdn is_stats network_mng
 
+    use_backend mf_console if network_mng
 
 {% if certbot %}
     use_backend mfbl_certbot if certbot
 {% endif %}
 
-    default_backend mf_console
-    # default_backend services
+    #default_backend mf_console 
 
 {% if certbot %}
     backend mfbl_certbot
@@ -200,15 +195,7 @@ frontend http
 backend mf_public
     mode http
     balance leastconn
-
-    # checks
-    # option external-check
-    # external-check command /usr/bin/check-public
-
     option tcp-check
-
-    # NODES
-    # ======
     {% for node in mf_public %}
         server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
     {% endfor %}
@@ -218,46 +205,29 @@ backend mf_public
 backend mf_core
     mode http
     balance leastconn
-
     # For SWAGGER and REST-FRAMEWORK. It is also necessary "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')" in settings.py
     http-request add-header X-Forwarded-Proto https
-
     # option forwardfor
     # http-request set-header X-Forwarded-For %[src]
-
     # sticky-sessions
     #cookie SRVNAME insert secure # https://thisinterestsme.com/haproxy-sticky-sessions/
     #cookie SRVID insert indirect
     cookie SRVNAME insert
-
     option tcp-check
-
-    # NODES
-    # ======
     {% for node in mf_core %}
-        # server {{ node }} {{ node }}:8080 cookie BE_{{ node }} check inter 2000 rise 1 fall 1
         server {{ node }} {{ node }}:8080 check port 8080 inter 2000 rise 1 fall 1
     {% endfor %}
-
-    # server 127.0.0.1 127.0.0.1:8001 backup
 
 
 backend mf_console
     mode http
     balance leastconn
-
     # http-request redirect scheme https unless { ssl_fc }
-
     # redirect scheme https code 307 if !{ ssl_fc }
-
     option tcp-check
-
-    # NODES
-    # ======
     {% for node in mf_console %}
         server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
     {% endfor %}
-
     server 127.0.0.1 127.0.0.1:8001 backup
 
 #backend s3  # MINIO
@@ -270,24 +240,22 @@ backend mf_console
 backend database_console  # PGADMIN
     mode http
     balance leastconn
-
     {% for node in mf_database_console %}
         server {{ node }} {{ node }}:5050 check 
     {% endfor %}
 
 
-
 backend datastore_console  # REDISINSIGHT
     mode http
     balance leastconn
-
     acl auth_ok http_auth(users_stack)
     http-request auth realm datastore_console_realm if !auth_ok
     mode http
     {% for node in mf_datastore_console %}
         server {{ node }} {{ node }}:5540 check 
     {% endfor %}
-   
+
+
 backend datashare_console  # migasfree/datashare_console (filebrowser) 
     mode http
     balance leastconn
@@ -304,7 +272,6 @@ backend portainer_console  # PORTAINER
     {% endfor %}
 
 
-
 backend worker_console  # Celery Flower
     acl auth_ok http_auth(users_stack)
     http-request auth realm worker_console_realm if !auth_ok
@@ -315,17 +282,12 @@ backend worker_console  # Celery Flower
     {% endfor %}
 
 
-
-
 backend services
     mode http
-
     acl url_services_cache var(txn.path) -m beg /services-static /favicon.ico
     acl url_status var(txn.path) -m beg /services/status
-
-    # balance roundrobin
+    balance leastconn
     http-response set-header Cache-Control public,max-age=604800,immutable if url_services_cache || url_status
-
     server 127.0.0.1 127.0.0.1:8001
 
 

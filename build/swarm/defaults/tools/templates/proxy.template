@@ -25,6 +25,7 @@ services:
             - MIGASFREE_CONF_DIR=
             - HTTPSMODE=manual
             - PMS_ENABLED={{PMS_ENABLED}}
+            - NETWORK_MNG={{NETWORK_MNG}}
         deploy:
             #replicas: 1
             mode: global

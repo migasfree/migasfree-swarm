@@ -25,6 +25,7 @@ STACK = os.environ['STACK']
 PORT_HTTP = os.environ['PORT_HTTP']
 PORT_HTTPS = os.environ['PORT_HTTPS']
 TAG = os.environ['TAG']
+NETWORK_MNG = os.environ['NETWORK_MNG']
 
 
 # Global Variable
@@ -833,6 +834,7 @@ def config_haproxy():
         'PORT_HTTPS': PORT_HTTPS,
         'USERLIST_STACK': USERLIST_STACK,
         'USERLIST_CLUSTER': USERLIST_CLUSTER,
+        'NETWORK_MNG': NETWORK_MNG,
     }
 
     if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
