@@ -91,6 +91,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
   docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-2 config
   ```
+  
 
 * Initial configuration:
   ```txt
@@ -268,7 +269,43 @@ TODO Certicates
 
 ## Backups
 
-TODO backups
+Both PostgreSQL and Redis databases are automatically and periodically backed up as a dump in the volume named `migasfree-swarm`.
+
+These database dumps can be found at `https://datashare.<FQDN>/files/dump/`. The file `migasfree.sql` corresponds to PostgreSQL, and `dump.rdb` to Redis.
+
+The `BACKUP_CRON` variable in the `env.py` file of the stack defines the frequency of this dump process.
+
+Therefore, backing up the `migasfree-swarm` volume will safeguard all data, including the databases. It is **your responsibility** to ensure that a backup of your entire Migasfree cluster is performed on storage that is independent of both the cluster nodes and the NFS server.
+
+- If `DATASHARE_FS=nfs`, you must copy the exported folder from the NFS server.
+- If `DATASHARE_FS=local`, copy the folder `/var/lib/docker/volumes/migasfree-swarm/_data`.
+
+## Disaster Recovery
+
+Having regular and consistent backups is essential for disaster recovery. In the event of catastrophic data loss, these backups can be used to restore your Docker volumes and recover your data. Always ensure you have a clear and tested recovery plan in place.
+
+You can restore the database and datastore volumes as follows (ensure the dump files you want to recover are available at `https://datashare.<FQDN>/files/dump/`):
+
+1. Undeploy the stack:
+    ```bash
+    ./migasfree-swarm undeploy
+    ```
+
+2. Remove the database and datastore volumes:
+    ```bash
+    docker volume rm <STACK>_database <STACK>_datastore
+    ```
+
+3. Redeploy the stack (this will create empty databases):
+    ```bash
+    ./migasfree-swarm deploy
+    ```
+
+4. From Portainer, access the shell of both the `database` and `datastore` containers, and execute the following command in each:
+    ```bash
+    restore
+    ```
+    ![exec_container](doc/exec_container.png)
 
 ## Installing and Synchronizing with Migasfree Client 5
 
