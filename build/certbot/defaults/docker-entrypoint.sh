@@ -1,9 +1,35 @@
 #!/bin/sh
 trap exit TERM
 
-export MIGASFREE_CERTIFICATES_DIR=/etc/certificates
-mkdir -p $(dirname ${MIGASFREE_CERTIFICATES_DIR})
-ln -s /mnt/datashare/certificates ${MIGASFREE_CERTIFICATES_DIR}
+#export MIGASFREE_CERTIFICATES_DIR=/etc/certificates
+#mkdir -p $(dirname ${MIGASFREE_CERTIFICATES_DIR})
+#ln -s /mnt/datashare/certificates ${MIGASFREE_CERTIFICATES_DIR}
+
+
+send_message "init certbot"
+
+echo "
+
+
+                   ●                          ●●
+                                             ●
+         ●●● ●●    ●    ●●     ●●●     ●●●  ●●●●  ●●●  ●●●    ●●●
+        ●   ●  ●   ●   ●  ●       ●   ●      ●   ●    ●   ●  ●   ●
+        ●   ●  ●   ●   ●  ●    ●●●●    ●●    ●   ●    ●●●●   ●●●●
+        ●   ●  ●   ●   ●  ●   ●   ●      ●   ●   ●    ●      ●
+        ●   ●  ●   ●    ●●●    ●●●    ●●●    ●   ●     ●●●    ●●●
+                          ●
+                        ●●
+
+        $SERVICE ($TAG)
+        Container: $HOSTNAME
+        Time zome: $TZ $(date)
+        Processes: $(nproc)
+
+"
+
+send_message ""
+reload_proxy
 
 while :;
 do
