@@ -108,6 +108,10 @@ class ContextLoader:
         self.default("TZ", "Europe/Madrid")
         self.default("EMAIL", "admin@domain.com")
 
+        # Network Management
+        # ==================
+        self.default("NETWORK_MNG", "0.0.0.0/0")
+
         # Ports
         # =====
         self.default("PORT_HTTP", "80")
@@ -118,18 +122,18 @@ class ContextLoader:
         # ====
         self.default("SUPERADMIN_NAME", "migasfree")
 
-        # Redis (datastore)
-        # =================
-        self.default("REDIS_HOST", "datastore")
-        self.default("REDIS_PORT", "6379")
-        self.default("REDIS_DB", "0")
-
         # Postgres (database)
         # ===================
         self.default("POSTGRES_CRON", "00 00 * * *")
         self.default("POSTGRES_HOST", "database")
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
+
+        # Redis (datastore)
+        # =================
+        self.default("REDIS_HOST", "datastore")
+        self.default("REDIS_PORT", "6379")
+        self.default("REDIS_DB", "0")
 
         # Mount point inside containers
         # =============================
@@ -144,10 +148,165 @@ class ContextLoader:
         self.default("REPLICAS_public", "1")
         self.default("REPLICAS_worker", "1")
 
+    def comment(self, key):
+        line = '-' * 120
+
+        comments ={
+            "DATASHARE_FS": f"""# {line} 
+# DATASHARE_FS
+#     Volume type (local or nfs)
+#     Use nfs when your Swarm cluster consists of more than one node.
+# {line}
+""",
+            "DATASHARE_SERVER": f"""# {line}
+# DATASHARE_SERVER
+#     IP address or domain name of the NFS server
+#     Required when DATASHARE_FS is set to nfs.
+# {line}
+""",
+            "DATASHARE_PATH": f"""# {line}
+# DATASHARE_PATH
+#     Path on the NFS server that exports the data, default is /exports/migasfree-swarm
+#     Required when DATASHARE_FS is set to nfs.
+# {line}
+""",
+            "DATASHARE_PORT": f"""# {line}
+# DATASHARE_PORT
+#     NFS Port
+#     Required when DATASHARE_FS is set to nfs.
+# {line}
+""",
+            "STACK": f"""# {line}
+# STACK
+#     Stack name
+#     Please do not modify this variable. 
+# {line}
+""",
+            "FQDN": f"""# {line}
+# FQDN
+#     Fully Qualified Domain Name for this stack
+# {line}
+""",
+            "TZ": f"""# {line}
+# TZ
+#     Set the system time zone.
+# {line}
+""",
+            "EMAIL": f"""# {line}
+# EMAIL
+#     email account for notifications and to access the database management console.
+# {line}
+""",
+            "NETWORK_MNG": f"""# {line}
+# NETWORK_MNG
+#     Networks or hosts that are permitted to access the administrative consoles.
+#     Default value: 0.0.0.0/0
+#     You can add multiple IPs or networks separated by spaces
+#     Example: '172.0.0.10/32 172.0.1/24'
+# {line}
+""",
+            "PORT_HTTP": f"""# {line}
+# PORT_HTTP
+#     Port where the Swarm cluster serves HTTP.
+# {line}
+""",
+            "PORT_HTTPS": f"""# {line}
+# PORT_HTTPS
+#     Port where the Swarm cluster serves HTTPS.
+# {line}
+""",
+            "HTTPSMODE": f"""# {line}
+# HTTPSMODE
+#     Sets the mode in which certificates are generated for the FQDN and its subdomains.
+#     Accepted values are 'manual' or 'auto'.
+#     In manual mode, self-signed certificates are created.
+#     In auto mode, certificates are issued using the ACME HTTP-01 challenge provided by Let's Encrypt.
+# {line}
+""",
+            "SUPERADMIN_NAME": f"""# {line}
+# SUPERADMIN_NAME
+#     PostgreSQL database administrative username."
+# {line}
+""",
+            "POSTGRES_CRON": f"""# {line}
+# POSTGRES_CRON
+#    Scheduling of the PostgreSQL database dump process using crontab command syntax.
+#    (minute  hour  day_of_month  month  weekday)
+#    By default, every day at midnight (12:00 AM): '00 00 * * *'
+# {line}
+""",
+            "POSTGRES_HOST": f"""# {line}
+# POSTGRES_HOST
+#    Domain name or IP address of the PostgreSQL database server. 
+#    If you are not using an external database outside the Swarm cluster, this variable should be set to 'database'.
+# {line}
+""",
+
+            "REDIS_HOST": f"""# {line}
+# REDIS_HOST
+#    Domain name or IP address of the Redis database server. 
+#    If you are not using an external Redis database outside the Swarm cluster, this variable should be set to 'datastore'.
+# {line}
+""",
+
+            "PMS_ENABLED": f"""# {line}
+# PMS_ENABLED
+#     Enabled Package Management Systems. They allow working with deb, rpm, etc. 
+#     The official PMS options you can set are: 'pms-apt', 'pms-yum', 'pms-pacman' and 'pms-wpt'
+#     The default value is 'pms-apt,pms-yum'
+# {line}
+""",
+
+            "REPLICAS_console": f"""# {line}
+# REPLICAS_console
+#     Sets the number of Migasfree administrative console instances that will run when deploying the stack.
+#     The default value is '1'
+# {line}
+""",
+
+            "REPLICAS_core": f"""# {line}
+# REPLICAS_core
+#     Sets the number of Migasfree core instances that will run when deploying the stack.
+#     The default value is '1'
+# {line}
+""",
+
+            "REPLICAS_public": f"""# {line}
+# REPLICAS_public
+#     Sets the number of public instances that will run when deploying the stack.
+#     The default value is '1'
+# {line}
+""",
+
+            "REPLICAS_worker": f"""# {line}
+# REPLICAS_worker
+#     Sets the number worker instances that will run when deploying the stack.
+#     The default value is '1'
+# {line}
+""",
+
+       }
+
+        if key in comments:
+            return comments[key]
+        
+        return f""
+
+
     def environment(self):
-        string = ""
+        string = f"""
+# ENVIRONMENT 
+# To apply the changes to these variables, you need to run:
+#     ./migasfree-swarm undeploy
+#     ./migasfree-swarm deploy 
+
+
+
+"""
+
         for key, value in self.context.items():
-            string += f"{key}='{value}'\n"
+            string += self.comment(key)
+            string += f"{key}='{value}'\n\n\n"
         return string
 
     def save(self):
