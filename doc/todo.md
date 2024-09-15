@@ -5,6 +5,8 @@
 
        * Programar los subdominios, Comprobar y Documentar
 
+* TODO Documentar Personalizacion del stack (env.py)
+
 * TODO: Documentar join node swarm
 
 * TODO: Documentar labels del swarm y la relación con los volumenes
