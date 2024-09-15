@@ -135,10 +135,6 @@ class ContextLoader:
         self.default("REDIS_PORT", "6379")
         self.default("REDIS_DB", "0")
 
-        # Mount point inside containers
-        # =============================
-        self.default("DATASHARE_MOUNT_PATH", "/mnt/datashare")
-
         # PMS
         # ===
         # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-winget,pms-wpt")
