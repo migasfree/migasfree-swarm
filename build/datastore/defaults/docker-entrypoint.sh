@@ -14,9 +14,23 @@ function set_TZ {
 }
 
 
+function cron_init
+{
+    if [ -z "$BACKUP_CRON" ]; then
+        BACKUP_CRON="0 0 * * *"
+    fi
+    CRON=$(echo "$BACKUP_CRON" |tr -d "'") # remove single quote
+    echo "$CRON /usr/bin/backup" > /tmp/cron
+    crontab /tmp/cron
+    rm /tmp/cron
+
+    crond -l 2 -f > /dev/stdout 2> /dev/stderr &
+}
+
 send_message "starting ${SERVICE:(${#STACK})+1}"
 
 set_TZ
+cron_init
 
 # first arg is `-f` or `--some-option`
 # or first arg is `something.conf`

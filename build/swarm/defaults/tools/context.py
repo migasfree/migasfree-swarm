@@ -124,7 +124,6 @@ class ContextLoader:
 
         # Postgres (database)
         # ===================
-        self.default("POSTGRES_CRON", "00 00 * * *")
         self.default("POSTGRES_HOST", "database")
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
@@ -143,6 +142,10 @@ class ContextLoader:
         self.default("REPLICAS_core", "1")
         self.default("REPLICAS_public", "1")
         self.default("REPLICAS_worker", "1")
+
+        # BACKUP
+        # ======
+        self.default("BACKUP_CRON", "00 00 * * *")
 
     def comment(self, key):
         line = '-' * 120
@@ -224,13 +227,7 @@ class ContextLoader:
 #     PostgreSQL database administrative username."
 # {line}
 """,
-            "POSTGRES_CRON": f"""# {line}
-# POSTGRES_CRON
-#    Scheduling of the PostgreSQL database dump process using crontab command syntax.
-#    (minute  hour  day_of_month  month  weekday)
-#    By default, every day at midnight (12:00 AM): '00 00 * * *'
-# {line}
-""",
+
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST
 #    Domain name or IP address of the PostgreSQL database server. 
@@ -281,6 +278,13 @@ class ContextLoader:
 # {line}
 """,
 
+            "BACKUP_CRON": f"""# {line}
+# BACKUP_CRON
+#    Scheduling PostgreSQL and Redis Database Dumps.
+#    Use crontab syntax (minute  hour  day_of_month  month  weekday)
+#    By default, every day at midnight (12:00 AM): '00 00 * * *'
+# {line}
+""",
        }
 
         if key in comments:

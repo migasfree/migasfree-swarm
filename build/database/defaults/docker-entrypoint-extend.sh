@@ -25,10 +25,10 @@ function set_TZ {
 
 function cron_init
 {
-    if [ -z "$POSTGRES_CRON" ]; then
-        POSTGRES_CRON="0 0 * * *"
+    if [ -z "$BACKUP_CRON" ]; then
+        BACKUP_CRON="0 0 * * *"
     fi
-    CRON=$(echo "$POSTGRES_CRON" |tr -d "'") # remove single quote
+    CRON=$(echo "$BACKUP_CRON" |tr -d "'") # remove single quote
     echo "$CRON /usr/bin/backup" > /tmp/cron
     crontab /tmp/cron
     rm /tmp/cron

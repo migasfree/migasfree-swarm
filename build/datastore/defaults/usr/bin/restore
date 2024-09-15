@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cp $DATASHARE_MOUNT_PATH/dump/dump.rdb /data/dump.rdb  
+redis-cli -a $(cat /run/secrets/${STACK}_superadmin_pass ) -h datastore SHUTDOWN SAVE

@@ -1,0 +1,5 @@
+#!/bin/sh
+ 
+redis-cli -a $(cat /run/secrets/${STACK}_superadmin_pass ) SAVE > /dev/null
+cp /data/dump.rdb  $DATASHARE_MOUNT_PATH/dump/
+

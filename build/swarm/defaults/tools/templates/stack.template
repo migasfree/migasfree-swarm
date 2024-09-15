@@ -211,7 +211,7 @@ services:
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
-            - POSTGRES_CRON='{{POSTGRES_CRON}}'
+            - BACKUP_CRON='{{BACKUP_CRON}}'
         secrets:
             - source: {{STACK}}_superadmin_pass
         deploy:
@@ -241,12 +241,14 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - BACKUP_CRON='{{BACKUP_CRON}}'         
         secrets:
             - source: {{STACK}}_superadmin_pass
         deploy:
             replicas: 1
             restart_policy:
-                condition: on-failure
+                condition: any
                 delay: 5s
                 max_attempts: 0
                 window: 180s
@@ -255,6 +257,7 @@ services:
                     - node.labels.datastore == true
         volumes:
             - datastore:/data
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
             - network
             - proxy
