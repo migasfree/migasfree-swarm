@@ -4,7 +4,13 @@ VERSION=$(cat ../VERSION)
 # Need login
 # docker login
 
-for _IMG in swarm proxy public datashare datashare_console database database_console datastore datastore_console worker_console client certbot pms-apt pms-yum pms-winget pms-pacman pms-wpt
+_IMAGES="$1"
+if [ -z "${_IMAGES}" ]
+then
+    _IMAGES="swarm proxy certbot datashare_console datastore datastore_console database database_console core console public worker_console pms-apt pms-yum pms-pacman pms-wpt"
+fi
+
+for _IMAGE in ${_IMAGES}
 do
-    docker push migasfree/${_IMG}:${VERSION}
+    docker push migasfree/${_IMAGE}:${VERSION}
 done

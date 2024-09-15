@@ -23,7 +23,7 @@ function build
 _IMAGES="$1"
 if [ -z "${_IMAGES}" ]
 then
-    _IMAGES="swarm proxy certbot datashare_console datastore datastore_console database database_console core console public worker_console pms-apt pms-yum pms-pacman pms-winget pms-wpt"
+    _IMAGES="swarm proxy certbot datashare_console datastore datastore_console database database_console core console public worker_console pms-apt pms-yum pms-pacman pms-wpt"
 fi
 
 for _IMAGE in ${_IMAGES}

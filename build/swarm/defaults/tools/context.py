@@ -136,7 +136,7 @@ class ContextLoader:
 
         # PMS
         # ===
-        # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-winget,pms-wpt")
+        # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-wpt")
         self.default("PMS_ENABLED", "pms-apt,pms-yum")
         self.default("REPLICAS_console", "1")
         self.default("REPLICAS_core", "1")
