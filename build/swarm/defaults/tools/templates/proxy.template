@@ -34,16 +34,13 @@ services:
                 delay: 10s
                 max_attempts: 0
 #                window: 180s
-            placement:
-                constraints:
-                    - node.labels.proxy == true
         secrets:
 #            - source: proxy_credential
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
             - source: swarm-credential
             - source: {{FQDN}}.pem
-        
+
         volumes:
             - migasfree-swarm:/mnt/cluster
 
