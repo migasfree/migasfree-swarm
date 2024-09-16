@@ -37,22 +37,22 @@ http-errors myerrors
 
 
 userlist users_cluster
-{{USERLIST_CLUSTER}}    
+{{USERLIST_CLUSTER}}
 
 userlist users_stack
-{{USERLIST_STACK}}    
+{{USERLIST_STACK}}
 
 
 listen stats
     # https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery#haproxy-configuration
     bind *:8404 ssl crt /run/secrets/{{FQDN}}.pem
-    acl auth_ok http_auth(users_cluster) 
+    acl auth_ok http_auth(users_cluster)
     stats http-request auth unless auth_ok
     mode http
     stats enable
     stats hide-version
     stats uri /stats
-    stats refresh 10s   
+    stats refresh 10s
     stats admin if auth_ok
 
 
@@ -71,20 +71,20 @@ frontend http
     http-response return  status 503  default-errorfiles  if { status 503 }
     http-response return  status 403  default-errorfiles  if { status 403 }
     http-response return  status 404  default-errorfiles  if { status 404 }
-        
+
     http-request add-header X-Forwarded-Proto https
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
-    http-response lua.cors    
+    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}},http://localhost:*" "*"
+    http-response lua.cors
 
 
     # Is FQDN
     acl is_fqdn hdr(host) -i {{FQDN}}
 
     # Stats HAProxy
-    acl is_stats path_beg /stats    
+    acl is_stats path_beg /stats
 
 
     # ACL Certbot
@@ -163,14 +163,14 @@ frontend http
     # USE BACKENDS SECTION
     # Warning: The order is important !!!
     # ===================================
-    use_backend datastore_console if network_mng url_datastore_console  
-    use_backend database_console if network_mng url_database_console 
-    use_backend datashare_console if network_mng url_datashare_console 
-    use_backend worker_console if network_mng url_worker_console 
-    use_backend portainer_console if network_mng url_portainer_console 
-    use_backend mf_console if network_mng url_root or url_empty 
-    
-    use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket 
+    use_backend datastore_console if network_mng url_datastore_console
+    use_backend database_console if network_mng url_database_console
+    use_backend datashare_console if network_mng url_datashare_console
+    use_backend worker_console if network_mng url_worker_console
+    use_backend portainer_console if network_mng url_portainer_console
+    use_backend mf_console if network_mng url_root or url_empty
+
+    use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket
     use_backend mf_core if network_mng url_core_mng
 
     use_backend services if network_mng is_GET url_services || url_services_static
@@ -184,7 +184,7 @@ frontend http
     use_backend mfbl_certbot if certbot
 {% endif %}
 
-    #default_backend mf_console 
+    #default_backend mf_console
 
 {% if certbot %}
     backend mfbl_certbot
@@ -233,7 +233,7 @@ backend mf_console
 #backend s3  # MINIO
 #    mode http
 #    {% for node in mf_s3_console %}
-#        server {{ node }} {{ node }}:9001 check 
+#        server {{ node }} {{ node }}:9001 check
 #    {% endfor %}
 
 
@@ -241,7 +241,7 @@ backend database_console  # PGADMIN
     mode http
     balance leastconn
     {% for node in mf_database_console %}
-        server {{ node }} {{ node }}:5050 check 
+        server {{ node }} {{ node }}:5050 check
     {% endfor %}
 
 
@@ -252,15 +252,15 @@ backend datastore_console  # REDISINSIGHT
     http-request auth realm datastore_console_realm if !auth_ok
     mode http
     {% for node in mf_datastore_console %}
-        server {{ node }} {{ node }}:5540 check 
+        server {{ node }} {{ node }}:5540 check
     {% endfor %}
 
 
-backend datashare_console  # migasfree/datashare_console (filebrowser) 
+backend datashare_console  # migasfree/datashare_console (filebrowser)
     mode http
     balance leastconn
     {% for node in mf_datashare_console %}
-        server {{ node }} {{ node }}:80 check 
+        server {{ node }} {{ node }}:80 check
     {% endfor %}
 
 
@@ -268,7 +268,7 @@ backend portainer_console  # PORTAINER
     mode http
     balance leastconn
     {% for node in mf_portainer_console %}
-        server {{ node }} {{ node }}:9000 check 
+        server {{ node }} {{ node }}:9000 check
     {% endfor %}
 
 
@@ -278,7 +278,7 @@ backend worker_console  # Celery Flower
     mode http
     balance leastconn
     {% for node in mf_worker_console %}
-        server {{ node }} {{ node }}:5555 check 
+        server {{ node }} {{ node }}:5555 check
     {% endfor %}
 
 
