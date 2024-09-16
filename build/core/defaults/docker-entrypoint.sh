@@ -248,8 +248,9 @@ echo "
 
 "
 
-reload_proxy
+
 send_message ""
+reload_proxy
 
 if [ "$SERVICE" = "${STACK}_beat" ]
 then
