@@ -326,9 +326,9 @@ You can restore the database and datastore volumes as follows (ensure the dump f
   docker swarm join-token worker
   ```
 
-  This will provide a command that you need to run on the new node, which will assume the role of a worker.
+  This will provide a command that you need to run on the new node, which will be assigned the role of a worker. For example:
 
-  ```bash
+  ```txt
   docker swarm join --token SWMTKN-1-5ko5qcrsh75pwkr38zbxzft8nfhxpvwu7villlzszc44cktxws-dy4xq2g5wqv39rq104uzdg2pm 172.0.0.10:2377
   ```
 
