@@ -314,7 +314,25 @@ You can restore the database and datastore volumes as follows (ensure the dump f
 
 ## Installing and Synchronizing with Migasfree Client 5
 
-  * If you are testing Migasfree, go to `https://<FQDN>/pool/install/` and check the migasfree-client.txt file to manually install a client. However, this is not the recommended method for installation. Ideally, the client configuration should be packaged for proper deployment.
+* If you are testing Migasfree, go to `https://<FQDN>/pool/install/` and check the migasfree-client.txt file to manually install a client. However, this is not the recommended method for installation. Ideally, the client configuration should be packaged for proper deployment.
+
+## Adding Worker Nodes to a Swarm Cluster 
+
+* Adding worker nodes increases the cluster's capacity. When you deploy a service in a swarm, the Docker engine automatically schedules tasks on all available nodes, whether they are worker or manager nodes.
+
+* To add a worker node to the cluster, execute the following command on the `manager` node:
+
+  ```bash
+  docker swarm join-token worker
+  ```
+
+  This will provide a command that you need to run on the new node, which will assume the role of a worker.
+
+  ```bash
+  docker swarm join --token SWMTKN-1-5ko5qcrsh75pwkr38zbxzft8nfhxpvwu7villlzszc44cktxws-dy4xq2g5wqv39rq104uzdg2pm 172.0.0.10:2377
+  ```
+
+  For more details, refer to [join-nodes](https://docs.docker.com/engine/swarm/join-nodes/)
 
 ## Leaving the Swarm
 
