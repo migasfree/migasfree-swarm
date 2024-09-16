@@ -105,7 +105,7 @@ frontend http
     acl hdr_upgrade_websocket hdr(Upgrade) -i websocket
 
     acl url_core path_beg /api/ /rest-auth/ /token-auth-jwt/ /token-auth/ /token-refresh/ /alerts/
-    acl url_core_mng path_beg /admin/ /docs/ /grapelly/ /markdownx/ /graphql/ /api-docs/ /redoc/
+    acl url_core_mng path_beg /admin/ /docs/ /markdownx/ /graphql/ /api-docs/ /redoc/
 
     # api v4 COMPATIBILITY
     acl url_core path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
