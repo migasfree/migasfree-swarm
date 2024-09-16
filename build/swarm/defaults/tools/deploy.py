@@ -24,13 +24,13 @@ from context import ContextLoader, get_stacks
 
 _PATH = "/stack"  # Path in this container
 _PATH_SHARE = "/mnt/cluster" # data shared
-_PATH_CREDENTIALS = os.path.join(_PATH_SHARE, "credentials") 
-_PATH_CERTIFICATE = os.path.join(_PATH_SHARE,"certificates") 
+_PATH_CREDENTIALS = os.path.join(_PATH_SHARE, "credentials")
+_PATH_CERTIFICATE = os.path.join(_PATH_SHARE,"certificates")
 _FILE_SETTINGS = os.path.join(_PATH, f"settings.py")
 
 
 # FUNCTIONS
-# =========    
+# =========
 
 def resolver_dns(domain):
     while True:
@@ -48,7 +48,7 @@ def swarm_init():
     if 'Swarm' in info and 'Cluster' in info['Swarm']:
         cluster_info = info['Swarm']['Cluster']
         cluster_id = cluster_info['ID']
-        
+
     if not 'cluster_id' in locals():
         print()
         print("Warning! This system is not a Swarm node.")
@@ -90,7 +90,7 @@ def wait_for_service(service_name, timeout=30):
             if task["Status"]["State"] == "running":
                 print()
                 if service_name == "portainer_portainer":
-                    service_exec("proxy_proxy","reconfigure")
+                    proxy_reconfigure()
                 return
 
         time.sleep(2)
@@ -108,7 +108,7 @@ def download_resource(url, output_path):
 
 def create_labels():
     nodes = client.nodes.list()
-    # if only one node  
+    # if only one node
     if len(nodes) == 1:
         node = nodes[0]
 
@@ -140,21 +140,21 @@ def deploy_proxy(context):
     credentials("swarm-credential", generate_password(8))
     create_secret_file(f"swarm-credential", os.path.join(_PATH_CREDENTIALS,"swarm-credential"))
 
-    
+
     # Save secrets certificate files in SWARM
     create_secret_file(
-            f"{CONTEXT['FQDN']}.pem", 
+            f"{CONTEXT['FQDN']}.pem",
             os.path.join(_PATH_SHARE, "certificates", f"{CONTEXT['FQDN']}.pem")
         )
     create_secret_file(
-            f"cert.key", 
+            f"cert.key",
             os.path.join(_PATH_SHARE, "certificates", f"cert.key")
         )
     create_secret_file(
             f"ca.crt",
             os.path.join(_PATH_SHARE, "certificates", f"ca.crt")
         )
-    
+
 
 
     deploy_stack(deploy, "proxy")
@@ -164,24 +164,16 @@ def deploy_proxy(context):
     print()
     os.remove(deploy)
 
-def ContainerIDs(service_name):
-    client = docker.from_env()
-    service = client.services.get(service_name)
-    running_tasks = [task for task in service.tasks() if task["Status"]["State"] == "running"]
-    return [task["Status"]["ContainerStatus"]["ContainerID"] for task in running_tasks]
+def proxy_reconfigure():
+    response = requests.post("http://proxy:8001/services/reconfigure")
 
-def service_exec(service, command):
-    client = docker.from_env()
-    for container_id in ContainerIDs(service):
-        container = client.containers.get(container_id)
-        container.exec_run(command)
 
 def deploy_portainer(context):
 
     # Deploy Portainer if it doesn't exist
     if "portainer" not in [stack.name for stack in client.services.list()]:
 
-        # Render portainer.template 
+        # Render portainer.template
         template_file = f"/tools/templates/portainer.template"
         file_yml = f"/stack/portainer.yml"
         # CUSTOM TEMPLATE
@@ -205,7 +197,7 @@ def deploy_portainer(context):
 
         #print("IP PORTAINER", resolver_dns('portainer'))
         #resolver_dns('portainer')
-        
+
         response = requests.post(f"http://portainer:9000/api/users/admin/init", json={"Username": user, "Password": password}, verify=False)
         if response and response.status_code != 200:
             print("RESPONSE INIT", response)
@@ -215,7 +207,7 @@ def deploy_portainer(context):
         response = requests.get(f'http://portainer:9000/#!/wizard',verify=False)
         if response and response.status_code != 200:
             print("RESPONSE WIZARD", response)
-            
+
         if os.path.exists(f"{_PATH_CREDENTIALS}/portainer-token"):
             token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
         else:
@@ -233,7 +225,7 @@ def deploy_portainer(context):
 
         # Create Environment
         #api.create_environment("migasfree cluster (swarm)")
-        api.set_enpoint_id("primary") 
+        api.set_enpoint_id("primary")
 
 
         # Update Public IP
@@ -244,17 +236,17 @@ def deploy_portainer(context):
         print(f"● https://portainer.{context['FQDN']}/ ")
         print()
 
-         
+
 def credentials(credential_name, user="admin"):
     """
-    Save & Read credentials with 'user:password' content  
+    Save & Read credentials with 'user:password' content
     """
     filename = os.path.join(_PATH_CREDENTIALS, credential_name)
-    # if not exist, create it 
+    # if not exist, create it
     if not os.path.exists(filename):
         with open(filename, "w") as credential_file:
             credential_file.write(f"{user}:{generate_password(30)}")
-    
+
     user, password = open(f"{_PATH_CREDENTIALS}/{credential_name}").read().split(":")
     return ( user, password)
 
@@ -272,11 +264,11 @@ def create_secret(name, data):
 
 
 
-def deploy_stack(compose_file, stack_name):  
+def deploy_stack(compose_file, stack_name):
     os.system(f'docker stack deploy -c {compose_file} {stack_name}')
 
 
-def create_network_overlay(network_name):   
+def create_network_overlay(network_name):
     os.system(f'docker network create --attachable --driver overlay {network_name}')
 
 
@@ -287,15 +279,15 @@ def deploy_migasfree(context):
     print()
 
     print(f"Deploying the '{context['STACK']}' stack. Please wait.")
-    
+
 
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
     api = PortainerAPI(f"http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
-    
- 
-    """ 
+
+
+    """
     # Secrets stack
     (user, password) = credentials(f"{CONTEXT['STACK']}","admin")
 
@@ -412,7 +404,7 @@ client.networks.get("proxy").connect(socket.gethostname())
 deploy_proxy(CONTEXT)
 
 deploy_portainer(CONTEXT)
-service_exec("proxy_proxy","reconfigure")
+proxy_reconfigure()
 
 deploy_migasfree(CONTEXT)
 
