@@ -438,6 +438,7 @@ body {
 
               }
 
+              $("#stack").text(data['stack']);
               $("#tag").text(data['tag']);
 
               if (message == "") {
@@ -528,8 +529,18 @@ body {
       </switch>
 
       <switch>
-        <foreignObject x="78" y="125" width="38" height="10" font-size="1.6" color="#999999">
-          <p class="" id="tag"> </p>
+        <foreignObject x="66" y="123" width="38" height="6">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 3px; color: #999999;">
+            <p id="stack"> </p>
+          </div>
+        </foreignObject>
+      </switch>
+
+      <switch>
+        <foreignObject x="66" y="125" width="38" height="6" font-size="1.6" color="#999999">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 2px; color: #999999;">
+            <p id="tag"> </p>
+          </div>
         </foreignObject>
       </switch>
 
