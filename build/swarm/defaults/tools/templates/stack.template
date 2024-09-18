@@ -29,15 +29,15 @@ services:
 #            - MINIO_UID=890
 #            - MINIO_GID=890
 #
-#        # 32000 necessary for plugin 
-#        ports:  
+#        # 32000 necessary for plugin
+#        ports:
 #            - 32000:9000
 #        secrets:
 #            - source: {{STACK}}_superadmin_name
 #            - source: {{STACK}}_superadmin_pass
 #        volumes:
 #            - {{DATASHARE_PATH}}:/data  # RAW S3
-#            
+#
 #        networks:
 #            - network
 #            - proxy
@@ -242,7 +242,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - BACKUP_CRON='{{BACKUP_CRON}}'         
+            - BACKUP_CRON='{{BACKUP_CRON}}'
         secrets:
             - source: {{STACK}}_superadmin_pass
         deploy:
@@ -273,7 +273,7 @@ services:
 #            - DATASHARE_SERVER={{DATASHARE_SERVER}}
 #            - DATASHARE_PORT={{DATASHARE_PORT}}
 #        secrets:
-#            - source: {{STACK}}_superadmin_name        
+#            - source: {{STACK}}_superadmin_name
 #            - source: {{STACK}}_superadmin_pass
 #        volumes:
 #            - /var/run/docker.sock:/var/run/docker.sock
@@ -293,7 +293,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - PGADMIN_DEFAULT_EMAIL={{EMAIL}} 
+            - PGADMIN_DEFAULT_EMAIL={{EMAIL}}
             - PGADMIN_DEFAULT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
             - PGADMIN_LISTEN_PORT=5050
             - PGADMIN_LISTEN_ADDRESS=0.0.0.0
@@ -346,18 +346,20 @@ services:
             - DATASHARE_MOUNT_PATH=/srv
             - DATASHARE_FS={{DATASHARE_FS}}
             - HTTPSMODE={{HTTPSMODE}}
-
-        restart: "on-failure"
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: any
+                delay: 5s
+                max_attempts: 0
+                window: 180s
         volumes:
             - migasfree-swarm:/mnt/cluster
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/srv
-            
-        
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
             - source: ca.crt
-
         networks:
             - network
             - proxy
@@ -371,7 +373,13 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-        restart: "on-failure"
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: any
+                delay: 5s
+                max_attempts: 0
+                window: 180s
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/worker:/data
         networks:
@@ -390,7 +398,7 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
-            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}} 
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
             - EMAIL={{EMAIL}}
         deploy:
             replicas: 1
@@ -416,7 +424,7 @@ networks:
         attachable: true
         name: {{STACK}}_network
     proxy:
-        external: true   
+        external: true
 
 
 secrets:
@@ -424,9 +432,9 @@ secrets:
         external: true
     {{STACK}}_superadmin_pass:
         external: true
-    {{STACK}}_pms_pass:  
+    {{STACK}}_pms_pass:
         external: true
-    ca.crt:  
+    ca.crt:
         external: true
 
 
