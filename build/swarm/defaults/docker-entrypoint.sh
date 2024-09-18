@@ -15,26 +15,23 @@ set_TZ
 
 COMMAND="$1"
 
-if ! [ -f  /stack/migasfree-swarm ]
-then
-  cp /tools/migasfree-swarm /stack/migasfree-swarm
-fi
+cp /tools/migasfree-swarm /stack/migasfree-swarm
 
-. /venv/bin/activate 
+. /venv/bin/activate
 
 if [ -z ${COMMAND} ]
-then 
+then
     echo "
         $SERVICE ($TAG)
         Container: $HOSTNAME
         Time zome: $TZ $(date)
         Processes: $(nproc)"
     echo
-    # TODO install plugin S3 
-    # python3 /usr/bin/install-plugin 
+    # TODO install plugin S3
+    # python3 /usr/bin/install-plugin
 
 elif [ ${COMMAND} = "deploy" ]
-then 
+then
     python3 /tools/deploy.py
 
 elif [ ${COMMAND} = "undeploy" ]
@@ -51,7 +48,7 @@ then
 
 elif [ ${COMMAND} = "secret" ]
 then
-    /tools/secret.sh 
+    /tools/secret.sh
 
 elif [ ${COMMAND} = "config" ]
 then
@@ -68,6 +65,10 @@ then
 elif [ ${COMMAND} = "pull" ]
 then
     /tools/pull.sh
+
+elif [ ${COMMAND} = "join-worker" ]
+then
+    /tools/join-worker.sh
 
 fi
 

@@ -96,7 +96,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
   docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-3 config
   ```
-  
+
 
 * Initial configuration:
   ```txt
@@ -243,7 +243,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
      Only **one instance** of each of these volumes can exist in the cluster at a time.
 
   2. There is also a third volume called `migasfree-swarm`, which is used to store various types of information, including certificate files, Portainer data, credentials, and additional data like repositories and software packages managed by Migasfree.
-  
+
      The `migasfree-swarm` volume can be configured in two ways:
 
      * Local: Used for **testing** or when the Swarm cluster has only **a single node**. Configure this by setting the environment variable:
@@ -258,7 +258,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
        DATASHARE_FS=nfs
        ```
 
-  An example of what it would look like when listing volumes with Docker, when `STACK=inv`, would be: 
+  An example of what it would look like when listing volumes with Docker, when `STACK=inv`, would be:
 
   ```txt
   # docker volume ls
@@ -316,23 +316,18 @@ You can restore the database and datastore volumes as follows (ensure the dump f
 
 * If you are testing Migasfree, go to `https://<FQDN>/pool/install/` and check the migasfree-client.txt file to manually install a client. However, this is not the recommended method for installation. Ideally, the client configuration should be packaged for proper deployment.
 
-## Adding Worker Nodes to a Swarm Cluster 
+## Adding Worker Nodes to a Swarm Cluster
 
 * Adding worker nodes increases the cluster's capacity. When you deploy a service in a swarm, the Docker engine automatically schedules tasks on all available nodes, whether they are worker or manager nodes.
 
 * To add a worker node to the cluster, execute the following command on the `manager` node:
 
   ```bash
-  docker swarm join-token worker
+  ./migasfree-swarm join-worker
   ```
 
-  This will provide a command that you need to run on the new node, which will be assigned the role of a worker. For example:
+  This command will provide the instructions you need to execute on the new node.
 
-  ```txt
-  docker swarm join --token SWMTKN-1-5ko5qcrsh75pwkr38zbxzft8nfhxpvwu7villlzszc44cktxws-dy4xq2g5wqv39rq104uzdg2pm 172.0.0.10:2377
-  ```
-
-  For more details, refer to [join-nodes](https://docs.docker.com/engine/swarm/join-nodes/)
 
 ## Leaving the Swarm
 
