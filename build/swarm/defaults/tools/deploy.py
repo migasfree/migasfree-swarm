@@ -11,22 +11,19 @@ import requests
 import time
 import socket
 import urllib3
-from datetime import datetime
+import shutil
 
 from template import render
 from portainer import PortainerAPI, create_token
-
+from context import ContextLoader, get_stacks
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-from context import ContextLoader, get_stacks
-
 _PATH = "/stack"  # Path in this container
-_PATH_SHARE = "/mnt/cluster" # data shared
+_PATH_SHARE = "/mnt/cluster"  # data shared
 _PATH_CREDENTIALS = os.path.join(_PATH_SHARE, "credentials")
-_PATH_CERTIFICATE = os.path.join(_PATH_SHARE,"certificates")
-_FILE_SETTINGS = os.path.join(_PATH, f"settings.py")
+_PATH_CERTIFICATE = os.path.join(_PATH_SHARE, "certificates")
+_FILE_SETTINGS = os.path.join(_PATH, "settings.py")
 
 
 # FUNCTIONS
@@ -36,10 +33,9 @@ def resolver_dns(domain):
     while True:
         try:
             return socket.gethostbyname(domain)
-        except:
+        except Exception:
             time.sleep(2)
             print(f"Error resolving domain name: {domain}")
-
 
 
 def swarm_init():
@@ -49,21 +45,21 @@ def swarm_init():
         cluster_info = info['Swarm']['Cluster']
         cluster_id = cluster_info['ID']
 
-    if not 'cluster_id' in locals():
+    if 'cluster_id' not in locals():
         print()
         print("Warning! This system is not a Swarm node.")
         response = "Y"
-        response = input("Do you want to create a manager node? (Y/n):") or response
+        response = input("Do you want to create a manager node? (Y/n): ") or response
         if response.upper() == "Y":
             try:
                 cluster_id = client.swarm.init()
-            except docker.errors.APIError  as e:
+            except docker.errors.APIError as e:
                 print(e)
                 if "could not choose an IP address to advertise" in str(e):
                     advertise_addr = input("Please input the IP address to advertise: ")
                     try:
                         cluster_id = client.swarm.init(advertise_addr=advertise_addr)
-                    except docker.errors.APIError  as e:
+                    except docker.errors.APIError as e:
                         print("Error: cluster not initiate", e)
                         return None
                 else:
@@ -114,13 +110,13 @@ def create_labels():
 
         # Add labels to the node
         labels = {
-#            "datashare": "true", is only for s3
+            # "datashare": "true", is only for s3
             "datastore": "true",
             "database": "true"
         }
 
-
-        node_spec = {'Availability': 'active',
+        node_spec = {
+            'Availability': 'active',
             'Name': 'node-1',
             'Role': 'manager',
             'Labels': labels
@@ -128,16 +124,17 @@ def create_labels():
 
         node.update(node_spec)
 
+
 def deploy_proxy(context):
     path_template = "/tools/templates/"
     template = "proxy.template"
-    deploy =  os.path.join(_PATH,template)
+    deploy = os.path.join(_PATH, template)
     with open(deploy, 'w') as file_deploy:
-        file_deploy.write(render( path_template , template, context))
+        file_deploy.write(render(path_template, template, context))
 
     # Secrets swarm-credential
     credentials("swarm-credential", generate_password(8))
-    create_secret_file(f"swarm-credential", os.path.join(_PATH_CREDENTIALS,"swarm-credential"))
+    create_secret_file("swarm-credential", os.path.join(_PATH_CREDENTIALS, "swarm-credential"))
 
     """
     # Save secrets certificate files in SWARM
@@ -155,7 +152,6 @@ def deploy_proxy(context):
         )
     """
 
-
     deploy_stack(deploy, "proxy")
     wait_for_service("proxy_proxy", 300)
     print()
@@ -163,8 +159,9 @@ def deploy_proxy(context):
     print()
     os.remove(deploy)
 
+
 def proxy_reconfigure():
-    response = requests.post("http://proxy:8001/services/reconfigure")
+    requests.post("http://proxy:8001/services/reconfigure")
 
 
 def deploy_portainer(context):
@@ -173,17 +170,16 @@ def deploy_portainer(context):
     if "portainer" not in [stack.name for stack in client.services.list()]:
 
         # Render portainer.template
-        template_file = f"/tools/templates/portainer.template"
-        file_yml = f"/stack/portainer.yml"
+        # template_file = "/tools/templates/portainer.template"
+        file_yml = "/stack/portainer.yml"
         # CUSTOM TEMPLATE
-        name_template=f"{context['STACK']}"
-        content = render( "/tools/templates" , "portainer.template", context)
+        # name_template = f"{context['STACK']}"
+        content = render("/tools/templates", "portainer.template", context)
         with open(file_yml, "w") as f:
             f.write(content)
 
-
         # Secrets portainer
-#        credentials("swarm-credential", generate_password(8))
+        # credentials("swarm-credential", generate_password(8))
 
         deploy_stack(file_yml, "portainer")
         os.remove(file_yml)
@@ -191,19 +187,21 @@ def deploy_portainer(context):
         time.sleep(3)
 
         # credentials configuration
-        ( user, password ) = credentials("swarm-credential")
+        (user, password) = credentials("swarm-credential")
 
+        # print("IP PORTAINER", resolver_dns('portainer'))
+        # resolver_dns('portainer')
 
-        #print("IP PORTAINER", resolver_dns('portainer'))
-        #resolver_dns('portainer')
-
-        response = requests.post(f"http://portainer:9000/api/users/admin/init", json={"Username": user, "Password": password}, verify=False)
+        response = requests.post(
+            "http://portainer:9000/api/users/admin/init",
+            json={"Username": user, "Password": password},
+            verify=False
+        )
         if response and response.status_code != 200:
             print("RESPONSE INIT", response)
             print("RESPONSE INIT", response.text)
 
-
-        response = requests.get(f'http://portainer:9000/#!/wizard',verify=False)
+        response = requests.get('http://portainer:9000/#!/wizard', verify=False)
         if response and response.status_code != 200:
             print("RESPONSE WIZARD", response)
 
@@ -217,19 +215,16 @@ def deploy_portainer(context):
             print("Algo salió mal. Borra credentials/portainer-token, por favor.")
             exit()
 
-
         # Customize logo
-        api = PortainerAPI(f"http://portainer:9000/api", token)
+        api = PortainerAPI("http://portainer:9000/api", token)
         api.settings()
 
         # Create Environment
-        #api.create_environment("migasfree cluster (swarm)")
+        # api.create_environment("migasfree cluster (swarm)")
         api.set_enpoint_id("primary")
-
 
         # Update Public IP
         api.set_public_ip(context['FQDN'])
-
 
         print()
         print(f"● https://portainer.{context['FQDN']}/ ")
@@ -247,20 +242,21 @@ def credentials(credential_name, user="admin"):
             credential_file.write(f"{user}:{generate_password(30)}")
 
     user, password = open(f"{_PATH_CREDENTIALS}/{credential_name}").read().split(":")
-    return ( user, password)
+    return (user, password)
+
 
 def create_secret_file(name, file_path):
     existing_secrets = [secret.name for secret in client.secrets.list()]
-    if not name in existing_secrets:
+    if name not in existing_secrets:
         with open(file_path, 'rb') as f:
             data = f.read()
         create_secret(name=name, data=data)
 
+
 def create_secret(name, data):
     existing_secrets = [secret.name for secret in client.secrets.list()]
-    if not name in existing_secrets:
+    if name not in existing_secrets:
         client.secrets.create(name=name, data=data)
-
 
 
 def deploy_stack(compose_file, stack_name):
@@ -272,19 +268,16 @@ def create_network_overlay(network_name):
 
 
 def deploy_migasfree(context):
-
     print()
     print(f"● https://{context['FQDN']}/services/status")
     print()
 
     print(f"Deploying the '{context['STACK']}' stack. Please wait.")
 
-
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
-    api = PortainerAPI(f"http://portainer:9000/api", token)
+    api = PortainerAPI("http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
-
 
     """
     # Secrets stack
@@ -296,52 +289,48 @@ def deploy_migasfree(context):
     api.create_secret(f"{context['STACK']}_pms_pass", generate_password(12))
     """
 
-
-
     # CUSTOM TEMPLATE
-    name_template=f"{context['STACK']}"
-    content = render( "/tools/templates" , "stack.template", context)
+    name_template = f"{context['STACK']}"
+    content = render("/tools/templates", "stack.template", context)
     with open(file_yml, "w") as f:
         f.write(content)
+
     payload = {
         "Title": name_template,
         "FileContent": content,
-        "File":None,
-        "RepositoryURL":"",
-        "RepositoryReferenceName":"",
-        "RepositoryAuthentication":False,
-        "RepositoryUsername":"",
-        "RepositoryPassword":"",
+        "File": None,
+        "RepositoryURL": "",
+        "RepositoryReferenceName": "",
+        "RepositoryAuthentication": False,
+        "RepositoryUsername": "",
+        "RepositoryPassword": "",
         "ComposeFilePathInRepository": f"{context['STACK']}.yml",
         "Description": "migasfree stack",
         "Note": "http://migasfree.org",
         "Logo": "https://raw.githubusercontent.com/migasfree/migasfree-frontend/master/public/favicon.svg",
         "Platform": 1,
         "Type": 1,
-        "AccessControlData":{
-            "AccessControlEnabled":True,
-            "Ownership":"administrators",
-            "AuthorizedUsers":[],
-            "AuthorizedTeams":[]
-            },
-        "Variables":[],
+        "AccessControlData": {
+            "AccessControlEnabled": True,
+            "Ownership": "administrators",
+            "AuthorizedUsers": [],
+            "AuthorizedTeams": []
+        },
+        "Variables": [],
         "TLSSkipVerify": False
     }
     api.custom_templates(payload)
 
     # DEPLOY THE STACK
-    payload={
+    payload = {
         "Env": [],
         "Name":	name_template,
         "StackFileContent": content,
         "SwarmID": api.swarm_id
     }
 
-
-
-#    api.deploy(payload)
+    # api.deploy(payload)
     deploy_stack(file_yml, f"{context['STACK']}")
-
 
     os.remove(file_yml)
 
@@ -355,10 +344,10 @@ def create_paths():
         os.mkdir(_PATH_CERTIFICATE)
     if not os.path.exists(f"{_PATH_SHARE}/datashares/"):
         os.mkdir(f"{_PATH_SHARE}/datashares/")
-        os.chown(f"{_PATH_SHARE}/datashares/",890,890)
+        os.chown(f"{_PATH_SHARE}/datashares/", 890, 890)
     if not os.path.exists(f"{_PATH_SHARE}/datashares/{CONTEXT['STACK']}"):
         os.mkdir(f"{_PATH_SHARE}/datashares/{CONTEXT['STACK']}")
-        os.chown(f"{_PATH_SHARE}/datashares/{CONTEXT['STACK']}",890,890)
+        os.chown(f"{_PATH_SHARE}/datashares/{CONTEXT['STACK']}", 890, 890)
 
 
 # PROGRAM
@@ -372,33 +361,25 @@ cl.load_stack(" | ".join(get_stacks()))
 CONTEXT = cl.context
 cl.save_stack()
 
-
 create_paths()
-
 
 client = docker.from_env()
 swarm_init()
 
-subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN'] ])
+subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN']])
 
-
-(user, password) = credentials(f"{CONTEXT['STACK']}","admin")
+(user, password) = credentials(f"{CONTEXT['STACK']}", "admin")
 
 # Stack secrets
 create_secret(f"{CONTEXT['STACK']}_superadmin_name", user)
 create_secret(f"{CONTEXT['STACK']}_superadmin_pass", password)
 create_secret(f"{CONTEXT['STACK']}_pms_pass", generate_password(12))
 
-
-
 create_labels()
 create_network_overlay("proxy")
 
-
 # Connect network portainer to this container (is Necessary in credential configuration)
 client.networks.get("proxy").connect(socket.gethostname())
-
-
 
 deploy_proxy(CONTEXT)
 
@@ -407,8 +388,7 @@ proxy_reconfigure()
 
 deploy_migasfree(CONTEXT)
 
-import shutil
 try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")
-except:
+except Exception:
     pass
