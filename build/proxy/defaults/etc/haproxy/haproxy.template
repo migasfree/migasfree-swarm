@@ -45,7 +45,7 @@ userlist users_stack
 
 listen stats
     # https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery#haproxy-configuration
-    bind *:8404 ssl crt /run/secrets/{{FQDN}}.pem
+    bind *:8404 ssl crt /mnt/cluster/certificates/{{STACK}}.pem
     acl auth_ok http_auth(users_cluster)
     stats http-request auth unless auth_ok
     mode http
@@ -56,10 +56,9 @@ listen stats
     stats admin if auth_ok
 
 
-
 frontend http
     bind *:80
-    bind *:443 ssl crt /run/secrets/{{FQDN}}.pem
+    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}.pem
 
     acl network_mng src {{NETWORK_MNG}}
 

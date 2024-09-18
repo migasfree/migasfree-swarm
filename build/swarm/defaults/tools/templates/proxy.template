@@ -39,7 +39,7 @@ services:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
             - source: swarm-credential
-            - source: {{FQDN}}.pem
+#            - source: {{STACK}}.pem
 
         volumes:
             - migasfree-swarm:/mnt/cluster
@@ -64,7 +64,4 @@ secrets:
     {{STACK}}_superadmin_name:
         external: true
     {{STACK}}_superadmin_pass:
-        external: true
-
-    {{FQDN}}.pem:
         external: true

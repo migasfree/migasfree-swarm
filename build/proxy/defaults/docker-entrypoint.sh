@@ -16,7 +16,7 @@ ln -s ${DATASHARE_MOUNT_PATH}/conf ${MIGASFREE_CONF_DIR}
 
 # If not certificate, haproxy don't start and/or certbot can't challenge complete
 # Create a self-certificate to init
-#[ ! -f "/usr/local/etc/haproxy/certificates/${FQDN}.pem" ] && \
+#[ ! -f "/usr/local/etc/haproxy/certificates/${STACK}.pem" ] && \
 #  {
 #    echo "INFO: Creating self certificates..."
 #    install-certs

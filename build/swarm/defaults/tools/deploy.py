@@ -140,11 +140,11 @@ def deploy_proxy(context):
     credentials("swarm-credential", generate_password(8))
     create_secret_file(f"swarm-credential", os.path.join(_PATH_CREDENTIALS,"swarm-credential"))
 
-
+    """
     # Save secrets certificate files in SWARM
     create_secret_file(
-            f"{CONTEXT['FQDN']}.pem",
-            os.path.join(_PATH_SHARE, "certificates", f"{CONTEXT['FQDN']}.pem")
+            f"{CONTEXT['STACK']}.pem",
+            os.path.join(_PATH_SHARE, "certificates", f"{CONTEXT['STACK']}.pem")
         )
     create_secret_file(
             f"cert.key",
@@ -154,7 +154,7 @@ def deploy_proxy(context):
             f"ca.crt",
             os.path.join(_PATH_SHARE, "certificates", f"ca.crt")
         )
-
+    """
 
 
     deploy_stack(deploy, "proxy")

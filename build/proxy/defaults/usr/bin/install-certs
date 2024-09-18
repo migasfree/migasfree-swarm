@@ -36,6 +36,6 @@ chmod 600 cert.key
 openssl x509 -in cert.crt -text -noout
 
 # Certificate autosigned for SSL in haproxy
-cat cert.key cert.crt > ${FQDN}.pem
+cat cert.key cert.crt > ${STACK}.pem
 
 popd

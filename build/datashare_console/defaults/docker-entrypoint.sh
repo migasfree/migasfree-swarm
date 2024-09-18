@@ -45,7 +45,7 @@ echo "
 function init_datashare {
     # Structure of paths in datashare
 
-    # conf 
+    # conf
     mkdir -p ${_ROOT}/conf/ || :
 
     if ! [ -f ${_ROOT}/conf/settings.py ]
@@ -53,7 +53,7 @@ function init_datashare {
         cp /etc/migasfree/settings.py ${_ROOT}/conf/
     fi
 
-    #dump 
+    #dump
     mkdir -p ${_ROOT}/dump || :
 
     # public
@@ -87,11 +87,12 @@ function init_datashare {
 
     # /pool/install
 
- 
+
     if [ "${HTTPSMODE}" = "manual" ];
     then
-        cp ${MIGASFREE_SECRET_DIR}/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
-        
+        #cp ${MIGASFREE_SECRET_DIR}/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
+        cp /mnt/cluster/certificates/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
+
         cat <<-EOF > ${_ROOT}/pool/install/migasfree-client.txt
 # Run as root
 
@@ -127,7 +128,7 @@ function waiting_fs {
         echo "waiting NFS..."
         while true
         do
-            RET=$(mount | grep " type nfs4 " | grep /mnt/cluster) || : 
+            RET=$(mount | grep " type nfs4 " | grep /mnt/cluster) || :
             if ! [ -z $RET ]
             then
                 break
@@ -135,7 +136,7 @@ function waiting_fs {
                 send_message "NFS disconnected"
                 echo "$(date) NFS disconnected"
                 sleep 5
-            fi    
+            fi
         done
     fi
 }
@@ -170,5 +171,5 @@ fi
 send_message ""
 reload_proxy 3
 
-/filebrowser 
+/filebrowser
 

@@ -359,7 +359,6 @@ services:
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
-            - source: ca.crt
         networks:
             - network
             - proxy
@@ -433,8 +432,6 @@ secrets:
     {{STACK}}_superadmin_pass:
         external: true
     {{STACK}}_pms_pass:
-        external: true
-    ca.crt:
         external: true
 
 

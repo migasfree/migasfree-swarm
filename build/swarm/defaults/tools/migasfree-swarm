@@ -128,16 +128,17 @@ function local2nfs {
               for STACK in $STACKS
               do
 
+                # Delete datastore
                 wait_for_volume ${STACK}_database
                 docker system prune -f
                 docker volume rm ${STACK}_database
+
+                # Delete datastore
                 wait_for_volume ${STACK}_datastore
                 docker system prune -f
                 docker volume rm ${STACK}_datastore
 
-                docker secret rm ca.crt
-                docker secret rm cert.key
-                docker secret rm ${STACK}.pem
+                # Delete secrets
                 docker secret rm ${STACK}_pms_pass
                 docker secret rm ${STACK}_superadmin_name
                 docker secret rm ${STACK}_superadmin_pass

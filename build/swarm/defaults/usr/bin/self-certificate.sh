@@ -3,7 +3,7 @@
 FQDN="$1"
 _PATH=/mnt/cluster/certificates
 
-if ! [ -f ${_PATH}/${FQDN}.pem ]
+if ! [ -f ${_PATH}/${STACK}.pem ]
 then
     cd ${_PATH}
     # Create a self signed default certificate, so HAproxy can start
@@ -27,5 +27,5 @@ then
     openssl x509 -in cert.crt -text -noout
 
     # Certificate autosigned for SSL in haproxy
-    cat cert.key cert.crt > ${FQDN}.pem
+    cat cert.key cert.crt > ${STACK}.pem
 fi
