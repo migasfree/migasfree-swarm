@@ -27,7 +27,7 @@ wait_for_volume() {
 
 
 check_nfs_client_installed() {
-    if ! command -v mount.nfs >/dev/null 2>&1; then
+    if ! [ -x "$(command -v mount.nfs)" ] && ! [ -x "/sbin/mount.nfs" ]; then
         echo "NFS client is not installed. Please install it using your package manager:"
         echo "  - Debian/Ubuntu: apt install nfs-common"
         echo "  - RHEL/CentOS/Fedora: yum install nfs-utils"
