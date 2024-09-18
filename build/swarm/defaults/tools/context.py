@@ -150,8 +150,8 @@ class ContextLoader:
     def comment(self, key):
         line = '-' * 120
 
-        comments ={
-            "DATASHARE_FS": f"""# {line} 
+        comments = {
+            "DATASHARE_FS": f"""# {line}
 # DATASHARE_FS
 #     Volume type (local or nfs)
 #     Use nfs when your Swarm cluster consists of more than one node.
@@ -178,7 +178,7 @@ class ContextLoader:
             "STACK": f"""# {line}
 # STACK
 #     Stack name
-#     Please do not modify this variable. 
+#     Please do not modify this variable.
 # {line}
 """,
             "FQDN": f"""# {line}
@@ -230,21 +230,22 @@ class ContextLoader:
 
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST
-#    Domain name or IP address of the PostgreSQL database server. 
+#    Domain name or IP address of the PostgreSQL database server.
 #    If you are not using an external database outside the Swarm cluster, this variable should be set to 'database'.
 # {line}
 """,
 
             "REDIS_HOST": f"""# {line}
 # REDIS_HOST
-#    Domain name or IP address of the Redis database server. 
-#    If you are not using an external Redis database outside the Swarm cluster, this variable should be set to 'datastore'.
+#    Domain name or IP address of the Redis database server.
+#    If you are not using an external Redis database outside the Swarm cluster,
+#    this variable should be set to 'datastore'.
 # {line}
 """,
 
             "PMS_ENABLED": f"""# {line}
 # PMS_ENABLED
-#     Enabled Package Management Systems. They allow working with deb, rpm, etc. 
+#     Enabled Package Management Systems. They allow working with deb, rpm, etc.
 #     The official PMS options you can set are: 'pms-apt', 'pms-yum', 'pms-pacman' and 'pms-wpt'
 #     The default value is 'pms-apt,pms-yum'
 # {line}
@@ -285,21 +286,19 @@ class ContextLoader:
 #    By default, every day at midnight (12:00 AM): '00 00 * * *'
 # {line}
 """,
-       }
+        }
 
         if key in comments:
             return comments[key]
-        
-        return f""
 
+        return ""
 
     def environment(self):
-        string = f"""
-# ENVIRONMENT 
+        string = """
+# ENVIRONMENT
 # To apply the changes to these variables, you need to run:
 #     ./migasfree-swarm undeploy
-#     ./migasfree-swarm deploy 
-
+#     ./migasfree-swarm deploy
 
 
 """
