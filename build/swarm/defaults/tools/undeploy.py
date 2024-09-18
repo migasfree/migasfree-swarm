@@ -2,10 +2,11 @@ import subprocess
 
 from context import ContextLoader, get_stacks
 
+
 def remove_stacks(stack_names):
     for stack_name in stack_names:
         try:
-            subprocess.run(['docker', 'stack', 'rm', stack_name], check=True)            
+            subprocess.run(['docker', 'stack', 'rm', stack_name], check=True)
             print(f"Stack '{stack_name}' removed successfully.")
         except Exception as e:
             print(f"Unexpected error when attempting to remove the stack '{stack_name}': {e}")
