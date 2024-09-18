@@ -1,7 +1,4 @@
-import os
 from context import ContextLoader, get_stacks
-
-from pathlib import Path
 
 
 # PROGRAM
