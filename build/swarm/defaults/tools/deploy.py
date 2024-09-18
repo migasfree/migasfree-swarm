@@ -116,8 +116,7 @@ def create_labels():
         labels = {
 #            "datashare": "true", is only for s3
             "datastore": "true",
-            "database": "true",
-            "proxy": "true"
+            "database": "true"
         }
 
 
