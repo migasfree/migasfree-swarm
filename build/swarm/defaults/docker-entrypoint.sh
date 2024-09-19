@@ -10,10 +10,43 @@ function set_TZ {
     ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
 }
 
+function get_swarm_role() {
+    if ! docker info | grep -q "Swarm: active"; then
+        echo ""
+    else
+      if docker info | grep -q "Is Manager: true"; then
+          echo "MANAGER"
+      else
+          echo "WORKER"
+      fi
+    fi
+}
+
+
+function run_manager() {
+    local _COMMAND="$1"
+    local _SILENT="$2"
+    if [ -z ${ROLE}  ]
+    then
+        echo "This host is not part of a Swarm cluster."
+        exi 1
+    fi
+    if [ ${ROLE} = "MANAGER" ]
+    then
+        $_COMMAND
+    else
+        if ! [ "${_SILENT}" = "silent" ]
+        then
+            echo "This node is a Swarm worker."
+            echo "This command is only executable on a Swarm manager node."
+        fi
+    fi
+}
 
 set_TZ
 
 COMMAND="$1"
+ROLE="$(get_swarm_role)"
 
 cp /tools/migasfree-swarm /stack/migasfree-swarm
 
@@ -32,35 +65,35 @@ then
 
 elif [ ${COMMAND} = "deploy" ]
 then
-    python3 /tools/deploy.py
+    run_manager "python3 /tools/deploy.py"
 
 elif [ ${COMMAND} = "undeploy" ]
 then
-    python3 /tools/undeploy.py
+    run_manager "python3 /tools/undeploy.py"
 
 elif [ ${COMMAND} = "consoles-dev" ]
 then
-    python3 /tools/consoles.py "dev"
+    run_manager "python3 /tools/consoles.py 'dev'"
 
 elif [ ${COMMAND} = "consoles-pro" ]
 then
-    python3 /tools/consoles.py "pro"
+    run_manager "python3 /tools/consoles.py 'pro'"
 
 elif [ ${COMMAND} = "secret" ]
 then
-    /tools/secret.sh
+    run_manager "/tools/secret.sh"
 
 elif [ ${COMMAND} = "config" ]
 then
-    python3 /tools/config.py
+    run_manager "python3 /tools/config.py" "silent"
 
 elif [ ${COMMAND} = "config-stack" ]
 then
-    python3 /tools/config-stack.py
+    run_manager "python3 /tools/config-stack.py"
 
 elif [ ${COMMAND} = "leave" ]
 then
-    python3 /tools/leave.py
+    run_manager "python3 /tools/leave.py"
 
 elif [ ${COMMAND} = "pull" ]
 then
@@ -68,8 +101,9 @@ then
 
 elif [ ${COMMAND} = "join-worker" ]
 then
-    /tools/join-worker.sh
-
+    run_manager "/tools/join-worker.sh"
+else
+    echo "Unknown command: ${COMMAND}"
 fi
 
 rm -rf /stack/__pycache__  || :

@@ -26,6 +26,19 @@ wait_for_volume() {
 }
 
 
+function get_swarm_role() {
+    if ! docker info | grep -q "Swarm: active"; then
+        echo ""
+    else
+      if docker info | grep -q "Is Manager: true"; then
+          echo "MANAGER"
+      else
+          echo "WORKER"
+      fi
+    fi
+}
+
+
 check_nfs_client_installed() {
     if ! [ -x "$(command -v mount.nfs)" ] && ! [ -x "/sbin/mount.nfs" ]; then
         echo "NFS client is not installed. Please install it using your package manager:"
@@ -178,29 +191,37 @@ function create_volume_cluster {
   fi
 }
 
+ROLE="$(get_swarm_role)"
+if [ -z "${ROLE}" ]
+then
+    echo "This host is not part of a Swarm cluster."
+    exit 1
+fi
+
+if [ "${ROLE}" = "MANAGER" ]
+then
+  if ! [ -f ./env.py ]
+  then
+    docker run --name migasfree-swarm \
+      --detach=false --rm -ti \
+      -v $(pwd):/stack \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      "$_IMAGE" "config"
+  fi
+  . ./env.py
+  local2nfs
+  create_volume_cluster ${VOLUME}
+fi
 
 
-
-
-
-if ! [ -f ./env.py ]
+if docker volume ls |grep -q $VOLUME
 then
   docker run --name migasfree-swarm \
     --detach=false --rm -ti \
     -v $(pwd):/stack \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    "$_IMAGE" "config"
-
+    -v $VOLUME:/mnt/cluster \
+    "$_IMAGE" "$_COMMAND"
+else
+  echo "volume $VOLUME not found"
 fi
-
-. ./env.py
-
-local2nfs
-create_volume_cluster ${VOLUME}
-
-docker run --name migasfree-swarm \
-  --detach=false --rm -ti \
-  -v $(pwd):/stack \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v $VOLUME:/mnt/cluster \
-  "$_IMAGE" "$_COMMAND"
