@@ -1,4 +1,3 @@
-version: '3.9'
 
 # Based in https://downloads.portainer.io/ce2-21/portainer-agent-stack-ssl.yml
 
@@ -18,7 +17,7 @@ services:
   portainer:
     image: portainer/portainer-ce:2.21.1
     #command: -H tcp://tasks.agent:9001 --tlsskipverify --sslcert /run/secrets/portainer.sslcert --sslkey /run/secrets/portainer.sslkey
-    command: -H tcp://tasks.agent:9001 --tlsskipverify 
+    command: -H tcp://tasks.agent:9001 --tlsskipverify
 #    ports:
 #      - "9443:9443"
 #      - "9000:9000"
@@ -36,7 +35,7 @@ services:
 networks:
   proxy:
     external: true
-    
+
 #volumes:
 #  portainer:
 #{% if DATASHARE_FS == "local" %}
