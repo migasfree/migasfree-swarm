@@ -10,9 +10,9 @@ then
         # Important: Reconfigure in the background after 3 seconds; this container must be healthy first.
         reload_proxy 3
     fi
-    exit 0  
+    exit 0
 else
     rm /var/tmp/healthy || :
     send_message "Service Unavailable"
-    exit 1  
+    exit 1
 fi
