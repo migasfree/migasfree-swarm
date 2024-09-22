@@ -277,8 +277,6 @@ body {
             // $("#proxy").attr('fill', 'red');
             // $("#datashare").show(200);
             // $("#datashare").attr('fill', 'red');
-            $("#start").hide(200);
-            $("#start_link").hide(200);
           }
 
           $.ajax({
@@ -436,22 +434,15 @@ body {
                 sprite = parseInt((now / 1000) % 2);
                 $("#spoon").attr("href", `/services-static/img/spoon-ok-${sprite}.svg`);
                 $(".bocadillo").hide(200);
-                $("#start").show(100);
-                $("#start_link").show(100);
 
               } else if (message_serv in data['services'] && data['services'][message_serv]['missing']) {
                 sprite = parseInt((now / 1000) % 2);
                 $("#spoon").attr("href", `/services-static/img/spoon-starting-${sprite}.svg`);
                 $(".bocadillo").show(200);
-                $("#start").hide(200);
-                $("#start_link").hide(200);
               } else {
                 sprite = parseInt((now / 1000) % 3);
                 $("#spoon").attr("href", `/services-static/img/spoon-checking-${sprite}.svg`);
                 $(".bocadillo").show(200);
-                $("#start").hide(200);
-                $("#start_link").hide(200);
-
               }
 
               $("#stack").text(data['stack']);
@@ -481,10 +472,6 @@ body {
       $(window).load(function () {
         // force download image
         $("#spoon-disconnected").attr('href', '/services-static/img/spoon-disconnect.svg');
-
-        $("#start").hide(1)
-        $("#start_link").hide(1)
-        $("#start").attr('href', '/services-static/img/start.svg');
 
         $("#database-svg").attr('href', '/services-static/img/database.svg');
 
@@ -525,7 +512,6 @@ body {
           'AI SQL Interpreter:' + String.fromCharCode(10) + 'https://' + location.hostname + '/services/sql/'
         );
 
-        $("#start_link title").text('migasfree console:' + String.fromCharCode(10) + 'https://' + location.hostname);
       });
     </script>
   </head>
@@ -572,14 +558,6 @@ body {
         </foreignObject>
       </switch>
 -->
-
-      <image id="start" href="/" x=142 y=89 height="16" width="16" onclick="$(location).attr('href','/');" />
-      <circle id="start_link" cx="150" cy="97" r="6"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname);"
-      >
-        <title> migasfree console </title>
-      </circle>
 
 
       <circle id="proxy" cx="29" cy="103.5" r="1.5" fill="orange"
@@ -646,9 +624,9 @@ body {
       </circle>
 
 
-      <image id="sql_svg" href="/services-static/img/sql.svg" x="129" y="69" width="13" height="13" style="display: none;" />
+      <image id="sql_svg" href="/services-static/img/sql.svg" x="135" y="69" width="13" height="13" style="display: none;" />
 
-      <circle id="sql_link" cx="136" cy="76" r="7"
+      <circle id="sql_link" cx="142" cy="76" r="7"
         style="fill: green; fill-opacity: 0.07;"
         onclick="$(location).attr('href', 'https://' + location.hostname + '/services/sql/');" >
         <title> AI SQL Interpreter </title>
