@@ -5,8 +5,10 @@ _LOG=/var/log/backup
 {
 
 _PATH=${DATASHARE_MOUNT_PATH}/dump
+_PATH_SQL=${DATASHARE_MOUNT_PATH}/consoles/sql
 
 DUMP_FILE="$1"
+DUMP_SCHEMA="migasfree-schema.txt"
 
 if [ -z $DUMP_FILE ]
 then
@@ -17,8 +19,10 @@ mkdir -p $_PATH || :
 
 export PGPASSWORD=$(cat /run/secrets/${STACK}_superadmin_pass)
 echo "Time zone: $TZ"
-echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."
 
+$(/usr/bin/which pg_dump) --schema-only -h $POSTGRES_HOST -p $POSTGRES_PORT $POSTGRES_DB -U $POSTGRES_USER > $_PATH_SQL/$DUMP_SCHEMA
+
+echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."
 $(/usr/bin/which pg_dump) -h $POSTGRES_HOST -p $POSTGRES_PORT $POSTGRES_DB -U $POSTGRES_USER > $_PATH/$DUMP_FILE
 
 if [ $? = 0 ]; then
