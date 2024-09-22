@@ -147,6 +147,10 @@ class ContextLoader:
         # ======
         self.default("BACKUP_CRON", "00 00 * * *")
 
+        # AI SQL Interpreter
+        # ==================
+        self.default("GOOGLE_API_KEY", "")
+
     def comment(self, key):
         line = '-' * 120
 
@@ -286,6 +290,14 @@ class ContextLoader:
 #    By default, every day at midnight (12:00 AM): '00 00 * * *'
 # {line}
 """,
+
+            "GOOGLE_API_KEY": f"""# {line}
+# GOOGLE_API_KEY
+#    Obtain a Google API Key to access Gemini and utilize the 'AI SQL Interpreter'.
+#    Visit https://aistudio.google.com/app/apikey to get yours.
+# {line}
+""",
+
         }
 
         if key in comments:

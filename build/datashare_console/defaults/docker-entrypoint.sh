@@ -73,6 +73,7 @@ function init_datashare {
     mkdir -p ${_ROOT}/consoles/datastore || :
     mkdir -p ${_ROOT}/consoles/database || :
     mkdir -p ${_ROOT}/consoles/worker || :
+    mkdir -p ${_ROOT}/consoles/sql || :
 
     # plugins
     mkdir -p ${_ROOT}/plugins || :

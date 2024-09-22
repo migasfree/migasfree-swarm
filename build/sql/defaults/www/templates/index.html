@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SQL Interpreter</title>
+    <style>
+        /* Estilo del cuerpo y HTML para centrar el contenido */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;  /* Centramos horizontalmente */
+            align-items: center;      /* Centramos verticalmente */
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0; /* Color de fondo */
+        }
+
+        /* Contenedor del formulario para darle mejor presentación */
+        form {
+            background-color: white;
+            padding: 20px;
+            padding-right: 30px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #ff6600;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative; /* Añadimos posición relativa al botón */
+            display: flex;      /* Usamos flexbox para alinear los contenidos */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .small-gray-text {
+            font-size: 12px;
+            color: gray;
+        }
+
+        button:hover {
+            background-color: #ff6600;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #000000;
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            z-index: 2; /* Ponemos el spinner sobre el texto */
+        }
+
+        button span {
+            display: inline-block;
+            z-index: 1; /* Aseguramos que el texto esté encima */
+        }
+
+        button.loading span {
+           visibility: hidden; /* Ocultamos el texto cuando el spinner está activo */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Ocultar spinner */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>AI SQL Interpreter</h1>
+        <div class="small-gray-text">Powered by Gemini & migasfree</div>
+        <img src="/services-static/img/spoon-ai.svg" style="max-width: 25%; height: auto;"/>
+        <form method="POST" action="/services/sql/send" id="myForm">
+            <textarea id="query" name="query" rows="4" cols="50" placeholder="Write your query here..." required></textarea><br><br>
+
+            <button type="submit" name="db_type" value="csv">
+                <span>Run</span>
+                <div id="spinner" class="spinner hidden"></div>
+            </button>
+
+        </form>
+
+        <div id="spinner" class="spinner"></div>
+
+    </div>
+
+    <script>
+        const form = document.getElementById('myForm');
+        const spinner = document.getElementById('spinner');
+        const button = form.querySelector('button');
+
+        form.addEventListener('submit', function(event) {
+            button.classList.add('loading'); // Añadimos la clase loading
+            spinner.style.display = 'block';
+
+            setTimeout(() => {
+                button.classList.remove('loading');
+                spinner.style.display = 'none';
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

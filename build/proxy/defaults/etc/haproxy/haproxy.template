@@ -153,6 +153,9 @@ frontend http
     # ==============
     acl url_worker_console  hdr(host) -i worker.{{FQDN}}
 
+    # sql
+    # ===
+    acl url_sql path_beg /services/sql/
 
     # portainer
     # =========
@@ -166,6 +169,7 @@ frontend http
     use_backend database_console if network_mng url_database_console
     use_backend datashare_console if network_mng url_datashare_console
     use_backend worker_console if network_mng url_worker_console
+    use_backend sql if network_mng url_sql
     use_backend portainer_console if network_mng url_portainer_console
     use_backend mf_console if network_mng url_root or url_empty
 
@@ -280,6 +284,15 @@ backend worker_console  # Celery Flower
         server {{ node }} {{ node }}:5555 check
     {% endfor %}
 
+backend sql
+    acl auth_ok http_auth(users_stack)
+    http-request auth realm sql_realm if !auth_ok
+    mode http
+    balance leastconn
+    http-request set-path %[path,regsub(^/services/sql/,/)]
+    {% for node in mf_sql %}
+        server {{ node }} {{ node }}:8080 check
+    {% endfor %}
 
 backend services
     mode http

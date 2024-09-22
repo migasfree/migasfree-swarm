@@ -82,6 +82,7 @@ class message:
                 'datastore_console',
                 'datashare_console',
                 'worker_console',
+                'sql',
                 'proxy',
                 'portainer'
             ]
@@ -258,7 +259,7 @@ body {
 
       let time = +new Date;
       let circles = "#proxy, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer";
-      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #core_link";
+      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #sql_link ,#core_link";
       let serv = ""
 
       $(document).ready(function () {
@@ -328,6 +329,18 @@ body {
                 return _service;
               }
 
+              function missing_image(id) {
+                let services = data["services"];
+                let _missing = false;
+                _missing = services[`${_stack}_${id}`]["missing"];
+                if (_missing) {
+                  document.getElementById(id+'_svg').style.display = 'none';
+                } else {
+                  document.getElementById(id+'_svg').style.display = 'block';
+                }
+              }
+
+
               function missing_console(id) {
                 let services = data["services"];
                 let _missing = false;
@@ -391,6 +404,9 @@ body {
               missing_console("datastore_console");
               missing_console("datashare_console");
               missing_console("worker_console");
+
+              missing_console("sql");
+              missing_image("sql");
 
               let message_pms = missing_pms();
               let message_from = "";
@@ -504,6 +520,11 @@ body {
         $("#worker_console_link title").text(
           'worker console:' + String.fromCharCode(10) + 'https://worker.' + location.hostname
         );
+
+        $("#sql_link title").text(
+          'AI SQL Interpreter:' + String.fromCharCode(10) + 'https://' + location.hostname + '/services/sql/'
+        );
+
         $("#start_link title").text('migasfree console:' + String.fromCharCode(10) + 'https://' + location.hostname);
       });
     </script>
@@ -617,12 +638,22 @@ body {
         onmouseenter="serv='worker';"
         onmouseout="serv='';" />
       <text id="nodes_worker" x="90" y="112.5" text-anchor="middle" font-size="3"></text>
+
       <circle id="worker_console_link" cx="97" cy="105" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://worker.' + location.hostname);"
-      >
+        onclick="$(location).attr('href', 'https://worker.' + location.hostname);" >
         <title> worker console </title>
       </circle>
+
+
+      <image id="sql_svg" href="/services-static/img/sql.svg" x="129" y="69" width="13" height="13" style="display: none;" />
+
+      <circle id="sql_link" cx="136" cy="76" r="7"
+        style="fill: green; fill-opacity: 0.07;"
+        onclick="$(location).attr('href', 'https://' + location.hostname + '/services/sql/');" >
+        <title> AI SQL Interpreter </title>
+      </circle>
+
 
       <circle id="public" cx="48" cy="103.5" r="1.5" fill="orange"
         onmouseenter="serv='public';"
@@ -633,8 +664,7 @@ body {
       ></text>
       <circle id="public_link" cx="55" cy="97" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/pool/');"
-      >
+        onclick="$(location).attr('href', 'https://' + location.hostname + '/pool/');" >
         <title> public files </title>
       </circle>
 
@@ -840,6 +870,7 @@ def config_haproxy():
         'mf_datastore_console': get_nodes('datastore_console'),
         'mf_database_console': get_nodes('database_console'),
         'mf_worker_console': get_nodes('worker_console'),
+        'mf_sql': get_nodes('sql'),
         'mf_portainer_console': get_nodes('portainer'),
         'PORT_HTTP': PORT_HTTP,
         'PORT_HTTPS': PORT_HTTPS,
