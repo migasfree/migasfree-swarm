@@ -34,9 +34,9 @@ RUN apt update && \
     . /venv/bin/activate  && \
     pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir --upgrade pip && \
-    python3 -m pip install --no-cache-dir --upgrade setuptools wheel 
+    python3 -m pip install --no-cache-dir --upgrade setuptools wheel
 
-RUN apt-get install -y swig 
+RUN apt-get install -y swig
 
 RUN cd / && \
     . /venv/bin/activate && \
@@ -50,7 +50,7 @@ RUN  cd / && \
     pip install --no-cache-dir -r requirements/production.txt && \
     pip install --no-cache-dir requests_toolbelt && \
     python3 setup.py install && \
-    rm -rf /migasfree-backend 
+    rm -rf /migasfree-backend
 
 RUN cd / && \
     . /venv/bin/activate && \
@@ -67,8 +67,8 @@ RUN . /venv/bin/activate && \
     ln -s ${STATIC_DJANGO}/contrib/admin/static/admin /static/admin && \
     STATIC_REST_FRAMEWORK=$(python3 -c "import rest_framework;print(rest_framework.__path__[0])") && \
     ln -s ${STATIC_REST_FRAMEWORK}/static/rest_framework /static/rest_framework && \
-    STATIC_DRF_YASG=$(python3 -c "import drf_yasg;print(drf_yasg.__path__[0])") && \
-    ln -s ${STATIC_DRF_YASG}/static/drf-yasg /static/drf-yasg
+    STATIC_DRF_SPECTACULAR_SIDECAR=$(python3 -c "import drf_spectacular_sidecar;print(drf_spectacular_sidecar.__path__[0])") && \
+    ln -s ${STATIC_DRF_SPECTACULAR_SIDECAR}/static/drf_spectacular_sidecar /static/drf_spectacular_sidecar
 
 # explicity set user/group IDs to www-data && \
 RUN usermod -u $_UID www-data && \

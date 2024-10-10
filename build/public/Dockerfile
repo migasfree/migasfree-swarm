@@ -21,7 +21,7 @@ COPY defaults/var/migasfree /var/migasfree
 
 # STATIC FILES
 COPY --from=core /static/admin  /var/migasfree/static/admin
-COPY --from=core /static/drf-yasg /var/migasfree/static/drf-yasg
+COPY --from=core /static/drf_spectacular_sidecar /var/migasfree/static/drf_spectacular_sidecar
 COPY --from=core /static/rest_framework /var/migasfree/static/rest_framework
 COPY defaults/var/migasfree/static /var/migasfree/static
 
