@@ -29,7 +29,7 @@ function run_manager() {
     if [ -z ${ROLE}  ]
     then
         echo "This host is not part of a Swarm cluster."
-        exi 1
+        exit 1
     fi
     if [ ${ROLE} = "MANAGER" ]
     then
