@@ -147,8 +147,8 @@ class ContextLoader:
         # ======
         self.default("BACKUP_CRON", "00 00 * * *")
 
-        # AI SQL Interpreter
-        # ==================
+        # ASSISTANT
+        # =========
         self.default("GOOGLE_API_KEY", "")
 
     def comment(self, key):
@@ -293,7 +293,7 @@ class ContextLoader:
 
             "GOOGLE_API_KEY": f"""# {line}
 # GOOGLE_API_KEY
-#    Obtain a Google API Key to access Gemini and utilize the 'AI SQL Interpreter'.
+#    Obtain a Google API Key to access Gemini and utilize the 'migasfree assistant'.
 #    Visit https://aistudio.google.com/app/apikey to get yours.
 # {line}
 """,

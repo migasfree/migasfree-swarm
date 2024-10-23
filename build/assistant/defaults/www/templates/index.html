@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@latest/marked.min.js"></script>
+
+    <style>
+        /* Estilo del cuerpo y HTML para centrar el contenido */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;  /* Centramos horizontalmente */
+            align-items: center;      /* Centramos verticalmente */
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0; /* Color de fondo */
+        }
+
+        /* Contenedor del formulario para darle mejor presentación */
+        form {
+            background-color: white;
+            padding: 20px;
+            padding-right: 30px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #ff6600;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative; /* Añadimos posición relativa al botón */
+            display: flex;      /* Usamos flexbox para alinear los contenidos */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .small-gray-text {
+            font-size: 12px;
+            color: gray;
+        }
+
+        button:hover {
+            background-color: #ff6600;
+        }
+
+        .spinner {
+            display: none; /* Ocultamos el spinner inicialmente */
+            width: 20px;
+            height: 20px;
+            border: 3px solid #000000;
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            z-index: 2; /* Ponemos el spinner sobre el texto */
+        }
+
+        button span {
+            display: inline-block;
+            z-index: 1; /* Aseguramos que el texto esté encima */
+        }
+
+        button.loading span {
+            visibility: hidden; /* Ocultamos el texto cuando el spinner está activo */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto; /* Permite desplazamiento vertical */
+            max-height: 300px; /* Define la altura máxima para que aparezca el scroll si se sobrepasa */
+        }
+
+        .chat-message {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            max-width: 70%;
+        }
+
+        .user-message {
+            background-color: #ffffff;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #f8d7da;
+            align-self: flex-start;
+        }
+
+        .input-container {
+            display: flex;              /* Utiliza flexbox para la disposición */
+            justify-content: space-between; /* Espacia los elementos entre sí */
+            align-items: center;       /* Centra verticalmente los elementos */
+            margin-top: 10px;          /* Espaciado superior opcional */
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        #send-btn {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #ff6600;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <h1>migasfree assistant</h1>
+        <div class="small-gray-text">Powered by Gemini & migasfree</div>
+        <img src="/services-static/img/spoon-ai.svg" style="max-width: 10%; height: auto;"/>
+
+        <div id="chat-box" class="chat-box">
+            <!-- Aquí se añadirán los mensajes del chat -->
+        </div>
+
+        <form method="POST" action="/services/assistant/send" id="myForm" class="chat-message">
+            <div class="input-container">
+                <textarea id="chat-input" name="prompt" rows="2" cols="40" required></textarea>
+                <button id="send-btn" type="submit">
+                    <span>∆</span>
+                    <div id="spinner" class="spinner"></div>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('myForm');
+        const spinner = document.getElementById('spinner');
+        const button = form.querySelector('button');
+
+        // Evita que el formulario se envíe de inmediato
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Previene el envío inmediato del formulario
+
+            button.classList.add('loading'); // Añadimos la clase loading
+            spinner.style.display = 'block'; // Mostramos el spinner
+
+            // Enviar el formulario usando fetch o XMLHttpRequest
+            fetch(form.action, {
+                method: form.method,
+                body: new FormData(form)
+            })
+            .then(response => {
+                // Verificar si la respuesta es exitosa
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+
+                // Manejar la respuesta del servidor
+                return response.json(); // Cambia esto según el tipo de respuesta que esperas
+            })
+            .then(data => {
+                const chatBox = document.getElementById('chat-box');
+                const inputField = document.getElementById('chat-input');
+                const message = inputField.value;
+                if (message.trim() !== '') {
+                    // Crear un nuevo div para el mensaje del usuario
+                    const userMessageDiv = document.createElement('div');
+                    userMessageDiv.classList.add('chat-message', 'user-message');
+                    userMessageDiv.textContent = message;
+
+                    // Agregar el mensaje al chat
+                    chatBox.appendChild(userMessageDiv);
+
+                    // Limpiar el input
+                    inputField.value = '';
+
+                    // Hacer scroll hasta el final del chat
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+
+                if (data && data.message) {
+                    const botMessageDiv = document.createElement('div');
+                    botMessageDiv.classList.add('chat-message', 'bot-message');
+
+                    if ("link" in data) {
+                        botMessageDiv.innerHTML = '<img src="/services-static/img/spoon-ok-0.svg" style="width: 4%; height: auto;"> ' + data.message + '<br><a href="'+ data.link + '"><img src="/services-static/img/doc.svg" style="width: 3%; height: auto;"></a>';
+                    } else {
+                        botMessageDiv.innerHTML = '<img src="/services-static/img/spoon-ok-0.svg" style="width: 4%; height: auto;"> ' + marked.parse(data.message);
+                    }
+
+                    // Agregar el mensaje del bot al chat
+                    chatBox.appendChild(botMessageDiv);
+
+                    // Hacer scroll hasta el final del chat
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                } else {
+                    throw new Error('Formato de respuesta no esperado');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error); // Maneja el error
+            })
+            .finally(() => {
+                button.classList.remove('loading'); // Eliminamos la clase loading
+                spinner.style.display = 'none'; // Ocultamos el spinner
+            });
+        });
+    </script>
+</body>
+</html>

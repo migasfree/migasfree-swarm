@@ -16,6 +16,6 @@ build/public/VERSION
 build/s3/VERSION
 build/swarm/VERSION
 build/worker_console/VERSION
-build/sql/VERSION
+build/assistant/VERSION
 images/migasfree-*.tar
 images/*.log

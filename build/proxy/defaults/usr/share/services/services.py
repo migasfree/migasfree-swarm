@@ -24,6 +24,7 @@ FQDN = os.environ['FQDN']
 STACK = os.environ['STACK']
 PORT_HTTP = os.environ['PORT_HTTP']
 PORT_HTTPS = os.environ['PORT_HTTPS']
+HTTPSMODE = os.environ['HTTPSMODE']
 TAG = os.environ['TAG']
 NETWORK_MNG = os.environ['NETWORK_MNG']
 
@@ -82,9 +83,10 @@ class message:
                 'datastore_console',
                 'datashare_console',
                 'worker_console',
-                'sql',
+                'assistant',
                 'proxy',
-                'portainer'
+                'portainer',
+                'certbot'
             ]
 
             if 'services' not in global_data:
@@ -259,7 +261,7 @@ body {
 
       let time = +new Date;
       let circles = "#proxy, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer";
-      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #sql_link ,#core_link";
+      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link ,#core_link";
       let serv = ""
 
       $(document).ready(function () {
@@ -403,8 +405,8 @@ body {
               missing_console("datashare_console");
               missing_console("worker_console");
 
-              missing_console("sql");
-              missing_image("sql");
+              missing_console("assistant");
+              missing_image("assistant");
 
               let message_pms = missing_pms();
               let message_from = "";
@@ -508,8 +510,8 @@ body {
           'worker console:' + String.fromCharCode(10) + 'https://worker.' + location.hostname
         );
 
-        $("#sql_link title").text(
-          'AI SQL Interpreter:' + String.fromCharCode(10) + 'https://' + location.hostname + '/services/sql/'
+        $("#assistant_link title").text(
+          'assistant:' + String.fromCharCode(10) + 'https://' + location.hostname + '/services/assistant/'
         );
 
       });
@@ -525,12 +527,12 @@ body {
       <image id="spoon" href="/" x=155 y=120 height="10" width="10" />
 
       <switch>
-        <foreignObject x="145" y="107.5" width="38" height="10" font-size="2" color="#999999">
+        <foreignObject x="145.5" y="107.5" width="38" height="10" font-size="2" color="#999999">
           <p class="bocadillo" id="message_serv">  </p>
         </foreignObject>
       </switch>
       <switch>
-        <foreignObject x="145" y="109" width="38" height="10" font-size="2.5" color="#999999">
+        <foreignObject x="145.5" y="109" width="38" height="10" font-size="2.5" color="#999999">
           <p class="bocadillo" id="message"> one moment, please </p>
         </foreignObject>
       </switch>
@@ -624,12 +626,12 @@ body {
       </circle>
 
 
-      <image id="sql_svg" href="/services-static/img/sql.svg" x="135" y="69" width="13" height="13" style="display: none;" />
+      <image id="assistant_svg" href="/services-static/img/assistant.svg" x="136" y="91" width="13" height="13" style="display: none;" />
 
-      <circle id="sql_link" cx="142" cy="76" r="7"
+      <circle id="assistant_link" cx="143" cy="97" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/services/sql/');" >
-        <title> AI SQL Interpreter </title>
+        onclick="$(location).attr('href', 'https://' + location.hostname + '/services/assistant/');" >
+        <title> Assistant </title>
       </circle>
 
 
@@ -660,7 +662,7 @@ body {
         onclick="$(location).attr('href', 'https://database.' + location.hostname);"
       >
         <title> database console </title>
-      </circle>
+      </circle>PORT_HTTPS
 
       <circle id="datastore" cx="114" cy="103.5" r="1.5" fill="orange"
         onmouseenter="serv='datastore';"
@@ -839,7 +841,6 @@ class update_haproxy:
 def config_haproxy():
     context = {
         'FQDN': os.environ['FQDN'],
-        'cerbot': os.environ['HTTPSMODE'] == 'auto',
         'mf_public': get_nodes('public'),
         'mf_core': get_nodes('core'),
         'mf_console': get_nodes('console'),
@@ -848,10 +849,12 @@ def config_haproxy():
         'mf_datastore_console': get_nodes('datastore_console'),
         'mf_database_console': get_nodes('database_console'),
         'mf_worker_console': get_nodes('worker_console'),
-        'mf_sql': get_nodes('sql'),
+        'mf_assistant': get_nodes('assistant'),
         'mf_portainer_console': get_nodes('portainer'),
+        'mf_certbot': get_nodes('certbot'),
         'PORT_HTTP': PORT_HTTP,
         'PORT_HTTPS': PORT_HTTPS,
+        'certbot': HTTPSMODE == 'auto',
         'USERLIST_STACK': USERLIST_STACK,
         'USERLIST_CLUSTER': USERLIST_CLUSTER,
         'NETWORK_MNG': NETWORK_MNG,

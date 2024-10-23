@@ -153,9 +153,9 @@ frontend http
     # ==============
     acl url_worker_console  hdr(host) -i worker.{{FQDN}}
 
-    # sql
-    # ===
-    acl url_sql path_beg /services/sql/
+    # assistant
+    # =========
+    acl url_assistant path_beg /services/assistant/
 
     # portainer
     # =========
@@ -169,7 +169,7 @@ frontend http
     use_backend database_console if network_mng url_database_console
     use_backend datashare_console if network_mng url_datashare_console
     use_backend worker_console if network_mng url_worker_console
-    use_backend sql if network_mng url_sql
+    use_backend assistant if network_mng url_assistant
     use_backend portainer_console if network_mng url_portainer_console
     use_backend mf_console if network_mng url_root or url_empty
 
@@ -184,14 +184,14 @@ frontend http
     use_backend mf_console if network_mng
 
 {% if certbot %}
-    use_backend mfbl_certbot if certbot
-{% endif %}
+    use_backend mf_certbot if certbot
 
-    #default_backend mf_console
-
-{% if certbot %}
-    backend mfbl_certbot
-    server mfbl_certbot mfbl_certbot:380
+backend mf_certbot
+    mode http
+    balance leastconn
+    {% for node in mf_certbot %}
+        server {{ node }} {{ node }}:380
+    {% endfor %}
 {% endif %}
 
 
@@ -284,13 +284,13 @@ backend worker_console  # Celery Flower
         server {{ node }} {{ node }}:5555 check
     {% endfor %}
 
-backend sql
+backend assistant
     acl auth_ok http_auth(users_stack)
-    http-request auth realm sql_realm if !auth_ok
+    http-request auth realm assistant_realm if !auth_ok
     mode http
     balance leastconn
-    http-request set-path %[path,regsub(^/services/sql/,/)]
-    {% for node in mf_sql %}
+    http-request set-path %[path,regsub(^/services/assistant/,/)]
+    {% for node in mf_assistant %}
         server {{ node }} {{ node }}:8080 check
     {% endfor %}
 

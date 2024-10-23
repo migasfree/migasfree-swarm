@@ -388,8 +388,8 @@ services:
             - source: {{STACK}}_superadmin_pass
 
 {% if GOOGLE_API_KEY %}
-    sql:
-        image: migasfree/sql:{{TAG}}
+    assistant:
+        image: migasfree/assistant:{{TAG}}
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -409,7 +409,7 @@ services:
                 max_attempts: 0
                 window: 180s
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/sql:/data
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/assistant:/data
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/database/storage/admin_domain.com:/database_console
 
         secrets:
