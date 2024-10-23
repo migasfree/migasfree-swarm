@@ -22,7 +22,7 @@ services:
             - PORT_HTTP={{PORT_HTTP}}
             - PORT_HTTPS={{PORT_HTTPS}}
             - MIGASFREE_CONF_DIR=
-            - HTTPSMODE=manual
+            - HTTPSMODE={{HTTPSMODE}}
             - PMS_ENABLED={{PMS_ENABLED}}
             - NETWORK_MNG={{NETWORK_MNG}}
         deploy:
