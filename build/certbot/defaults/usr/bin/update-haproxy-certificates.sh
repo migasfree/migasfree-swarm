@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Start transaction
 echo -e "set ssl cert /usr/local/etc/haproxy/certificates/${STACK}.pem <<\n$(cat /etc/certificates/${STACK}.pem)\n" | socat tcp-connect:proxy_proxy:9999 -
