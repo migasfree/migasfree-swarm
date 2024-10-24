@@ -840,7 +840,8 @@ class update_haproxy:
 
 def config_haproxy():
     context = {
-        'FQDN': os.environ['FQDN'],
+        'FQDN': FQDN,
+        'STACK': STACK,
         'mf_public': get_nodes('public'),
         'mf_core': get_nodes('core'),
         'mf_console': get_nodes('console'),

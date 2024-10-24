@@ -165,6 +165,10 @@ frontend http
     # USE BACKENDS SECTION
     # Warning: The order is important !!!
     # ===================================
+
+{% if certbot %}
+    use_backend mf_certbot if certbot
+{% endif %}
     use_backend datastore_console if network_mng url_datastore_console
     use_backend database_console if network_mng url_database_console
     use_backend datashare_console if network_mng url_datashare_console
@@ -183,9 +187,8 @@ frontend http
 
     use_backend mf_console if network_mng
 
-{% if certbot %}
-    use_backend mf_certbot if certbot
 
+{% if certbot %}
 backend mf_certbot
     mode http
     balance leastconn
@@ -193,7 +196,6 @@ backend mf_certbot
         server {{ node }} {{ node }}:380
     {% endfor %}
 {% endif %}
-
 
 backend mf_public
     mode http
