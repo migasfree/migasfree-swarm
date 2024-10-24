@@ -73,32 +73,19 @@ def system_prune():
 # PROGRAM
 # =======
 
+print()
+print("Warning!")
+response = "n"
+response = input("Do you want to leave the Swarm cluster? (y/N): ") or response
+if response.lower() != "y":
+    exit()
+else:
 
-cl = ContextLoader()
-CONTEXT = cl.context
+    cl = ContextLoader()
+    CONTEXT = cl.context
+    client = docker.from_env()
 
-client = docker.from_env()
+    remove_stacks(get_stacks() + ['portainer', 'proxy'])
 
-remove_stacks(get_stacks() + ['portainer', 'proxy'])
-
-"""
-if CONTEXT['DATASHARE_FS'] == "local":
-    remove_volumes( [
-        f"{CONTEXT['STACK']}_database",
-        f"{CONTEXT['STACK']}_datashare",
-        f"{CONTEXT['STACK']}_datastore",
-        f"portainer_portainer"
-    ])
-
-    try:
-        os.remove(os.path.join(_PATH,"credentials","portainer-token"))
-    except:
-        pass
-    try:
-        os.remove(os.path.join(_PATH,"credentials","swarm-credential"))
-    except:
-        pass
-"""
-
-leave_swarm_force()
-system_prune()
+    leave_swarm_force()
+    system_prune()
