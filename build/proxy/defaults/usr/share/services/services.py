@@ -532,7 +532,7 @@ body {
         </foreignObject>
       </switch>
       <switch>
-        <foreignObject x="145.5" y="109" width="38" height="10" font-size="2.5" color="#999999">
+        <foreignObject x="145.5" y="109.5" width="38" height="10" font-size="2.5" color="#999999">
           <p class="bocadillo" id="message"> one moment, please </p>
         </foreignObject>
       </switch>
