@@ -173,6 +173,14 @@ class PortainerAPI:
     def custom_templates(self, payload):
         self.post("/custom_templates?method=string", payload)
 
+    def delete_custom_templates(self, name):
+        response = self.get("/custom_templates")
+        if response:
+            for template in response:
+                if template["Title"] == name and template["Description"] == "migasfree stack":
+                    self.delete(f"/custom_templates/{template['Id']}")
+                    return
+
     def deploy(self, payload):
         self.post(f"/stacks?endpointId={self.endpoint_id}&method=string&type=1", payload)
 
