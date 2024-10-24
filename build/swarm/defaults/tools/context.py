@@ -10,6 +10,8 @@ _FILE_CLUSTER_VARS = os.path.join(_PATH, "env.py")
 def get_stacks():
 
     # SHARED DATA
+    if not os.path.exists("/mnt/cluster/"):
+        os.mkdir("/mnt/cluster/")
     if not os.path.exists("/mnt/cluster/datashares"):
         os.mkdir("/mnt/cluster/datashares")
     if not os.path.exists("/mnt/cluster/portainer"):

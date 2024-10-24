@@ -65,7 +65,7 @@ then
 
 elif [ ${COMMAND} = "deploy" ]
 then
-    run_manager "python3 /tools/deploy.py"
+    python3 /tools/deploy.py
 
 elif [ ${COMMAND} = "undeploy" ]
 then
@@ -85,7 +85,7 @@ then
 
 elif [ ${COMMAND} = "config" ]
 then
-    run_manager "python3 /tools/config.py" "silent"
+    python3 /tools/config.py
 
 elif [ ${COMMAND} = "config-stack" ]
 then
