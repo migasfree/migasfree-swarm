@@ -34,11 +34,9 @@ services:
                 max_attempts: 0
 #                window: 180s
         secrets:
-#            - source: proxy_credential
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
             - source: swarm-credential
-#            - source: {{STACK}}.pem
 
         volumes:
             - migasfree-swarm:/mnt/cluster

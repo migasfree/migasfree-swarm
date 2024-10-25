@@ -1,6 +1,8 @@
 #!/bin/sh
 
 FQDN="$1"
+STACK="$2"
+
 _PATH=/mnt/cluster/certificates
 
 if ! [ -f ${_PATH}/${STACK}.pem ]
@@ -28,4 +30,5 @@ then
 
     # Certificate autosigned for SSL in haproxy
     cat cert.key cert.crt > ${STACK}.pem
+    chmod 600 ${STACK}.pem
 fi

@@ -136,22 +136,6 @@ def deploy_proxy(context):
     credentials("swarm-credential", generate_password(8))
     create_secret_file("swarm-credential", os.path.join(_PATH_CREDENTIALS, "swarm-credential"))
 
-    """
-    # Save secrets certificate files in SWARM
-    create_secret_file(
-            f"{CONTEXT['STACK']}.pem",
-            os.path.join(_PATH_SHARE, "certificates", f"{CONTEXT['STACK']}.pem")
-        )
-    create_secret_file(
-            f"cert.key",
-            os.path.join(_PATH_SHARE, "certificates", f"cert.key")
-        )
-    create_secret_file(
-            f"ca.crt",
-            os.path.join(_PATH_SHARE, "certificates", f"ca.crt")
-        )
-    """
-
     deploy_stack(deploy, "proxy")
     wait_for_service("proxy_proxy", 300)
     print()
@@ -369,7 +353,7 @@ create_paths()
 client = docker.from_env()
 swarm_init()
 
-subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN']])
+subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN'], CONTEXT['STACK']])
 
 (user, password) = credentials(f"{CONTEXT['STACK']}", "admin")
 
