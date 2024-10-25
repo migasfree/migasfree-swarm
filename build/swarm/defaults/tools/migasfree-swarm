@@ -191,20 +191,9 @@ function create_volume_cluster {
   fi
 }
 
-ROLE="$(get_swarm_role)"
-if [ -z "${ROLE}" ]
-then
-  if ! [ -f ./env.py ]
-  then
-    docker run --name migasfree-swarm \
-      --detach=false --rm -ti \
-      -v $(pwd):/stack \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      "$_IMAGE" "config"
-  fi
-fi
 
-if [ "${ROLE}" = "MANAGER" ]
+ROLE="$(get_swarm_role)"
+if [ "${ROLE}" = "" ] || [ "${ROLE}" = "MANAGER" ]
 then
   if ! [ -f ./env.py ]
   then
