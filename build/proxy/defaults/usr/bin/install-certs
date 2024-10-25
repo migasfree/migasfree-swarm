@@ -10,6 +10,7 @@ then
 fi
 
 # Create a self signed default certificate, so HAproxy can start
+mkdir -p /usr/local/etc/haproxy/certificates
 pushd /usr/local/etc/haproxy/certificates
 
 echo "*************************"
