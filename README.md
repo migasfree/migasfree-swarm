@@ -270,7 +270,29 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Certificates
 
-TODO Certicates
+When you start the Migasfree cluster for the first time, a self-signed certificate is automatically generated and saved at `/var/lib/docker/volumes/migasfree-swarm/_data/certificates/<STACK>.pem`.
+
+If you have a certificate issued by a trusted certificate authority, you will need to replace the auto-generated certificate with this file. The certificate must be valid for the following domain names:
+
+
+* `<FQDN>`
+* `portainer.<FQDN>`
+* `datastore.<FQDN>`
+* `database.<FQDN>`
+* `datashare.<FQDN>`
+* `worker.<FQDN>`
+
+### LetsEncrypt
+
+The recommended approach is to configure the STACK to automatically obtain a certificate from LetsEncrypt via ACME, so you don’t have to worry about managing certificates manually. Note that the cluster must be accessible from the internet for LetsEncrypt to validate and issue the certificate.
+
+1. Access the `datashare console` and set the `HTTPSMODE` variable to `'auto'` in the `env.py` file.
+
+2. Run:
+    ```bash
+    ./migasfree-swarm undeploy
+    ./migasfree-swarm deploy
+    ```
 
 ## Backups
 

@@ -6,8 +6,6 @@
 
 * TODO abrir postgres al exterior del cluster
 
-* TODO Verificar y Documentar Certificados
-
 * TODO: Cambiar HTTP_PORT y HTTPS_PORT funciona a medias -> Repasar configuración en haproxy.
 
 * TODO: Crear comando info
@@ -19,18 +17,10 @@
 
 * TODO: Documentar labels del swarm y la relación con los volumenes
 
-
-
 * BUG: `datastore_console` no crea la configuración inicial de la DB.
        Si se reinicia el service entonces si que la crea.
 
 * Repasar los test de los clientes
-
-* DONE Controlar que migasfree-swarm solo se ejecuta en el manager
-
-* DONE: `CERBOT` Programar los subdominios,
-
-
 
 
 PARA INFO
