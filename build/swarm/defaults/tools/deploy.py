@@ -17,7 +17,10 @@ from template import render
 from portainer import PortainerAPI, create_token
 from context import ContextLoader, get_stacks
 
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 _PATH = "/stack"  # Path in this container
 _PATH_SHARE = "/mnt/cluster"  # data shared
@@ -28,6 +31,11 @@ _FILE_SETTINGS = os.path.join(_PATH, "settings.py")
 
 # FUNCTIONS
 # =========
+def is_self_signed(certificate_path):
+    with open(certificate_path, "rb") as cert_file:
+        cert_data = cert_file.read()
+    cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+    return 'CN=Insecure Certificate Authority' in str(cert.issuer)
 
 def resolver_dns(domain):
     while True:
@@ -145,7 +153,10 @@ def deploy_proxy(context):
 
 
 def proxy_reconfigure():
-    requests.post("http://proxy:8001/services/reconfigure")
+    try:
+        requests.post("http://proxy:8001/services/reconfigure")
+    except:
+        pass
 
 
 def deploy_portainer(context):
@@ -259,6 +270,7 @@ def deploy_migasfree(context):
     print(f"Deploying the '{context['STACK']}' stack. Please wait.")
 
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
+    wait_for_service("portainer_portainer", 300)
     api = PortainerAPI("http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
@@ -353,7 +365,8 @@ create_paths()
 client = docker.from_env()
 swarm_init()
 
-subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN'], CONTEXT['STACK']])
+if CONTEXT["HTTPSMODE"] == 'manual':
+    subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN'], CONTEXT['STACK']])
 
 (user, password) = credentials(f"{CONTEXT['STACK']}", "admin")
 
@@ -374,6 +387,17 @@ deploy_portainer(CONTEXT)
 proxy_reconfigure()
 
 deploy_migasfree(CONTEXT)
+
+if CONTEXT["HTTPSMODE"] == 'auto' and is_self_signed(f"{_PATH_CERTIFICATE}/{CONTEXT['STACK']}.pem"):
+    print("Changing to HTTPSMODE auto")
+    wait_for_service(f"{CONTEXT['STACK']}_certbot")
+    token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
+    api = PortainerAPI("http://portainer:9000/api", token)
+    api.set_enpoint_id("primary")
+    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message","HTTPSMODE='auto'"])
+    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"])
+    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message",""])
+    api.execute_in_service(f"proxy_proxy", ["/usr/bin/reload"])
 
 try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")

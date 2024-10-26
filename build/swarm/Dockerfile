@@ -6,7 +6,7 @@ LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 ARG TAG=latest \
     BUILD_DEPENDS='py3-pip' \
     RUNTIME_DEPENDS='python3 py3-virtualenv ca-certificates openssl docker docker-cli-compose tzdata curl'  \
-    RUNTIME_PIP='docker packaging jinja2 requests'
+    RUNTIME_PIP='docker packaging jinja2 requests cryptography'
 
 ENV TAG=${TAG}
 

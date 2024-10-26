@@ -193,3 +193,39 @@ class PortainerAPI:
             "TemplatesURL": "https://raw.githubusercontent.com/portainer/templates/v3/templates.json"
         }
         self.put("/settings", payload)
+
+    def get_service_containers(self, service_name):
+        url = f"/endpoints/{self.endpoint_id}/docker/containers/json"
+        response = self.get(url)
+        containers=[]
+        for container in response:
+            if "com.docker.swarm.service.name" in container["Labels"]:
+                if container["Labels"]["com.docker.swarm.service.name"] == service_name:
+                    containers.append(container["Id"])
+        return containers
+
+    def execute_command_in_container(self, container_id, command):
+        url = f"/endpoints/{self.endpoint_id}/docker/containers/{container_id}/exec"
+        payload = {
+            "Cmd": command,
+            "AttachStdin": False,
+            "AttachStdout": True,
+            "AttachStderr": True,
+            "Tty": False
+        }
+        response = self.post(url, payload)
+        exec_id = response["Id"]
+
+        # Start the command execution
+        url = f"/endpoints/{self.endpoint_id}/docker/exec/{exec_id}/start"
+        payload = {
+            "Detach": False,
+            "Tty": False
+        }
+
+        response= self.session.post(f'{self.base_url}{url}', json=payload, verify=False)
+        return response
+
+    def execute_in_service(self, service_name, command):
+        for container_id in self.get_service_containers(service_name):
+            self.execute_command_in_container(container_id, command)
