@@ -428,6 +428,7 @@ services:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
             - STACK={{STACK}}
+            - HTTPSMODE={{HTTPSMODE}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
