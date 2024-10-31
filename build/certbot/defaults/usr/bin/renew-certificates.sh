@@ -17,7 +17,7 @@ if [ -d /etc/letsencrypt/live/${FQDN} ]; then
         
         echo "Renewed certificates to HAProxy"
         # Update certificates in HAProxy
-        . /usr/bin/update-haproxy-certificates.sh
+        [ -f /etc/certificates/${STACK}.pem ] && . /usr/bin/update-haproxy-certificates.sh
     fi
 
 # Certificates don't exist
