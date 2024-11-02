@@ -15,12 +15,12 @@ if [ -d /etc/letsencrypt/live/${FQDN} ]; then
         # Concatenate certificates
         . /usr/bin/concatenate-certificates.sh
         
-        echo "Renewed certificates to HAProxy"
+        echo "Renewing HAProxy certificates..."
         # Update certificates in HAProxy
         [ -f /etc/certificates/${STACK}.pem ] && . /usr/bin/update-haproxy-certificates.sh
     fi
 
-# Certificates don't exist
+# Live Certificates don't exist
 else
     #  Execute certificate creation script
     . /usr/bin/create-certificates.sh
