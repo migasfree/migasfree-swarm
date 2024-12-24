@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM fedora:34
+FROM fedora:41
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -34,7 +34,7 @@ RUN _BUILD_DEPENDS='python3-pip wget' && \
     virtualenv /venv && \
     mkdir /pms && \
     yum -y remove $_BUILD_DEPENDS && \
-    yum -y  clean all  
+    yum -y  clean all
 
 COPY --from=core /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
