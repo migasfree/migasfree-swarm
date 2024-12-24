@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM cmoore1776/nginx:latest
+FROM cmoore1776/nginx:1.27.3
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
