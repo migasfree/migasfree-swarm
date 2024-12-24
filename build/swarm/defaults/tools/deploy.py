@@ -255,7 +255,7 @@ def create_secret(name, data):
 
 
 def deploy_stack(compose_file, stack_name):
-    os.system(f'docker stack deploy -c {compose_file} {stack_name} --detach=true')
+    os.system(f'docker stack deploy -c {compose_file} {stack_name} --detach=true --resolve-image=never')
 
 
 def create_network_overlay(network_name):
