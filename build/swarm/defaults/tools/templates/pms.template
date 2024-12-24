@@ -24,9 +24,9 @@
             - core
         secrets:
             - source: {{STACK}}_pms_pass
-            - source: {{STACK}}_superadmin_pass            
+            - source: {{STACK}}_superadmin_pass
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare      
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
-            - network
+            - {{STACK}}_network
             - proxy

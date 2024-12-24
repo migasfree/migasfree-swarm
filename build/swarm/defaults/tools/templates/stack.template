@@ -38,7 +38,7 @@ services:
 #            - {{DATASHARE_PATH}}:/data  # RAW S3
 #
 #        networks:
-#            - network
+#            - {{STACK}}_network
 #            - proxy
 
 
@@ -71,7 +71,7 @@ services:
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     console:
@@ -92,7 +92,7 @@ services:
         depends_on:
             - core
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     core:
@@ -126,7 +126,7 @@ services:
         volumes:
             -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     worker:
@@ -160,7 +160,7 @@ services:
         volumes:
             -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     beat:
@@ -193,7 +193,7 @@ services:
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     database:
@@ -229,7 +229,7 @@ services:
             - database:/var/lib/postgresql/data
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     datastore:
@@ -258,7 +258,7 @@ services:
             - datastore:/data
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
 #    swarm:
@@ -277,7 +277,7 @@ services:
 #        volumes:
 #            - /var/run/docker.sock:/var/run/docker.sock
 #        networks:
-#            - network
+#            - {{STACK}}_network
 #            - proxy
 #        deploy:
 #            mode: global
@@ -307,7 +307,7 @@ services:
         depends_on:
             - database
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     datastore_console:
@@ -331,7 +331,7 @@ services:
         depends_on:
             - datastore
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     datashare_console:
@@ -359,7 +359,7 @@ services:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 
     worker_console:
@@ -381,7 +381,7 @@ services:
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/worker:/data
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
         secrets:
             - source: {{STACK}}_superadmin_name
@@ -417,7 +417,7 @@ services:
         depends_on:
             - database
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
 {% endif %}
 
@@ -444,7 +444,7 @@ services:
                 constraints:
                     - node.labels.datastore == true
         networks:
-            - network
+            - {{STACK}}_network
             - proxy
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/etc/certificates
@@ -452,10 +452,12 @@ services:
 
 
 networks:
-    network:
-        driver: overlay
-        attachable: true
-        name: {{STACK}}_network
+#    network:
+#        driver: overlay
+#        attachable: true
+#        name: {{STACK}}_network
+    {{STACK}}_network:
+        external: true
     proxy:
         external: true
 

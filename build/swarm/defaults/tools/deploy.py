@@ -261,6 +261,9 @@ def deploy_stack(compose_file, stack_name):
 def create_network_overlay(network_name):
     os.system(f'docker network create --attachable --driver overlay {network_name} 2>/dev/null')
 
+def create_network_internal(network_name):
+    os.system(f'docker network create --internal --driver overlay {network_name} 2>/dev/null')
+
 
 def deploy_migasfree(context):
     print()
@@ -268,6 +271,8 @@ def deploy_migasfree(context):
     print()
 
     print(f"Deploying the '{context['STACK']}' stack. Please wait.")
+
+    create_network_internal(f"{context['STACK']}_network")
 
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
     wait_for_service("portainer_portainer", 300)
