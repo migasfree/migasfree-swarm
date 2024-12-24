@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM debian:stable-slim
+FROM debian:12.8-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -18,7 +18,7 @@ ENV TAG=${TAG} \
     LANG=C.UTF-8 \
     _UID=890 \
     _GID=890 \
-    DJANGO_SETTINGS_MODULE=migasfree.settings.production 
+    DJANGO_SETTINGS_MODULE=migasfree.settings.production
 
 RUN _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
     _DEPENDS='gnupg dpkg-dev gzip python3 python3-venv netcat-openbsd curl apt-utils tzdata' && \

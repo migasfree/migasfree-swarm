@@ -1,4 +1,4 @@
-FROM debian:stable-slim AS builder
+FROM debian:12.8-slim AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
