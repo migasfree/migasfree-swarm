@@ -1,5 +1,4 @@
-#FROM postgres:13.2-alpine
-FROM postgres:alpine3.20
+FROM postgres:alpine3.21
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest

@@ -1,6 +1,6 @@
 # https://github.com/mher/flower/tree/master
 
-FROM python:alpine
+FROM python:alpine3.21
 
 ARG TAG=latest
 

@@ -1,5 +1,5 @@
 # https://ilhicas.com/2018/04/07/Haproxy-ssl-termination-jekyll.html
-FROM haproxy:lts-alpine3.20 AS builder
+FROM haproxy:lts-alpine3.21 AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 USER root

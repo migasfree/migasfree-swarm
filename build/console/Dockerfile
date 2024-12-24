@@ -1,5 +1,4 @@
-#FROM node:18.16.1-alpine3.18 AS build-stage
-FROM node:22-alpine AS build-stage
+FROM node:23-alpine3.21 AS build-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
