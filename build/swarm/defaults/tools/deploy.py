@@ -259,10 +259,10 @@ def deploy_stack(compose_file, stack_name):
 
 
 def create_network_overlay(network_name):
-    os.system(f'docker network create --attachable --driver overlay {network_name} 2>/dev/null')
+    os.system(f'docker network create --attachable --driver overlay --opt encrypted {network_name} 2>/dev/null')
 
 def create_network_internal(network_name):
-    os.system(f'docker network create --internal --driver overlay {network_name} 2>/dev/null')
+    os.system(f'docker network create --internal --driver overlay --opt encrypted {network_name} 2>/dev/null')
 
 
 def deploy_migasfree(context):
