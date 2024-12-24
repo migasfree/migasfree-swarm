@@ -1,11 +1,11 @@
 
-FROM filebrowser/filebrowser
+FROM filebrowser/filebrowser:v2.31.2
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
 
 ENV TAG=${TAG} \
-    RUNTIME_DEPENDS='tzdata' 
+    RUNTIME_DEPENDS='tzdata'
 
 COPY VERSION /VERSION
 
