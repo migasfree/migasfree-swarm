@@ -1,4 +1,4 @@
-FROM redis/redisinsight:2.56
+FROM redis/redisinsight:2.64
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -15,7 +15,7 @@ RUN apk --no-cache upgrade && \
     apk add --update --no-cache $RUNTIME_DEPENDS && \
     # explicity set uid/gid (890) to user node
     sed -i "s/node:x:[0-9]\+:[0-9]\+:/node:x:890:890:/" /etc/passwd && \
-    sed -i "s/node:x:[0-9]\+:/node:x:890:/" /etc/group 
+    sed -i "s/node:x:[0-9]\+:/node:x:890:/" /etc/group
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
