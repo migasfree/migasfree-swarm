@@ -48,8 +48,10 @@ set_TZ
 COMMAND="$1"
 ROLE="$(get_swarm_role)"
 
-cp /tools/migasfree-swarm /stack/migasfree-swarm
-
+if [ -d /stack ]
+then
+    cp /tools/migasfree-swarm /stack/migasfree-swarm
+fi
 . /venv/bin/activate
 
 if [ -z ${COMMAND} ]

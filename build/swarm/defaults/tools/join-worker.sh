@@ -1,5 +1,7 @@
 #!/bin/sh
 
+VERSION=$(cat /VERSION)
+
 . /stack/env.py
 
 
@@ -21,10 +23,16 @@ then
     echo "  3. To create the migasfree-swarm volume:"
     echo
     echo "    docker volume create --driver local --opt type=nfs \\"
-    echo "           --opt o=addr=${DATASHARE_SERVER},port=${DATASHARE_PORT},rw,vers=4 \\"
-    echo "           --opt device=:${DATASHARE_PATH} migasfree-swarm"
+    echo "        --opt o=addr=${DATASHARE_SERVER},port=${DATASHARE_PORT},rw,vers=4 \\"
+    echo "        --opt device=:${DATASHARE_PATH} migasfree-swarm"
     echo
-    echo -n "  4.$(docker swarm join-token worker)"
+    echo "  4. Pull images:"
+    echo
+    echo "    docker run --detach=false --rm -ti \\"
+    echo "         -v /var/run/docker.sock:/var/run/docker.sock \\"
+    echo "         migasfree/swarm:${VERSION} pull"
+    echo
+    echo -n "  5.$(docker swarm join-token worker)"
     echo
     echo
     echo "==================================================================================================================="
