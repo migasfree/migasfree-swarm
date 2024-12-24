@@ -131,7 +131,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Downloading images
 
-* Although it is not strictly necessary, you can pre-download the images we will need now.
+* Download the images we will need at this time..
 
   ```
   ./migasfree-swarm pull
