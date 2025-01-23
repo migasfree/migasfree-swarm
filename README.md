@@ -94,7 +94,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   #     mkdir /data/cluster
   #     cd /data/cluster
 
-  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-8 config
+  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta-9 config
   ```
 
 
