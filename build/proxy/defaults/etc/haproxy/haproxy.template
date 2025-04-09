@@ -95,7 +95,7 @@ frontend http
 
     # DDOS
     http-request track-sc0 src table per_ip_rates
-    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 500 }
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 1500 }
 
     http-request set-var(txn.path) path  # for services_cache
 
