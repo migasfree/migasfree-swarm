@@ -871,7 +871,7 @@ def config_haproxy():
     else:
         context['extensions'] = '.' + ' .'.join(global_data['extensions'])
 
-    # Sync configuguration haproxy in all proxies.
+    # Sync configuration haproxy in all proxies.
     payload = {
         "haproxy.cfg": Template(HAPROXY_TEMPLATE).render(context)
     }
