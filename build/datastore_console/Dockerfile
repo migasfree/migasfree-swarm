@@ -1,4 +1,4 @@
-FROM redis/redisinsight:2.64
+FROM redis/redisinsight:2.68
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
