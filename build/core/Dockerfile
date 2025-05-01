@@ -1,4 +1,4 @@
-FROM debian:12.8-slim AS builder
+FROM debian:12.10-slim AS builder
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -49,7 +49,7 @@ RUN  cd / && \
     cd /migasfree-backend && \
     pip install --no-cache-dir -r requirements/production.txt && \
     pip install --no-cache-dir requests_toolbelt && \
-    python3 setup.py install && \
+    pip install . && \
     rm -rf /migasfree-backend
 
 RUN cd / && \
