@@ -74,8 +74,8 @@ frontend http
     http-request add-header X-Forwarded-Proto https
 
     # CORS (for error pages)
-#    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}},https://assistant.{{FQDN}},http://localhost:*" "*"
+#    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}}" "*"
+    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
     http-response lua.cors
 
 
@@ -137,30 +137,30 @@ frontend http
 
     # datashare
     # =========
-    acl url_datashare_console hdr(host) -i datashare.{{FQDN}}
+    acl url_datashare_console hdr(host) -i datashare-{{FQDN}}
 
     # datastore_console
     # =================
-    acl url_datastore_console hdr(host) -i datastore.{{FQDN}}
+    acl url_datastore_console hdr(host) -i datastore-{{FQDN}}
 
 
     # database_console
     # ================
-    acl url_database_console hdr(host) -i database.{{FQDN}}
+    acl url_database_console hdr(host) -i database-{{FQDN}}
 
 
     # worker_console
     # ==============
-    acl url_worker_console  hdr(host) -i worker.{{FQDN}}
+    acl url_worker_console  hdr(host) -i worker-{{FQDN}}
 
     # assistant
     # =========
 #    acl url_assistant path_beg /services/assistant/
-    acl url_assistant hdr(host) -i assistant.{{FQDN}}
+    acl url_assistant hdr(host) -i assistant-{{FQDN}}
 
     # portainer
     # =========
-    acl url_portainer_console  hdr(host) -i portainer.{{FQDN}}
+    acl url_portainer_console  hdr(host) -i portainer-{{FQDN}}
 
 
     # USE BACKENDS SECTION

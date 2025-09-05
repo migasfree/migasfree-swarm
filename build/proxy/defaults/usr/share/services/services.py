@@ -495,23 +495,23 @@ body {
         $("#public_link title").text('public files:' + String.fromCharCode(10) +'https://'+location.hostname+'/pool/');
         $("#core_link title").text('API:' + String.fromCharCode(10) +'https://'+location.hostname+'/docs/');
         $("#portainer_link title").text(
-          'portainer console:' + String.fromCharCode(10) + 'https://portainer.' + location.hostname
+          'portainer console:' + String.fromCharCode(10) + 'https://portainer-' + location.hostname
         );
         $("#database_console_link title").text(
-          'database console:' + String.fromCharCode(10) + 'https://database.' + location.hostname
+          'database console:' + String.fromCharCode(10) + 'https://database-' + location.hostname
         );
         $("#datastore_console_link title").text(
-          'datastore console:' + String.fromCharCode(10) + 'https://datastore.' + location.hostname
+          'datastore console:' + String.fromCharCode(10) + 'https://datastore-' + location.hostname
         );
         $("#datashare_console_link title").text(
-          'datashare console:' + String.fromCharCode(10) + 'https://datashare.' + location.hostname
+          'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + location.hostname
         );
         $("#worker_console_link title").text(
-          'worker console:' + String.fromCharCode(10) + 'https://worker.' + location.hostname
+          'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.hostname
         );
 
         $("#assistant_link title").text(
-          'assistant:' + String.fromCharCode(10) + 'https://assistant.' + location.hostname
+          'assistant:' + String.fromCharCode(10) + 'https://assistant-' + location.hostname
         );
 
       });
@@ -593,7 +593,7 @@ body {
         />
       <circle id="portainer_link" cx="55" cy="117" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://portainer.' + location.hostname);"
+        onclick="$(location).attr('href', 'https://portainer-' + location.hostname);"
       >
         <title> portainer console </title>
       </circle>
@@ -621,7 +621,7 @@ body {
 
       <circle id="worker_console_link" cx="97" cy="105" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://worker.' + location.hostname);" >
+        onclick="$(location).attr('href', 'https://worker-' + location.hostname);" >
         <title> worker console </title>
       </circle>
 
@@ -630,7 +630,7 @@ body {
 
       <circle id="assistant_link" cx="143" cy="97" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://assistant.' + location.hostname);" >
+        onclick="$(location).attr('href', 'https://assistant-' + location.hostname);" >
         <title> Assistant </title>
       </circle>
 
@@ -659,7 +659,7 @@ body {
         />
       <circle id="database_console_link" cx="121" cy="76" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://database.' + location.hostname);"
+        onclick="$(location).attr('href', 'https://database-' + location.hostname);"
       >
         <title> database console </title>
       </circle>PORT_HTTPS
@@ -667,11 +667,11 @@ body {
       <circle id="datastore" cx="114" cy="103.5" r="1.5" fill="orange"
         onmouseenter="serv='datastore';"
         onmouseout="serv='';"
-        onclick="$(location).attr('href', 'https://datastore.' + location.hostname);"
+        onclick="$(location).attr('href', 'https://datastore-' + location.hostname);"
         />
       <circle id="datastore_console_link" cx="121" cy="97" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://datastore.' + location.hostname);"
+        onclick="$(location).attr('href', 'https://datastore-' + location.hostname);"
       >
         <title> datastore console </title>
       </circle>
@@ -682,7 +682,7 @@ body {
         />
       <circle id="datashare_console_link" cx="121" cy="117" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://datashare.' + location.hostname);"
+        onclick="$(location).attr('href', 'https://datashare-' + location.hostname);"
       >
         <title> datashare console </title>
       </circle>
