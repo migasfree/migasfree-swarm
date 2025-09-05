@@ -199,8 +199,7 @@ export MIGASFREE_TMP_DIR=/var/lib/migasfree-backend/tmp
 mkdir -p $(dirname ${MIGASFREE_TMP_DIR})
 ln -s ${DATASHARE_MOUNT_PATH}/tmp ${MIGASFREE_TMP_DIR}
 
-export MIGASFREE_PLUGINS_DIR=/venv/lib/python3.11/site-packages/migasfree_backend-$(cat /VERSION)-py3.11.egg/migasfree/core/pms/plugins
-
+export MIGASFREE_PLUGINS_DIR=/migasfree/core/pms/plugins
 cp -r ${DATASHARE_MOUNT_PATH}/plugins/* ${MIGASFREE_PLUGINS_DIR}
 
 . /venv/bin/activate

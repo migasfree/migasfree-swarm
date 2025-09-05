@@ -152,6 +152,7 @@ class ContextLoader:
         # ASSISTANT
         # =========
         self.default("GOOGLE_API_KEY", "")
+        self.default("OLLAMA_BASE_URL", "")
 
     def comment(self, key):
         line = '-' * 120
@@ -297,6 +298,15 @@ class ContextLoader:
 # GOOGLE_API_KEY
 #    Obtain a Google API Key to access Gemini and utilize the 'migasfree assistant'.
 #    Visit https://aistudio.google.com/app/apikey to get yours.
+# {line}
+""",
+
+            "OLLAMA_BASE_URL": f"""# {line}
+# OLLAMA_BASE_URL
+#     The base URL of the Ollama server that the assistant migasfree (Open-WebUI application) connects
+#     to in order to interact with local LLM (Large Language Model) models. This URL typically points
+#     to the location where Ollama is running, such as http://172.0.0.10:11434.
+#     The default value is ''
 # {line}
 """,
 

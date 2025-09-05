@@ -75,7 +75,7 @@ frontend http
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}},http://localhost:*" "*"
+    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database.{{FQDN}},https://datastore.{{FQDN}},https://datashare.{{FQDN}},https://worker.{{FQDN}},https://portainer.{{FQDN}},https://assistant.{{FQDN}},http://localhost:*" "*"
     http-response lua.cors
 
 
@@ -155,7 +155,8 @@ frontend http
 
     # assistant
     # =========
-    acl url_assistant path_beg /services/assistant/
+#    acl url_assistant path_beg /services/assistant/
+    acl url_assistant hdr(host) -i assistant.{{FQDN}}
 
     # portainer
     # =========
@@ -174,6 +175,7 @@ frontend http
     use_backend datashare_console if network_mng url_datashare_console
     use_backend worker_console if network_mng url_worker_console
     use_backend assistant if network_mng url_assistant
+
     use_backend portainer_console if network_mng url_portainer_console
     use_backend mf_console if network_mng url_root or url_empty
 
@@ -287,11 +289,11 @@ backend worker_console  # Celery Flower
     {% endfor %}
 
 backend assistant
-    acl auth_ok http_auth(users_stack)
-    http-request auth realm assistant_realm if !auth_ok
+    #acl auth_ok http_auth(users_stack)
+    #http-request auth realm assistant_realm if !auth_ok
     mode http
     balance leastconn
-    http-request set-path %[path,regsub(^/services/assistant/,/)]
+    #http-request set-path %[path,regsub(^/services/assistant/,/)]
     {% for node in mf_assistant %}
         server {{ node }} {{ node }}:8080 check
     {% endfor %}

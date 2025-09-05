@@ -511,7 +511,7 @@ body {
         );
 
         $("#assistant_link title").text(
-          'assistant:' + String.fromCharCode(10) + 'https://' + location.hostname + '/services/assistant/'
+          'assistant:' + String.fromCharCode(10) + 'https://assistant.' + location.hostname
         );
 
       });
@@ -630,7 +630,7 @@ body {
 
       <circle id="assistant_link" cx="143" cy="97" r="7"
         style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/services/assistant/');" >
+        onclick="$(location).attr('href', 'https://assistant.' + location.hostname);" >
         <title> Assistant </title>
       </circle>
 

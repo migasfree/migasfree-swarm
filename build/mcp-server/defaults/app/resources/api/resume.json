@@ -1,0 +1,174 @@
+[
+    {
+      "filename": "accounts.yaml",
+      "description": "Manages **user groups** and **permissions** in the Migasfree REST API. Includes endpoints for **complete CRUD operations** on user groups (`/api/v1/token/accounts/groups/` allows listing with filtering and pagination, creating, and retrieving/updating/deleting individual groups by ID). It also offers an endpoint to **export** group data (`/api/v1/token/accounts/groups/export/`) and another to **list and search permissions** (`/api/v1/token/accounts/permissions/`). All endpoints require **authentication** via **cookie**, **token**, or **JWT**."
+    },
+    {
+      "filename": "api.yaml",
+      "description": "Contains the endpoint `/api/token/verify/` that uses the **POST** method for **token validation**. This endpoint is designed to indicate if a token is valid, without providing information about its suitability for a particular use. Accepts a string token in the request body in **JSON**, **application/x-www-form-urlencoded**, or **multipart/form-data** format."
+    },
+    {
+      "filename": "attributes.yaml",
+      "description": "Manages **system attributes**, including support for **geographic information** such as latitude and longitude. Offers **complete CRUD operations** through `/api/v1/token/attributes/` for listing (with **extensive filtering options** by applications, computers, devices, deployments, domains, policies, scopes, and more), creating, and managing individual attributes by ID. Attributes include `value`, `description`, and properties like `prefix` and `sort` (basic, client, server). Includes specialized endpoints to get **badge information** (`/{id}/badge/`), **relationship data** (`/{id}/relations/`), and **export data** (`/export/`). All operations are secured with **authentication via cookie, token, or JWT**."
+    },
+    {
+      "filename": "attributtes-sets.yaml",
+      "description": "Manages **attribute sets** through `/api/v1/token/attribute-sets/`. Allows **complete CRUD operations** for listing (filtering by state `enabled`, included/excluded attributes, and name), creating, and managing individual attribute sets by ID. Attribute sets can specify `included_attributes` and `excluded_attributes`. Also supports the inclusion of **geographic coordinates** (latitude and longitude). Includes endpoints to get **badge information** (`/{id}/badge/`), **relationship data** (`/{id}/relations/`), and **export data** (`/export/`). Requires **authentication** (cookie, token, or JWT)."
+    },
+    {
+      "filename": "catalog.yaml",
+      "description": "Provides complete management of the **application catalog** and **software deployment** in the Migasfree system. Offers **CRUD operations** for **applications**, **categories**, **policies**, **policy groups**, and **packages per project**. Supports **filtering** by attributes such as `category`, `level` (User/Administrator), and `score` (relevance rating 1-5). Includes export functionalities, badge generation, and mapping of **relationships** between entities. Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "computers.yaml",
+      "description": "Manages **computer entities** in the Migasfree system. Provides **complete CRUD operations**: list, create, retrieve, update, and delete computers. Allows **exhaustive filtering** by attributes such as architecture, status (`available`, `in repair`, `intended`, `reserved`, `unknown`, `unsubscribed`), product, synchronization dates, and more. Offers specialized endpoints to access specific computer data: **hardware information** (`/hardware/`), **devices** (`/devices/`), **errors** (`/errors/`), **faults** (`/faults/`), **software inventory** (`/software/inventory/`), **software history** (`/software/history/`), **badges** (`/{id}/badge/`), **labels** (`/{id}/label/`), and **synchronization details** (`/{id}/sync/`). Also includes functionalities for **computer status management** (`/{id}/status/`), **replacement** (`/{id}/replacement/`), **data export** (`/export/`), and filtered views for **delayed** (`/delayed/`) and **synchronizing** (`/synchronizing/`) computers. Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "deployments.yaml",
+      "description": "Manages **software deployments** with support for both **internal** and **external sources**. Offers **complete CRUD operations** for deployments: listing (with **extensive filtering options** by project, domain, packages, attributes, calendars, etc.), creating, updating, and deleting individual deployments. The schemas support **package management**, **deployment scheduling**, **attribute-based segmentation**, and differentiation between internal and external deployment sources. Includes specialized endpoints for **badges** (`/{id}/badge/`), **relationships** (`/{id}/relations/`), **export functionality** (`/export/`), and **metadata retrieval** (`/internal-sources/{id}/metadata/`). All operations are secured via **cookie, token, or JWT authentication**."
+    },
+    {
+      "filename": "devices.yaml",
+      "description": "Provides an integral interface for managing **device-related data** in the Migasfree ecosystem. Includes endpoints to manage: **capabilities** (`/capabilities/`), **connections** (`/connections/`), **devices** (physical and logical, in `/devices/` and `/logical/`), **models** (`/models/`), **types** (`/types/`), **manufacturers** (`/manufacturers/`), and **drivers** (`/drivers/`). Each resource supports standard **CRUD operations** (GET, POST, PUT, PATCH, DELETE) and additional routes for **data export**, retrieving **related elements**, and **badge information**. Authentication is managed via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "domains.yaml",
+      "description": "Manages **domain entities** in the Migasfree system. Offers endpoints to list, create, retrieve, update, delete, and **export domains**. Each domain can include or exclude **specific attributes** (`included_attributes`, `excluded_attributes`), associate `tags`, and assign `domain_admins`. All operations are protected with **cookie, token, or JWT authentication** and support **pagination, filtering, and searching by name**."
+    },
+    {
+      "filename": "errors.yaml",
+      "description": "Manages **error reports** linked to computers and projects. Provides endpoints to list, retrieve, create, update, and delete error reports. Each error includes metadata such as `description`, `created_at` (creation date), computer status, and a `checked` indicator. Filtering supports time ranges, project or platform IDs, and description searches. Also includes endpoints for **error export** (`/export/`) and retrieving **badge** (`/{id}/badge/`) or **relationship** (`/{id}/relations/`) data. Authentication is applied via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "fault-definitions.yaml",
+      "description": "Manages **fault definitions** in the Migasfree system. Offers endpoints to list, create, retrieve, update, and delete fault definitions (`/api/v1/token/fault-definitions/`). Supports filtering by fields such as `enabled`, `language` (bash, Python, Perl, PHP, Ruby, CMD, PowerShell), and `name`. Fault definitions can include/exclude attributes and associate users. Includes specialized routes for **badges** (`/badge/`), **relationships** (`/relations/`), and **exports** (`/export/`). All operations are secured via **cookie, token, or JWT authentication**."
+    },
+    {
+      "filename": "faults.yaml",
+      "description": "Manages **registered faults** in the Migasfree system. Provides endpoints to list, retrieve, update, and delete faults (`/api/v1/token/faults/`). Allows filtering by fields such as `checked`, `computer__name`, `fault_definition_id`, and `user` (to check for me, assigned to me, assigned to others, unassigned). Supports date ranges (`created_at`) for filtering. Also includes specialized routes for **badges** (`/badge/`), **relationships** (`/relations/`), **exports** (`/export/`), and **user-specific queries** (`/user/`). Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "features.yaml",
+      "description": "Manages **client features** (attributes) in Migasfree. Offers endpoints to list, create, retrieve, update, and delete features (`/api/v1/token/features/`). Allows filtering by `property_att__prefix`, `value`, `description`, and linked entities (applications, computers, policies). Attributes can include **geolocation** (latitude and longitude) and are associated with property metadata (`ServerPropertyInfo`). Includes routes for **badges** (`/badge/`), **logical device associations** (`/logical-devices/`) (which allows GET to list and PUT/PATCH to update mappings), **relationships** (`/relations/`), and **exports** (`/export/`). Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "formulas.yaml",
+      "description": "Manages **client formulas** (properties) in the Migasfree system. Provides endpoints to list, create, retrieve, update, and delete formulas (`/api/v1/token/formulas/`). Allows filtering by `prefix`, `name`, `kind` (Normal, List, Add Left/Right, JSON), `language` (bash, Python, Perl, PHP, Ruby, CMD, PowerShell), and `sort` (basic, client, server). The formula schema includes the `code` that will be executed on the client computer to obtain the attribute value. Length restrictions apply for `prefix` (3 characters) and `name` (50 characters). Includes specialized routes for **badges** (`/badge/`), **relationships** (`/relations/`), and **exports** (`/export/`). Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "hardware.yaml",
+      "description": "Manages **hardware nodes** in the Migasfree system. Offers endpoints to list (`/api/v1/token/hardware/`) and retrieve (`/{id}/`) hardware components. Provides a **detailed node information endpoint** (`/{id}/info/`) that includes its capabilities, logical names, and configurations. Supports filtering by technical attributes such as `bus_info`, `capacity`, `vendor`, `serial`, and `class_name`, with pagination support. The schema includes specific hardware fields such as `level`, `clock`, `physid`, and `size`. There are also routes for **relationships** (`/{id}/relations/`) and **badges** (`/{id}/badge/`). Authentication is done via **cookie, token, or JWT**."
+    },
+    {
+      "filename": "messages.yaml",
+      "description": "Manages **messages** in the Migasfree system. Defines a GET endpoint to **retrieve messages** (`/api/v1/token/messages/`), a DELETE endpoint to **delete a specific message by ID** (`/api/v1/token/messages/{id}/`), and a GET endpoint to **export messages** (`/api/v1/token/messages/export/`). All endpoints support **cookie, token, and JWT authentication**."
+    },
+    {
+      "filename": "migrations.yaml",
+      "description": "Manages **migration records** in the Migasfree system. Includes endpoints to **list migrations** with filtering options (by `computer__id`, `computer__name`, `created_at`, and `project__id`), retrieve, delete, or get **badge** and **relationship** details for specific migrations by ID (`/{id}/`, `/badge/`, `/relations/`), and **export migration data** (`/export/`). The API supports **pagination, search**, and filtering by computer and project attributes. Responses are structured with objects `Migration`, `ComputerInfo`, and `ProjectInfo`. Authentication is done via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "notifications.yaml",
+      "description": "Manages **notifications** in the Migasfree system. Offers endpoints to list, create, retrieve, update, and delete notifications (`/api/v1/token/notifications/` and `/{id}/`). Allows filtering by attributes such as `checked`, `message`, and date ranges (`created_at`). Includes additional endpoints to retrieve **badge data** (`/badge/`), **relationships** (`/relations/`), and **notification exports** (`/export/`). The API supports **pagination, search**, and **partial updates**. Authentication is done via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "packages.yaml",
+      "description": "Manages **software packages** in the Migasfree system. Provides endpoints to list, create, retrieve, and delete packages (`/api/v1/token/packages/` and `/{id}/`). Offers **advanced filtering options** by attributes such as `name`, `version`, `architecture`, and relationships with projects/stores (`project__id`, `store__id`). Includes additional endpoints to get **package badges** (`/badge/`), **detailed information** (`/info/`), **relationships** (`/relations/`), **data export** (`/export/`), and list **orphan packages** (`/orphan/`) (those not associated with any deployment). Authentication is done via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "package-sets.yaml",
+      "description": "Manages **package sets** in Migasfree. Includes endpoints to list, create, retrieve, update, and delete package sets (`/api/v1/token/package-sets/` and `/{id}/`). Allows **filtering** by attributes such as `name`, `project`, `store`, and package associations (`packages__id`). Has additional endpoints to get **badge data** (`/badge/`), **relationships** (`/relations/`), and **package set exports** (`/export/`). The API supports **pagination, search**, and **authentication** via **cookie, token, or JWT**. It integrates with package management systems through `PmsEnum` for project configurations."
+    },
+    {
+      "filename": "packages-history.yaml",
+      "description": "Records the **package history** in the Migasfree system. Provides endpoints to list and retrieve **installation/uninstallation package records** (`/api/v1/token/packages-history/` and `/{id}/`). Offers **extensive filtering options** by computer attributes (`computer__id`, `computer__name`), package details (`package__fullname`, `package__id`), and date ranges (`install_date`, `uninstall_date`). Includes endpoints to get **badge data** (`/badge/`), **relationships** (`/relations/`), and **history record exports** (`/export/`), allowing a **complete audit** of the package lifecycle. The API supports **pagination, search functionality**, and **authentication** via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "platforms.yaml",
+      "description": "Manages **platforms** in the Migasfree system. Offers endpoints to list, create, retrieve, update, and delete platforms (`/api/v1/token/platforms/` and `/{id}/`). Includes **filtering** by `name`, `id`, and project associations (`project__id`). Has additional endpoints to get **badge data** (`/badge/`), **relationships** (`/relations/`), and **platform record exports** (`/export/`). The API supports **pagination, search functionality**, and **authentication** via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "projects.yaml",
+      "description": "Manages **projects** in the Migasfree system. Provides endpoints to list, create, retrieve, update, and delete projects (`/api/v1/token/projects/` and `/{id}/`). Offers **extensive filtering capabilities** by attributes such as `name`, `pms` (package management system: apt, dnf, pacman, winget, wpt, yum, zypper), `architecture`, and related entities (computers, deployments, packages). Key schema properties of `Project` include `name`, `pms`, `architecture`, and `auto_register_computers` (which allows registering computers without needing a user). The API supports **pagination, search functionality**, and **authentication** via **cookies, tokens, or JWT**. Includes additional endpoints to get **badges** (`/badge/`), **relationships** (`/relations/`), and **project record exports** (`/export/`)."
+    },
+    {
+      "filename": "properties.yaml",
+      "description": "Manages **generic properties** in Migasfree. Offers endpoints to list, create, retrieve, update, and delete properties (`/api/v1/token/properties/` and `/{id}/`). Key operations include **filtering** by attributes such as `kind` (Normal, List, Add Left/Right, JSON), `enabled`, and `prefix`, along with support for **pagination and sorting**. Properties may include `code` executable on the client to obtain the attribute value. Additional functionalities include **property export** (`/export/`), retrieving **property badges** (`/badge/`), and getting **relationships** (`/relations/`). There is also an endpoint to retrieve **type definitions** (`/kind/`). Authentication is done via **cookies, tokens, or JWT**."
+    },
+    {
+      "filename": "public.yaml",
+      "description": "Defines **public endpoints** of the Migasfree REST API. Focuses on the management of **keys**, **server information**, and **system configurations**. Key endpoints include the generation of **keys for packagers** (`/api/v1/public/keys/packager/`) and **projects** (`/api/v1/public/keys/project/`), the retrieval of **repository keys** (`/api/v1/public/keys/repositories/`), and obtaining **server details** (`/api/v1/public/server/info/`). Other endpoints provide options for **programming languages available** for formulas and fault definitions (`/api/v1/public/languages/`), data on **package management systems (PMS)** (`/api/v1/public/pms/`), and **repository URL templates** (`/api/v1/public/repository-url-template/`). Authentication supports **cookies, tokens, JWT, or no authentication** (for some endpoints), and requests and responses are handled in **JSON, form-data, or URL-encoded** formats."
+    },
+    {
+      "filename": "rest-auth.yaml",
+      "description": "Defines endpoints for **authentication and user management** in the Migasfree REST API under the path `/rest-auth/`. Key endpoints include **login** (`/login/`), **logout** (`/logout/`), **password reset** (`/password/reset/`) and its confirmation (`/password/reset/confirm/`), **password change** (`/password/change/`), and **user profile management** (`/user/`). The API supports **token-based authentication** (cookies, tokens, JWT) and processes requests in **JSON, form-data, and URL-encoded** formats. User profiles include fields such as `username`, `email`, and `permissions`, while password operations apply security with token validation and confirmation steps."
+    },
+    {
+      "filename": "safe.yaml",
+      "description": "Describes **secure endpoints** (`/safe/`) in the Migasfree system, focusing on the management of computers, fault tracking, and system synchronization. These endpoints **require JWT authentication**. Key functionalities include **computer registration** (`/computers/`), **hardware/software inventory updates** (`/hardware/` and `/software/`), **fault/error notifications** (`/faults/` and `/errors/`), and **package/tag management** (`/packages/` and `/tags/`). Responses are tailored for specific computer operations (e.g., search by ID, repository lists, mandatory packages). Error codes (400, 404) handle invalid requests or missing resources. Synchronization endpoints (`/synchronizations/`) ensure data consistency. The schema includes enumerations for **package managers** (like apt, dnf) and **computer statuses** (available, in repair)."
+    },
+    {
+      "filename": "schedule-delays.yaml",
+      "description": "Defines endpoints to manage **calendar delays** under `/api/v1/token/schedule-delays/`. Supports **CRUD operations** (GET, POST, PUT, PATCH, DELETE) for delay entries. Allows filtering by `schedule__id` (calendar ID), `schedule__name`, and supports pagination. Key fields include `delay` (time offset), `duration`, and associated `attributes`. Responses are paginated (`PaginatedScheduleDelayList`) and include related resources such as attributes and calendars. Authentication is applied via **cookies, tokens, or JWT**. The schema imposes constraints on `delay` and `duration` values and includes nested objects for calendars (`ScheduleInfo`) and attributes (`Attribute`)."
+    },
+    {
+      "filename": "schedules.yaml",
+      "description": "Defines endpoints to manage **calendars** under `/api/v1/token/schedules/`. Supports **CRUD operations** (GET, POST, PUT, PATCH, DELETE) for calendar entries. Allows filtering by `id` and `name`, and supports pagination. Key fields include `name` and an optional `description`, with read-only fields such as `delays_count`. Responses are paginated (`PaginatedScheduleList`) and include related resources. Authentication is applied via **cookies, tokens, or JWT**. Additional endpoints provide **badge details** (`/badge/`) and **relationships**, as well as **export functionality** (`/export/`). The schema ensures field constraints and includes write/read variants (`ScheduleWrite`, `Schedule`)."
+    },
+    {
+      "filename": "scopes.yaml",
+      "description": "Defines endpoints to manage **scopes** under `/api/v1/token/scopes/`. Supports **CRUD operations** (GET, POST, PUT, PATCH, DELETE) for scope entries. Allows filtering by `id`, `name`, `domain`, and `user` associations. Key fields include `name`, `user`, `domain`, and lists of **included/excluded attributes** (`included_attributes`, `excluded_attributes`). Responses are paginated (`PaginatedScopeListList`) and include related resources such as user profiles (`UserProfileInfo`), domains (`DomainInfo`), and attributes (`AttributeInfo`). Authentication is applied via **cookies, tokens, or JWT**. Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema ensures field constraints and includes write/read variants (`ScopeWrite`, `Scope`)."
+    },
+    {
+      "filename": "singularities.yaml",
+      "description": "Describes endpoints to manage **singularities** under `/api/v1/token/singularities/`. Singularities represent **unique system configurations** with attributes such as `name`, `enabled` status, `priority`, and `code` executable for evaluation on the client. The API supports **CRUD operations** (GET, POST, PUT, PATCH, DELETE) with filtering by `id`, `name`, `property_att` (attribute properties), and **inclusion/exclusion lists** (`included_attributes`, `excluded_attributes`). Responses are paginated (`PaginatedSingularityList`) and include related resources such as `ServerPropertyInfo` and `AttributeInfo`. Key features include execution of code in **specific languages** (via `LanguageEnum`), priority management, and attribute-based filtering. Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema imposes field constraints and includes write/read variants (`SingularityWrite`, `Singularity`)."
+    },
+    {
+      "filename": "src.yaml",
+      "description": "Defines a minimal `/src/` endpoint accessible via **GET** requests. This endpoint supports **multiple authentication methods** (cookies, tokens, JWT) and can also be accessed **without authentication**. Returns a `200` status code without a response body, suggesting its use as a **simple status check** or a placeholder for source-related operations."
+    },
+    {
+      "filename": "stamps.yaml",
+      "description": "Defines endpoints to manage **label categories** (stamps) under `/api/v1/token/stamps/`. These endpoints handle **CRUD operations** (GET, POST, PUT, PATCH, DELETE) for label configurations. Allow **filtering** by `id`, `name`, `prefix`, `kind`, and `enabled` status. The API supports **pagination** and returns JSON responses, including a paginated list of labels (`PaginatedServerPropertyList`). Each label entry includes fields such as `id`, `prefix`, `name`, `kind` (with enumerated values: Normal, List, Add Left, Add Right, JSON), and `enabled` status. **Authentication is required** via **cookies, tokens, or JWT**. Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema imposes field constraints and includes write/read variants (`ServerProperty`, `PatchedServerProperty`)."
+    },
+    {
+      "filename": "stats.yaml",
+      "description": "Defines a full set of **statistical endpoints** under `/api/v1/token/stats/`, covering various **metrics and system analytics**. These endpoints provide statistical data in categories such as **computer states, deployments, devices, errors, faults, migrations, packages, synchronization operations, and notifications**. The API supports **time-based filtering** with parameters for date ranges (daily, monthly, yearly) and specific computer queries. All endpoints **require authentication** via **cookies, tokens, or JWT**. Key functionalities include tracking **synchronization patterns**, **error/fault trends**, **deployment states**, and **hardware/software statistics** in projects and time periods."
+    },
+    {
+      "filename": "status-logs.yaml",
+      "description": "Defines endpoints to manage **status logs** under `/api/v1/token/status-logs/`. These endpoints allow the **retrieval and management of computer status history**. Offer **filtering** by `computer__id`, `computer__name`, date ranges (`created_at`), and specific status values (assigned, reserved, unknown, in repair, available, decommissioned). The API supports **paginated lists** of status logs (`PaginatedStatusLogList`) and the retrieval of individual logs. Each status log entry includes computer information (`ComputerInfo`), a timestamp (`created_at`), and the status (`StatusEnum`). **Individual status log deletion** (`/{id}/`) is supported, but creation and modification are not exposed in this specification. Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema enforces read-only fields for audit purposes and includes descriptive translations for status enums."
+    },
+    {
+      "filename": "stores.yaml",
+      "description": "Defines endpoints to manage **package stores** in the Migasfree REST API under `/api/v1/token/stores/`. These endpoints support **complete CRUD operations** (GET, POST, PUT, PATCH, DELETE) for store management. Allow **filtering** by `id`, `name`, `packageset`, and `project`. Stores are associated with projects and include fields for `name`, `slug`, and `project`. The API returns **paginated results** (`PaginatedStoreList`) and supports **authentication** via **cookies, tokens, or JWT**. Each store entry includes details about the project's package management system (`PmsEnum` with options like apt, dnf, pacman). Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema imposes field constraints (such as maximum length for names) and includes write (`StoreWrite`) and read (`Store`) variants of the store model, with read-only fields for IDs and slugs."
+    },
+    {
+      "filename": "syncs.yaml",
+      "description": "Defines endpoints to manage **synchronization records** under `/api/v1/token/syncs/`. These endpoints provide full tracking and management of **synchronization events between clients and servers**. The API supports **listing synchronization records** with **extensive filtering capabilities** by computer (`computer__id`, `computer__name`), user (`user__name`), project (`project__id`, `project__platform`), date ranges (`created_at`, `start_date`), and PMS status (`pms_status_ok`). Synchronization records contain detailed information about the project, user, computer, timestamps, consumer info, and PMS status. Responses are **paginated** (`PaginatedSynchronizationList`) and include related resources through nested objects (`ProjectInfo`, `UserInfo`, `ComputerInfo`). **Authentication is mandatory** via **cookies, tokens, or JWT**. Although the API supports the retrieval and deletion of individual synchronization records (`/{id}/`), the endpoints for creation and modification are not exposed. Additional endpoints provide **badge details** (`/badge/`), **relationships** (`/relations/`), and **export functionality** (`/export/`). The schema includes enumerations for package management systems (`PmsEnum`) and computer statuses (`StatusEnum`), with strict field constraints and read-only fields for audit purposes."
+    },
+    {
+      "filename": "tags.yaml",
+      "description": "Manages **tags** in the Migasfree system. Includes endpoints to list, create, retrieve, update, and delete tags (`/api/v1/token/tags/` and `/{id}/`). Allows filtering and pagination of results. Offers specialized operations such as getting **tag badges** (`/{id}/badge/`), **related computers** (`/{id}/computers/`), and **general relationships** (`/{id}/relations/`). Also provides **tag data export** functionality (`/export/`). Tags are linked to `property_att` with `prefix` and `sort` (basic, client, server). Supports **multiple authentication methods** (cookie, token, and JWT)."
+    },
+    {
+      "filename": "token-auth.yaml",
+      "description": "Describes a single endpoint `/token-auth/` that handles **token-based authentication**. Accepts **POST** requests with a `username` and `password` (write-only fields) and returns an authentication `token` (read-only field). The endpoint supports input in **JSON**, `application/x-www-form-urlencoded`, and `multipart/form-data` formats. Includes security schemes such as **cookie, token, and JWT authentication**."
+    },
+    {
+      "filename": "token-auth-jwt.yaml",
+      "description": "Defines a **JWT-based authentication** endpoint (`/token-auth-jwt/`). Accepts **POST** requests requiring a `username` and `password` (write-only fields) and returns a pair of **JWT tokens** (`access` and `refresh`, both read-only) to test the authentication of credentials. The endpoint supports input in **JSON**, `application/x-www-form-urlencoded`, and `multipart/form-data` formats. Its explicit purpose is to generate JWT tokens for authenticated sessions."
+    },
+    {
+      "filename": "token-refresh.yaml",
+      "description": "Defines an endpoint for **JWT token refresh** (`/token-refresh/`). Accepts **POST** requests that include a `refresh` token (write-only field) and, if valid, returns a new `access` token (read-only field). This process allows **extending authenticated sessions** without requiring the user to re-enter their credentials. The endpoint supports input in **JSON**, `application/x-www-form-urlencoded`, and `multipart/form-data` formats."
+    },
+    {
+      "filename": "user-profiles.yaml",
+      "description": "Defines an integrated **user profile management system**. Offers **CRUD operations** for user profiles (list, create, retrieve, update, delete), with support for **pagination** and **filtering** by domains (`domains__id`), names (`first_name`, `last_name`), and activity status (`is_active`, `is_staff`, `is_superuser`). Additional functionalities include **password changes** (`/{id}/change-password/`), **token updates** (`/{id}/update-token/`), retrieval of **badges** (`/{id}/badge/`), and **domain admin management** (`/domain-admins/`). The schema details user attributes such as `username`, `email`, `permissions`, and domain associations, following OpenAPI 3.0.3 standards with **cookie, token, and JWT authentication**. It also supports **user profile exports** (`/export/`)."
+    },
+    {
+      "filename": "users.yaml",
+      "description": "Defines endpoints for **basic user management**. Provides functionalities to **list** (`/api/v1/token/users/`), **retrieve** (`/{id}/`), and **delete** (`/{id}/`) users. Supports **filtering** by `name`, `fullname`, and `id`, and includes **pagination and search** capabilities. Specialized endpoints for **badge retrieval** (`/badge/`) and **relationship visualization** (`/relations/`). The schema defines user attributes such as `id`, `name`, and `fullname`, with **cookie, token, and JWT authentication**. It also allows **user data exports** (`/export/`)."
+    }
+  ]

@@ -396,11 +396,15 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
-            - POSTGRES_HOST={{POSTGRES_HOST}}
-            - POSTGRES_PORT={{POSTGRES_PORT}}
-            - POSTGRES_DB={{POSTGRES_DB}}
             - GOOGLE_API_KEY={{GOOGLE_API_KEY}}
+            - EMAIL={{EMAIL}}
+
+            - OLLAMA_BASE_URL={{OLLAMA_BASE_URL}}
+            - OPENWEBUI_BASE_URL=https://assistant.{{FQDN}}
+
+            # Disables network connections for update checks and automatic model downloads.
+            - OFFLINE_MODE=True
+
         deploy:
             replicas: 1
             restart_policy:
@@ -409,16 +413,46 @@ services:
                 max_attempts: 0
                 window: 180s
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/assistant:/data
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/database/storage/admin_domain.com:/database_console
-
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/assistant:/app/backend/data
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
-            - database
+            - mcp-server
         networks:
             - {{STACK}}_network
             - proxy
+
+
+    mcp-server:
+        image: migasfree/mcp-server:{{TAG}}
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - core
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: any
+                delay: 5s
+                max_attempts: 0
+                window: 180s
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}:/mnt/datashare
+        networks:
+            - {{STACK}}_network
+            - proxy
+
+
 {% endif %}
 
 {% if HTTPSMODE == "auto" %}
