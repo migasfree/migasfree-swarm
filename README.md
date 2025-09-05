@@ -156,7 +156,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
     ```
 
-  * You can monitor the services by visiting  https://<FQDN>/services/status.
+  * You can monitor the services by visiting  `https://<FQDN>/services/status`.
 
 ## Undeploying the Stack
 
