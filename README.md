@@ -45,12 +45,13 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 * For `testing purposes` only, you can add the domain names to your `desktop machine` to access Migasfree services by editing the `/etc/hosts` file:
 
   ```/etc/hosts
-  x.x.x.x <FQDN>
-  x.x.x.x portainer.<FQDN>
-  x.x.x.x datastore.<FQDN>
-  x.x.x.x database.<FQDN>
-  x.x.x.x datashare.<FQDN>
-  x.x.x.x worker.<FQDN>
+  <IP> <FQDN>
+  <IP> portainer.<FQDN>
+  <IP> datastore.<FQDN>
+  <IP> database.<FQDN>
+  <IP> datashare.<FQDN>
+  <IP> worker.<FQDN>
+  <IP> assistant.<FQDN>
   ```
 
 #### 2. NFS
@@ -281,6 +282,7 @@ If you have a certificate issued by a trusted certificate authority, you will ne
 * `database.<FQDN>`
 * `datashare.<FQDN>`
 * `worker.<FQDN>`
+* `assistant.<FQDN>`
 
 ### LetsEncrypt
 
