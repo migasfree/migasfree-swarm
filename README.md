@@ -46,12 +46,26 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
   ```/etc/hosts
   <IP> <FQDN>
-  <IP> portainer.<FQDN>
-  <IP> datastore.<FQDN>
-  <IP> database.<FQDN>
-  <IP> datashare.<FQDN>
-  <IP> worker.<FQDN>
-  <IP> assistant.<FQDN>
+  <IP> portainer-<FQDN>
+  <IP> datastore-<FQDN>
+  <IP> database-<FQDN>
+  <IP> datashare-<FQDN>
+  <IP> worker-<FQDN>
+  <IP> assistant-<FQDN>
+  ```
+
+  Example:
+
+  ```/etc/hosts
+  # For FQDN=migasfree.acme.com
+  # ===========================
+  172.0.0.10 migasfree.acme.com
+  172.0.0.10 portainer-migasfree.acme.com
+  172.0.0.10 database-migasfree.acme.com
+  172.0.0.10 datashare-migasfree.acme.com
+  172.0.0.10 datastore-migasfree.acme.com
+  172.0.0.10 worker-migasfree.acme.com
+  172.0.0.10 assistant-migasfree.acme.com
   ```
 
 #### 2. NFS
@@ -81,6 +95,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 * RAM >= 16 GB
 * CPU >= 4
 * Disk SPACE SYSTEM >= 80 GB
+* DockerRootDir = /var/lib/docker (default directory)
 
 #### 4. Swarm node software
 
@@ -95,7 +110,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   #     mkdir /data/cluster
   #     cd /data/cluster
 
-  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta10 config
+  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta11 config
   ```
 
 
