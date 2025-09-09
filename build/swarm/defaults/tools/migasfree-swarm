@@ -212,7 +212,7 @@ fi
 if docker volume ls |grep -q $VOLUME
 then
   docker run --name migasfree-swarm \
-    --detach=false --rm -ti \
+    --detach=false --rm -i \
     -v $(pwd):/stack \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v $VOLUME:/mnt/cluster \
