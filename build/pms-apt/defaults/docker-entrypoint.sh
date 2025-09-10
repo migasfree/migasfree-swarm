@@ -38,20 +38,20 @@ function wait {
 }
 
 function default_pms_pass {
-    local IS_DEFAULT=$(curl -w "%{http_code}" --insecure -o /var/tmp/token_pms -H "Content-Type: application/json" -X POST --data '{"username":"pms","password":"pms"}' http://core:8080/token-auth/  2> /dev/null) 
+    local IS_DEFAULT=$(curl -w "%{http_code}" --insecure -o /var/tmp/token_pms -H "Content-Type: application/json" -X POST --data '{"username":"pms","password":"pms"}' http://core:8080/token-auth/  2> /dev/null)
     if [ "${IS_DEFAULT}" = "200" ]
     then
         # Change password to user pms
         local TOKEN_DEFAULT=$(cat /var/tmp/token_pms | awk -F "\"" '{print $4}')
         local NEW_PASSWORD=$(cat /run/secrets/${STACK}_pms_pass)
-        curl --insecure -X POST -H "Content-Type: application/json" -H "Authorization: Token ${TOKEN_DEFAULT}" -d '{"new_password1": "'${NEW_PASSWORD}'","new_password2":"'${NEW_PASSWORD}'"}' http://core:8080/rest-auth/password/change/   
+        curl --insecure -X POST -H "Content-Type: application/json" -H "Authorization: Token ${TOKEN_DEFAULT}" -d '{"new_password1": "'${NEW_PASSWORD}'","new_password2":"'${NEW_PASSWORD}'"}' http://core:8080/rest-auth/password/change/
     fi
-    rm /var/tmp/token_pms 
+    rm /var/tmp/token_pms
 }
 
 function save_token_pms {
     default_pms_pass
-    curl --insecure -H "Content-Type: application/json" -X POST --data '{"username":"pms","password":"'$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_pms_pass)'"}' http://core:8080/token-auth/ 2>/dev/null | awk -F "\"" '{print $4}' > ${MIGASFREE_SECRET_DIR}/token_pms 
+    curl --insecure -H "Content-Type: application/json" -X POST --data '{"username":"pms","password":"'$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_pms_pass)'"}' http://core:8080/token-auth/ 2>/dev/null | awk -F "\"" '{print $4}' > ${MIGASFREE_SECRET_DIR}/token_pms
 }
 
 . /venv/bin/activate
@@ -74,11 +74,6 @@ ln -s ${DATASHARE_MOUNT_PATH}/tmp ${MIGASFREE_TMP_DIR}
 export MIGASFREE_CERTIFICATES_DIR=/var/lib/migasfree-backend/certificates
 mkdir -p $(dirname ${MIGASFREE_CERTIFICATES_DIR})
 ln -s ${DATASHARE_MOUNT_PATH}/certificates ${MIGASFREE_CERTIFICATES_DIR}
-
-export MIGASFREE_PLUGINS_DIR=/pms/migasfree/core/pms/plugins
-mkdir -p $(dirname ${MIGASFREE_PLUGINS_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/plugins ${MIGASFREE_PLUGINS_DIR}
-
 
 export MIGASFREE_STORE_TRAILING_PATH=stores
 export MIGASFREE_REPOSITORY_TRAILING_PATH=repos
