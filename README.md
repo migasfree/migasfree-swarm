@@ -299,7 +299,7 @@ If you have a certificate issued by a trusted certificate authority, you will ne
 * `worker-<FQDN>`
 * `assistant-<FQDN>`
 
-For example, if you have generated a certificate with a wildcard SAN of the form `*.<FQDN>` using a DNS-01 challenge, replace the `<STACK>.pem` file with the generated certificate and the `cert.key` file with the corresponding private key.
+For example, if you have generated a certificate with a wildcard SAN of the form `*.<FQDN>` using a DNS-01 challenge, replace the `<STACK>.pem` file with the generated certificate and the `<STACK>.pem.key` file with the corresponding private key.
 
 ### LetsEncrypt
 
