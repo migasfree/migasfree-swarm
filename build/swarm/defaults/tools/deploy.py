@@ -207,7 +207,8 @@ def deploy_portainer(context):
             open(f"{_PATH_CREDENTIALS}/portainer-token", "w").write(token)
 
         if token == "":
-            print("Algo salió mal. Borra credentials/portainer-token, por favor.")
+            os.remove(f"{_PATH_CREDENTIALS}/portainer-token")
+            print("Error: The credentials file 'credentials/portainer-token' could not be generated.")
             exit()
 
         # Customize logo

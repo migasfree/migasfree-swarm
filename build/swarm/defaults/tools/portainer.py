@@ -14,8 +14,9 @@ def token_exists(data, token_name):
 
 def create_token(name, username, password):
     # https://docs.portainer.io/api/access
-    # https://app.swaggerhub.com/apis/portainer/portainer-ce/2.21.0#/users/UserGenerateAPIKey
+    # https://app.swaggerhub.com/apis/portainer/portainer-ce/2.33.1#/users/UserGenerateAPIKey
 
+    server_portainer = "http://portainer:9000"
     while True:
         session = None
         session = requests.Session()
@@ -24,7 +25,7 @@ def create_token(name, username, password):
 
         payload = {"username": username, "password": password}
         try:
-            response = session.post("http://portainer:9000/api/auth", json=payload)
+            response = session.post(f"{server_portainer}/api/auth", json=payload)
             if response and response.status_code == 200:
                 break
         except Exception as e:
@@ -37,20 +38,30 @@ def create_token(name, username, password):
         headers["Authorization"] = f"Bearer {response.json()['jwt']}"
         session.headers = headers
 
-        response = session.get('http://portainer:9000/api/users/me')
+        response = session.get(f'{server_portainer}/api/users/me')
         headers = session.headers
         headers["x-csrf-token"] = response.headers["x-csrf-token"]
         session.headers = headers
         if response and response.status_code == 200:
             userid = response.json()["Id"]
-            response = session.get(f'http://portainer:9000/api/users/{userid}/tokens')
+            response = session.get(f'{server_portainer}/api/users/{userid}/tokens')
             if response and response.status_code == 200:
                 if not token_exists(response.json(), name):
                     # create token
                     payload = {"description": name, "password": password}
-                    response = session.post(f'http://portainer:9000/api/users/{userid}/tokens', json=payload)
-                    if response and response.status_code == 201:
+                    response = session.post(f'{server_portainer}/api/users/{userid}/tokens', json=payload)
+                    if response and response.status_code == 200:
                         return response.json()["rawAPIKey"]
+
+    # remove token
+    response = session.get(f"{server_portainer}/api/users/{userid}/tokens")
+    tokens = response.json()
+    token_id = None
+    for token in tokens:
+        if "description" in token:
+            if token["description"] == name:
+                token_id = token.get("id")
+                response = session.delete(f'{server_portainer}/api/users/{userid}/tokens/{token_id}')
 
     return ""
 
@@ -76,6 +87,7 @@ class PortainerAPI:
                 response = self.session.put(url, json=data)
             elif method == "DELETE":
                 response = self.session.delete(url)
+                return response
             else:
                 raise ValueError("Error: {}".format(method))
             response.raise_for_status()
@@ -171,7 +183,7 @@ class PortainerAPI:
         self.put(f"/endpoints/{self.endpoint_id}", payload)
 
     def custom_templates(self, payload):
-        self.post("/custom_templates?method=string", payload)
+        self.post("/custom_templates/create/string", payload)
 
     def delete_custom_templates(self, name):
         response = self.get("/custom_templates")
