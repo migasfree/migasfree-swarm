@@ -1,4 +1,5 @@
-FROM ghcr.io/open-webui/open-webui:v0.6.15
+FROM ghcr.io/open-webui/open-webui:0.6.28-slim
+
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
