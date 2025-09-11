@@ -17,8 +17,7 @@ ENV TAG=${TAG} \
     LC_CTYPE=C.UTF-8 \
     LANG=C.UTF-8 \
     _UID=890 \
-    _GID=890 \
-    DJANGO_SETTINGS_MODULE=migasfree.settings.production
+    _GID=890
 
 RUN _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
     _DEPENDS='gnupg dpkg-dev gzip python3 python3-venv netcat-openbsd curl apt-utils tzdata' && \
@@ -26,16 +25,16 @@ RUN _BUILD_DEPENDS='python3-setuptools python3-pip wget' && \
     usermod -u $_UID www-data && \
     groupmod -g $_GID www-data && \
     chsh -s /bin/bash www-data && \
-    apt update && \
-    apt dist-upgrade -y && \
-    apt install -y --no-install-recommends  $_DEPENDS && \
-    apt install -y --no-install-recommends  $_BUILD_DEPENDS && \
+    apt-get update && \
+    apt-get dist-upgrade -y && \
+    apt-get install -y --no-install-recommends  $_DEPENDS && \
+    apt-get install -y --no-install-recommends  $_BUILD_DEPENDS && \
     python3 -m venv /venv && \
     . /venv/bin/activate  && \
     pip3 install $_PIP_DEPENDS && \
     mkdir /pms && \
-    apt -y purge $_BUILD_DEPENDS && \
-    apt clean && \
+    apt-get -y purge $_BUILD_DEPENDS && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=core /migasfree /pms/migasfree
