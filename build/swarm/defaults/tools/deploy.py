@@ -147,7 +147,7 @@ def deploy_proxy(context):
     deploy_stack(deploy, "proxy")
     wait_for_service("proxy_proxy", 300)
     print()
-    print(f"● https://{context['FQDN']}/services/status")
+    print(f"● https://{context['FQDN']}/status")
     print()
     os.remove(deploy)
 
@@ -222,10 +222,6 @@ def deploy_portainer(context):
         # Update Public IP
         api.set_public_ip(context['FQDN'])
 
-        print()
-        print(f"● https://portainer.{context['FQDN']}/ ")
-        print()
-
 
 def credentials(credential_name, user="admin"):
     """
@@ -267,9 +263,6 @@ def create_network_internal(network_name):
 
 
 def deploy_migasfree(context):
-    print()
-    print(f"● https://{context['FQDN']}/services/status")
-    print()
 
     print(f"Deploying the '{context['STACK']}' stack. Please wait.")
 
