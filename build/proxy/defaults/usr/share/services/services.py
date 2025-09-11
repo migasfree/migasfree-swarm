@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import os
-import web
 import json
 import time
 import socket
@@ -9,15 +8,16 @@ import subprocess
 import fcntl
 import select
 import requests
+import web
 import dns.resolver
 
-from web.httpserver import StaticMiddleware
 from datetime import datetime
+from web.httpserver import StaticMiddleware
 from jinja2 import Template
 
-FILECONFIG = "/etc/haproxy/haproxy.cfg"
-FILECONFIG_TEMPLATE = "/etc/haproxy/haproxy.template"
-with open(FILECONFIG_TEMPLATE) as f:
+FILECONFIG = '/etc/haproxy/haproxy.cfg'
+FILECONFIG_TEMPLATE = '/etc/haproxy/haproxy.template'
+with open(FILECONFIG_TEMPLATE, encoding='utf-8') as f:
     HAPROXY_TEMPLATE = f.read()
 
 FQDN = os.environ['FQDN']
@@ -31,21 +31,12 @@ NETWORK_MNG = os.environ['NETWORK_MNG']
 
 # Global Variable
 # ===============
-global_data = {
-  'services': {},
-  'message': '',
-  'need_reload': True,
-  'extensions': [],
-  'ok': False,
-  'now': datetime.now()
-}
+global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
 
 
 class icon:
     def GET(self):
-        raise web.seeother(
-            f"https://{os.environ['FQDN']}/services-static/img/logo.svg"
-        )
+        raise web.seeother(f'https://{os.environ["FQDN"]}/services-static/img/logo.svg')
 
 
 class status:
@@ -74,7 +65,9 @@ class message:
             pms = os.environ['PMS_ENABLED'].split(',')
             services = [
                 'console',
-                'core', 'beat', 'worker',
+                'core',
+                'beat',
+                'worker',
                 'public',
                 *pms,
                 'database',
@@ -86,7 +79,7 @@ class message:
                 'assistant',
                 'proxy',
                 'portainer',
-                'certbot'
+                'certbot',
             ]
 
             if 'services' not in global_data:
@@ -99,7 +92,6 @@ class message:
             message = False
 
             for _service in services:
-
                 if f'{STACK}_{_service}' not in global_data['services']:
                     global_data['services'][f'{STACK}_{_service}'] = {
                         'message': '',
@@ -110,7 +102,7 @@ class message:
 
                 # missing
                 nodes = len(get_nodes(_service))
-                global_data['services'][f'{STACK}_{_service}']['missing'] = (nodes < 1)
+                global_data['services'][f'{STACK}_{_service}']['missing'] = nodes < 1
                 global_data['services'][f'{STACK}_{_service}']['nodes'] = nodes
 
                 if global_data['services'][f'{STACK}_{_service}']['missing']:
@@ -130,23 +122,25 @@ class message:
                             global_data['need_reload'] = False
                         global_data['ok'] = True
 
-        return json.dumps({
-            'last_message': global_data['last_message'],
-            'services': global_data['services'],
-            'ok': global_data['ok'],
-            'stack': STACK,
-            'tag': f"migasfree {TAG}"
-        })
+        return json.dumps(
+            {
+                'last_message': global_data['last_message'],
+                'services': global_data['services'],
+                'ok': global_data['ok'],
+                'stack': STACK,
+                'tag': f'migasfree {TAG}',
+            }
+        )
 
     def POST(self):
         try:
             data = json.loads(web.data())
         except Exception:
-            print("ERROR", web.data())
+            print('ERROR', web.data())
             data = {}
         ips = dns.resolver.resolve('tasks.proxy', 'A')
         for ip in ips:
-            requests.post(f"http://{str(ip)}:8001/services/update_message", json=data)
+            requests.post(f'http://{str(ip)}:8001/services/update_message', json=data)
 
 
 class update_message:
@@ -161,7 +155,7 @@ class reconfigure:
             'text': 'reconfigure',
             'service': os.environ['SERVICE'],
             'node': os.environ['NODE'],
-            'container': os.environ['HOSTNAME']
+            'container': os.environ['HOSTNAME'],
         }
 
         make_global_data(data)
@@ -173,12 +167,7 @@ def make_global_data(data):
 
     if 'service' in data:
         if data['service'] not in global_data['services']:
-            global_data['services'][data['service']] = {
-                'message': '',
-                'node': '',
-                'container': '',
-                'missing': True
-            }
+            global_data['services'][data['service']] = {'message': '', 'node': '', 'container': '', 'missing': True}
 
         if 'text' in data:
             global_data['services'][data['service']]['message'] = data['text']
@@ -242,6 +231,17 @@ def status_page(context):
   opacity: 1;
 }
 
+.link {
+  fill: green;
+  fill-opacity: 0.07;
+  cursor: pointer;
+}
+
+.circle-text {
+  text-anchor: middle;
+  font-size: 3px;
+}
+
 body {
   width: 100%;
   margin: 0 auto;
@@ -261,7 +261,7 @@ body {
 
       let time = +new Date;
       let circles = "#proxy, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer";
-      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link ,#core_link";
+      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link, #core_link";
       let serv = ""
 
       $(document).ready(function () {
@@ -275,10 +275,6 @@ body {
             $("#spoon").attr("href", "/services-static/img/spoon-disconnect.svg");
             $(circles).hide(200);
             $(links).hide(200);
-            // $("#proxy").show(200);
-            // $("#proxy").attr('fill', 'red');
-            // $("#datashare").show(200);
-            // $("#datashare").attr('fill', 'red');
           }
 
           $.ajax({
@@ -416,9 +412,7 @@ body {
                 message_serv = data['last_message'];
               } else if (serv == "datashare_console") {
                 message_serv = `${_stack}_${serv}`;
-              } //else if (serv == "proxy") {
-              //  message_serv = `${_stack}_${serv}`;
-              //}
+              }
 
               if (typeof(data) != "undefined") {
                 if (serv == "pms" && message_pms != "") {
@@ -456,7 +450,6 @@ body {
                 $("#message").text(message);
               }
 
-              //$("#message_serv").text(message_serv);
               $("#message_serv").text(message_serv.split('_').slice(1).join('_'));
 
               $("#message_from").text(message_from);
@@ -509,11 +502,9 @@ body {
         $("#worker_console_link title").text(
           'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.hostname
         );
-
         $("#assistant_link title").text(
           'assistant:' + String.fromCharCode(10) + 'https://assistant-' + location.hostname
         );
-
       });
     </script>
   </head>
@@ -553,136 +544,83 @@ body {
         </foreignObject>
       </switch>
 
-<!--
-      <switch>
-        <foreignObject x="145" y="106" width="38" height="4" font-size="1.2">
-          <p class="bocadillo" id="message_from">  </p>
-        </foreignObject>
-      </switch>
--->
-
-
-      <circle id="proxy" cx="29" cy="103.5" r="1.5" fill="orange"
-        onmouseenter="serv='proxy';"
-        onmouseout="serv='';"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/stats');"
-        />
-      <circle id="proxy_link" cx="36" cy="97" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/stats');"
+      <circle id="proxy" cx="29" cy="103.5" r="1.5" fill="orange "/>
+      <circle id="proxy_link" class="link" cx="36" cy="97" r="7"
+        onclick="window.open('https://' + location.hostname + '/stats', '_blank');"
       >
         <title> proxy statistics </title>
       </circle>
 
-
-      <circle id="console" cx="48" cy="82" r="1.5" fill="orange"
-        onmouseenter="serv='console';"
-        onmouseout="serv='';"
-        />
-      <text id="nodes_console" x="48" y="82.5" text-anchor="middle" font-size="3"></text>
-      <circle id="console_link" cx="55" cy="76" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname);"
+      <circle id="console" cx="48" cy="82" r="1.5" fill="orange" />
+      <text id="nodes_console" class="circle-text" x="48" y="82.5"></text>
+      <circle id="console_link" class="link" cx="55" cy="76" r="7"
+        onclick="window.open('https://' + location.hostname, '_blank');"
       >
         <title> migasfree console </title>
       </circle>
 
-      <circle id="portainer" cx="48" cy="123" r="1.5" fill="orange"
-        onmouseenter="serv='portainer';"
-        onmouseout="serv='';"
-        />
-      <circle id="portainer_link" cx="55" cy="117" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://portainer-' + location.hostname);"
+      <circle id="portainer" cx="48" cy="123" r="1.5" fill="orange" />
+      <circle id="portainer_link" class="link" cx="55" cy="117" r="7"
+        onclick="window.open('https://portainer-' + location.hostname, '_blank');"
       >
         <title> portainer console </title>
       </circle>
 
-      <circle id="core" cx="70" cy="112" r="1.5" fill="orange"
-        onmouseenter="serv='core';"
-        onmouseout="serv='';" />
-      <text id="nodes_core" x="70" y="112.5" text-anchor="middle" font-size="3"></text>
-      <circle id="core_link" cx="77.5" cy="105" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/docs/');"
+      <circle id="core" cx="70" cy="112" r="1.5" fill="orange" />
+      <text id="nodes_core" class="circle-text" x="70" y="112.5"></text>
+      <circle id="core_link" class="link" cx="77.5" cy="105" r="7"
+        onclick="window.open('https://' + location.hostname + '/docs/', '_blank');"
       >
         <title> migasfree API </title>
       </circle>
 
-      <circle id="beat" cx="90" cy="91" r="1.5" fill="orange"
-        onmouseenter="serv='beat';"
-        onmouseout="serv='';" />
-      <text id="nodes_beat" x="90" y="91.5" text-anchor="middle" font-size="3"></text>
+      <circle id="beat" cx="90" cy="91" r="1.5" fill="orange" />
+      <text id="nodes_beat" class="circle-text" x="90" y="91.5"></text>
 
-      <circle id="worker" cx="90" cy="112" r="1.5" fill="orange"
-        onmouseenter="serv='worker';"
-        onmouseout="serv='';" />
-      <text id="nodes_worker" x="90" y="112.5" text-anchor="middle" font-size="3"></text>
-
-      <circle id="worker_console_link" cx="97" cy="105" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://worker-' + location.hostname);" >
+      <circle id="worker" cx="90" cy="112" r="1.5" fill="orange" />
+      <text id="nodes_worker" class="circle-text" x="90" y="112.5"></text>
+      <circle id="worker_console_link" class="link" cx="97" cy="105" r="7"
+        onclick="window.open('https://worker-' + location.hostname, '_blank');"
+      >
         <title> worker console </title>
       </circle>
 
-
-      <image id="assistant_svg" href="/services-static/img/assistant.svg" x="136" y="91" width="13" height="13" style="display: none;" />
-
-      <circle id="assistant_link" cx="143" cy="97" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://assistant-' + location.hostname);" >
-        <title> Assistant </title>
+      <image id="assistant_svg" href="/services-static/img/assistant.svg"
+        x="136" y="91" width="13" height="13" style="display: none;"
+      />
+      <circle id="assistant_link" class="link" cx="143" cy="97" r="7"
+        onclick="window.open('https://assistant-' + location.hostname, '_blank');"
+      >
+        <title> assistant </title>
       </circle>
 
-
-      <circle id="public" cx="48" cy="103.5" r="1.5" fill="orange"
-        onmouseenter="serv='public';"
-        onmouseout="serv='';"
-      />
-      <text id="nodes_public" x="48" y="104" text-anchor="middle" font-size="3"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/public/');"
-      ></text>
-      <circle id="public_link" cx="55" cy="97" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://' + location.hostname + '/pool/');" >
+      <circle id="public" cx="48" cy="103.5" r="1.5" fill="orange" />
+      <text id="nodes_public" class="circle-text" x="48" y="104"></text>
+      <circle id="public_link" class="link" cx="55" cy="97" r="7"
+        onclick="window.open('https://' + location.hostname + '/pool/', '_blank');"
+      >
         <title> public files </title>
       </circle>
 
-      <circle id="pms" cx="70" cy="91" r="1.5" fill="orange"
-        onmouseenter="serv='pms';"
-        onmouseout="serv='';" />
-      <text id="nodes_pms" x="70" y="91.5" text-anchor="middle" font-size="3"></text>
-
-      <circle id="database" cx="114" cy="82" r="1.5" fill="orange"
-        onmouseenter="serv='database';"
-        onmouseout="serv='';"
-        />
-      <circle id="database_console_link" cx="121" cy="76" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://database-' + location.hostname);"
+      <circle id="pms" cx="70" cy="91" r="1.5" fill="orange" />
+      <text id="nodes_pms" class="circle-text" x="70" y="91.5"></text>
+      <circle id="database" cx="114" cy="82" r="1.5" fill="orange" />
+      <circle id="database_console_link" class="link" cx="121" cy="76" r="7"
+        onclick="window.open('https://database-' + location.hostname, '_blank');"
       >
         <title> database console </title>
       </circle>PORT_HTTPS
 
-      <circle id="datastore" cx="114" cy="103.5" r="1.5" fill="orange"
-        onmouseenter="serv='datastore';"
-        onmouseout="serv='';"
-        onclick="$(location).attr('href', 'https://datastore-' + location.hostname);"
-        />
-      <circle id="datastore_console_link" cx="121" cy="97" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://datastore-' + location.hostname);"
+      <circle id="datastore" cx="114" cy="103.5" r="1.5" fill="orange" />
+      <circle id="datastore_console_link" class="link" cx="121" cy="97" r="7"
+        onclick="window.open('https://datastore-' + location.hostname, '_blank');"
       >
         <title> datastore console </title>
       </circle>
 
-      <circle id="datashare_console" cx="114" cy="123" r="1.5" fill="orange"
-        onmouseenter="serv='datashare_console';"
-        onmouseout="serv='';"
-        />
-      <circle id="datashare_console_link" cx="121" cy="117" r="7"
-        style="fill: green; fill-opacity: 0.07;"
-        onclick="$(location).attr('href', 'https://datashare-' + location.hostname);"
+      <circle id="datashare_console" cx="114" cy="123" r="1.5" fill="orange" />
+      <circle id="datashare_console_link" class="link" cx="121" cy="117" r="7"
+        onclick="window.open('https://datashare-' + location.hostname, '_blank');"
       >
         <title> datashare console </title>
       </circle>
@@ -734,27 +672,16 @@ def execute(cmd, verbose=False, interactive=True):
         print(cmd)
 
     if interactive:
-        _process = subprocess.Popen(
-            cmd,
-            shell=True,
-            executable='/bin/bash'
-        )
+        _process = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     else:
         _process = subprocess.Popen(
-            cmd,
-            shell=True,
-            executable='/bin/bash',
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE
+            cmd, shell=True, executable='/bin/bash', stderr=subprocess.PIPE, stdout=subprocess.PIPE
         )
         if verbose:
             fcntl.fcntl(
                 _process.stdout.fileno(),
                 fcntl.F_SETFL,
-                fcntl.fcntl(
-                    _process.stdout.fileno(),
-                    fcntl.F_GETFL
-                ) | os.O_NONBLOCK,
+                fcntl.fcntl(_process.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK,
             )
             while _process.poll() is None:
                 readx = select.select([_process.stdout.fileno()], [], [])[0]
@@ -774,10 +701,7 @@ def execute(cmd, verbose=False, interactive=True):
 def get_extensions():
     pms_enabled = os.environ['PMS_ENABLED']
     extensions = []
-    _code, _out, _err = execute(
-        'curl -X GET core:8080/api/v1/public/pms/',
-        interactive=False
-    )
+    _code, _out, _err = execute('curl -X GET core:8080/api/v1/public/pms/', interactive=False)
     if _code == 0:
         try:
             all_pms = json.loads(_out.decode('utf-8'))
@@ -809,7 +733,7 @@ class nginx_extensions:
         if len(global_data['extensions']) > 0:
             return Template(template).render({'extensions': global_data['extensions']})
         else:
-            return ""
+            return ''
 
 
 class update_haproxy:
@@ -817,23 +741,21 @@ class update_haproxy:
         try:
             data = json.loads(web.data())
         except Exception:
-            print("ERROR", web.data())
+            print('ERROR', web.data())
             data = {}
 
-        if "haproxy.cfg" in data:
-            with open(FILECONFIG, 'w') as f:
-                f.write(data["haproxy.cfg"])
+        if 'haproxy.cfg' in data:
+            with open(FILECONFIG, 'w', encoding='utf-8') as f:
+                f.write(data['haproxy.cfg'])
                 f.write('\n')
             reload_haproxy()
-
-        # global_data = data["global_data"]
 
         time.sleep(1)
         _data = {
             'text': '',
             'service': os.environ['SERVICE'],
             'node': os.environ['NODE'],
-            'container': os.environ['HOSTNAME']
+            'container': os.environ['HOSTNAME'],
         }
         make_global_data(_data)
 
@@ -863,8 +785,6 @@ def config_haproxy():
 
     if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
         global_data['extensions'] = get_extensions()
-#        if len(global_data['extensions']) > 0:
-#            config_nginx()
 
     if len(global_data['extensions']) == 0:
         context['extensions'] = '.deb .rpm'
@@ -872,40 +792,24 @@ def config_haproxy():
         context['extensions'] = '.' + ' .'.join(global_data['extensions'])
 
     # Sync configuration haproxy in all proxies.
-    payload = {
-        "haproxy.cfg": Template(HAPROXY_TEMPLATE).render(context)
-    }
+    payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
     if not os.path.exists(FILECONFIG):
         with open(FILECONFIG, 'w') as f:
-            f.write(payload["haproxy.cfg"])
+            f.write(payload['haproxy.cfg'])
             f.write('\n')
     else:
         ips = dns.resolver.resolve('tasks.proxy', 'A')
         for ip in ips:
-            requests.post(f"http://{str(ip)}:8001/services/update_haproxy", json=payload)
-
-    """
-    time.sleep(1)
-    _data = {
-        'text': '',
-        'service': os.environ['SERVICE'],
-        'node': os.environ['NODE'],
-        'container': os.environ['HOSTNAME']
-    }
-    make_global_data(_data)
-    """
+            requests.post(f'http://{str(ip)}:8001/services/update_haproxy', json=payload)
 
 
 def reload_haproxy():
-    _code, _out, _err = execute("/usr/bin/reload", interactive=False)
+    _code, _out, _err = execute('/usr/bin/reload', interactive=False)
 
 
 def get_nodes(service):
     nodes = []
-    _code, _out, _err = execute(
-        f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'",
-        interactive=False
-    )
+    _code, _out, _err = execute(f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'", interactive=False)
     if _code == 0:
         for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
             if node:
@@ -937,23 +841,23 @@ class servicesStaticMiddleware(StaticMiddleware):
 
 
 def render_error_pages():
-    context = {"FQDN": os.environ['FQDN']}
-    _PATH = "/etc/haproxy/errors-custom"
-    _PATH_TEMPLATE = "/etc/haproxy/errors-custom/templates"
+    context = {'FQDN': os.environ['FQDN']}
+    _PATH = '/etc/haproxy/errors-custom'
+    _PATH_TEMPLATE = '/etc/haproxy/errors-custom/templates'
     for f_template in os.listdir(_PATH_TEMPLATE):
         _file = os.path.join(_PATH, os.path.basename(f_template))
-        if _file.endswith(".http"):
-            with open(os.path.join(_PATH_TEMPLATE, f_template), 'r') as f:
+        if _file.endswith('.http'):
+            with open(os.path.join(_PATH_TEMPLATE, f_template), 'r', encoding='utf-8') as f:
                 content = f.read()
-            with open(_file, 'w') as f:
+            with open(_file, 'w', encoding='utf-8') as f:
                 f.write(Template(content).render(context))
                 f.write('\n')
 
 
 def userlist_stack():
-    with open(f"/run/secrets/{STACK}_superadmin_name", "r") as f:
+    with open(f'/run/secrets/{STACK}_superadmin_name', 'r', encoding='utf-8') as f:
         USERNAME = f.read()
-    with open(f"/run/secrets/{STACK}_superadmin_pass", "r") as f:
+    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
         PASSWORD = f.read()
     _code, _out, _err = execute(f'mkpasswd -m sha-512 {PASSWORD}', interactive=False)
     return f'    user {USERNAME} password {_out.decode("utf-8")}'
@@ -961,22 +865,30 @@ def userlist_stack():
 
 def userlist_cluster():
     # swarm-credential
-    with open("/run/secrets/swarm-credential", "r") as f:
-        USERNAME, PASSWORD = f.read().split(":")
+    with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
+        USERNAME, PASSWORD = f.read().split(':')
     _code, _out, _err = execute(f'mkpasswd -m sha-512 {PASSWORD}', interactive=False)
     return f'    user {USERNAME} password {_out.decode("utf-8")}'
 
 
 if __name__ == '__main__':
     urls = (
-        '/favicon.ico', 'icon',
-        '/services/status/?', 'status',
-        '/services/manifest', 'manifest',
-        '/services/message', 'message',
-        '/services/reconfigure', 'reconfigure',
-        '/services/update_haproxy', 'update_haproxy',
-        '/services/update_message', 'update_message',
-        '/services/nginx_extensions', 'nginx_extensions',
+        '/favicon.ico',
+        'icon',
+        '/services/status/?',
+        'status',
+        '/services/manifest',
+        'manifest',
+        '/services/message',
+        'message',
+        '/services/reconfigure',
+        'reconfigure',
+        '/services/update_haproxy',
+        'update_haproxy',
+        '/services/update_message',
+        'update_message',
+        '/services/nginx_extensions',
+        'nginx_extensions',
     )
 
     global_data = {
@@ -985,7 +897,7 @@ if __name__ == '__main__':
         'need_reload': True,
         'extensions': [],
         'ok': False,
-        'now': datetime.now()
+        'now': datetime.now(),
     }
 
     render_error_pages()
