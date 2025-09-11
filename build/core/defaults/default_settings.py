@@ -2,9 +2,8 @@ import os
 
 
 def get_secret_pass():
-    stack = os.environ['STACK']
     password = ''
-    with open(f'/run/secrets/{stack}_superadmin_pass', 'r') as f:
+    with open(f'/run/secrets/{os.environ["STACK"]}_superadmin_pass', 'r', encoding='utf-8') as f:
         password = f.read()
 
     return password
@@ -25,12 +24,8 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
-        },
-        'simple': {
-            'format': '%(levelname)s %(message)s'
-        },
+        'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'},
+        'simple': {'format': '%(levelname)s %(message)s'},
     },
     'handlers': {
         'file': {
@@ -51,10 +46,7 @@ LOGGING = {
             'level': 'DEBUG',
         }
     },
-    'root': {
-        'level': 'INFO',
-        'handlers': ['console', 'file']
-    },
+    'root': {'level': 'INFO', 'handlers': ['console', 'file']},
 }
 
 # DATASTORE
@@ -62,7 +54,7 @@ LOGGING = {
 REDIS_HOST = 'datastore'
 REDIS_PORT = 6379
 REDIS_DB = 0
-BROKER_URL = 'redis://%s:%s@%s:%d/%d' % ('default', get_secret_pass(), REDIS_HOST, REDIS_PORT, REDIS_DB)
+BROKER_URL = f'redis://default:{get_secret_pass()}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 CELERY_BROKER_URL = BROKER_URL
 CELERY_RESULT_BACKEND = BROKER_URL
 CACHES = {
@@ -72,20 +64,14 @@ CACHES = {
         'OPTIONS': {
             'PASSWORD': get_secret_pass(),
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
+        },
     }
 }
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [{
-                "host": REDIS_HOST,
-                "port": REDIS_PORT,
-                "password": get_secret_pass()
-                }]
-        }
+        'CONFIG': {'hosts': [{'host': REDIS_HOST, 'port': REDIS_PORT, 'password': get_secret_pass()}]},
     }
 }
 
@@ -101,34 +87,36 @@ DEBUG = False
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'webmail.mydomain.es'
 EMAIL_PORT = 25
-EMAIL_HOST_USER = "myuser"
-EMAIL_HOST_PASSWORD = ""
-DEFAULT_FROM_EMAIL = "migasfree-server <noreply@mydomain.es>"
-ADMINS = [('mymame', 'myuser@mydomain.es'),]
+EMAIL_HOST_USER = 'myuser'
+EMAIL_HOST_PASSWORD = ''
+DEFAULT_FROM_EMAIL = 'migasfree-server <noreply@mydomain.es>'
+ADMINS = [
+    ('mymame', 'myuser@mydomain.es'),
+]
 
-MEDIA_URL = "/public/"
+MEDIA_URL = '/public/'
 MIGASFREE_TMP_DIR = '/var/tmp'
 MIGASFREE_SECRET_DIR = '/var/run/secrets'
 
 MIGASFREE_EXTERNAL_ACTIONS = {
-    "computer": {
-        "ping": {"title": "PING", "description": "check connectivity"},
-        "ssh": {"title": "SSH", "description": "remote control via ssh"},
-        "vnc": {"title": "VNC", "description": "remote control vnc", "many": False},
-        "sync": {"title": "SYNC", "description": "ssh -> run migasfree -u"},
-        "install": {
-            "title": "INSTALL",
-            "description": "ssh -> install a package",
-            "related": ["deployment", "computer"]
+    'computer': {
+        'ping': {'title': 'PING', 'description': 'check connectivity'},
+        'ssh': {'title': 'SSH', 'description': 'remote control via ssh'},
+        'vnc': {'title': 'VNC', 'description': 'remote control vnc', 'many': False},
+        'sync': {'title': 'SYNC', 'description': 'ssh -> run migasfree -u'},
+        'install': {
+            'title': 'INSTALL',
+            'description': 'ssh -> install a package',
+            'related': ['deployment', 'computer'],
         },
     },
-    "error": {
-        "clean": {"title": "delete", "description": "delete errors"},
-    }
+    'error': {
+        'clean': {'title': 'delete', 'description': 'delete errors'},
+    },
 }
 
-MIGASFREE_ORGANIZATION = "ACME"
-MIGASFREE_HELP_DESK = "Help Desk: 555 555 555"
+MIGASFREE_ORGANIZATION = 'ACME'
+MIGASFREE_HELP_DESK = 'Help Desk: 555 555 555'
 # MIGASFREE_COMPUTER_SEARCH_FIELDS = ('name', 'id', 'ip_address', 'forwarded_ip_address')
 
 # Important!!!
@@ -137,5 +125,5 @@ SESSION_COOKIE_AGE = 1
 CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = ['*']
 
-# Uncomment and fill with FQDN value
+# Uncomment and fill with FQDN value (protocol included!!!)
 # CSRF_TRUSTED_ORIGINS = ['fill_FQDN_value']
