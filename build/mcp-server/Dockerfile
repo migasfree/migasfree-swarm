@@ -32,7 +32,7 @@ RUN apt-get update && \
     pip install torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt && \
     mkdir -p /app/model_cache && \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('embaas/sentence-transformers-multilingual-e5-large', cache_folder='/app/model_cache')" && \
+    #python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('embaas/sentence-transformers-multilingual-e5-large', cache_folder='/app/model_cache')" && \
     chown -R mcpuser:mcpuser /app/model_cache
 
 

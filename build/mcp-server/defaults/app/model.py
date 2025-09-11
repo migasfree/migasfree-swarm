@@ -8,7 +8,7 @@ import re
 from database import get_tables_catalog, get_table_schema, validate_sql, run_sql_select_query
 from docs import get_chapter_content
 from api import get_api_category
-from semantic import SemanticChapterSearch
+#from semantic import SemanticChapterSearch
 from resources import read_file
 from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API
 
