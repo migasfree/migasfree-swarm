@@ -1,8 +1,6 @@
 #!/bin/sh
 
 _WAIT="$1"
-if [ -z ${_WAIT} ]
-then
-    _WAIT="0"
-fi
+[ -z "${_WAIT}" ] && _WAIT="0"
+
 sh -c "sleep ${_WAIT};curl -X POST http://proxy:8001/services/reconfigure &> /dev/null " &
