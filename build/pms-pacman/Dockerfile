@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM archlinux:base
+FROM archlinux/archlinux:base-20250912.0.420446
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -17,7 +17,7 @@ ENV TAG=${TAG} \
     LANG=en_US.UTF-8 \
     _UID=890 \
     _GID=890 \
-    DJANGO_SETTINGS_MODULE=migasfree.settings.production 
+    DJANGO_SETTINGS_MODULE=migasfree.settings.production
 
 RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
     _DEPENDS='gnupg gzip python3 python-virtualenv curl netcat python-requests python-redis python-celery python-dateutil' && \
