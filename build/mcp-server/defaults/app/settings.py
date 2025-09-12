@@ -3,7 +3,7 @@ import os
 STACK = os.getenv("STACK","")
 FQDN = os.getenv("FQDN","localhost")
 
-AI_PATH = f"/mnt/datashare/{STACK}/pool/ai"
+AI_PATH = f"/mnt/datashare/pool/ai"
 
 CORPUS_PATH_DOCS = os.path.join(AI_PATH,"corpus/docs")
 RESUME_FILE_DOCS = os.path.join(CORPUS_PATH_DOCS,"resume.json")
