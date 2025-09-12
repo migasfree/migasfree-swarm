@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/redis/
-FROM redis:alpine3.20
+FROM redis:8.2-alpine3.22
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
