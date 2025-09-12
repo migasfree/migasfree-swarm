@@ -344,6 +344,22 @@ Steps to enable automatic certificate management:
      ./migasfree-swarm deploy
      ```
 
+## CA Root Certificate
+
+In many organizations, internet access requires installing a root certificate issued by the organization's own certificate authority. This root certificate is typically used in firewalls to inspect and control internet traffic securely.
+
+To configure this, follow these steps:
+
+  1. Open the `datashare console`
+
+  2. Navigate to the `ca-certificates` folder and copy the root certificate issued by your organization's certificate authority.
+
+  3. Redeploy the stack with the following commands:
+     ```bash
+     ./migasfree-swarm undeploy
+     ./migasfree-swarm deploy
+     ```
+
 ## Backups
 
 Both PostgreSQL and Redis databases are automatically and periodically backed up as a dump in the volume named `migasfree-swarm`.
