@@ -1,4 +1,4 @@
-FROM node:22-alpine3.21 AS build-stage
+FROM node:22-alpine3.22 AS build-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -20,7 +20,7 @@ RUN cd migasfree-frontend && \
     yarn && \
     quasar build
 
-FROM nginx:stable-alpine3.20 AS production-stage
+FROM nginx:1.29-alpine3.22 AS production-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
