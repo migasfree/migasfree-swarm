@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM debian:12.10-slim
+FROM debian:13-slim
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
