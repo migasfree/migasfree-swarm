@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM alpine:3.22
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 # https://docker-py.readthedocs.io/en/stable/plugins.html
