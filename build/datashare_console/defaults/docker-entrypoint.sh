@@ -175,5 +175,5 @@ fi
 send_message ""
 reload_proxy 3
 
-/filebrowser
+su user -c "/bin/filebrowser"
 
