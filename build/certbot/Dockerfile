@@ -1,7 +1,7 @@
-FROM certbot/certbot:latest AS origen
+FROM certbot/certbot:v5.0.0 AS origen
 
 # To remove volumes
-FROM scratch  
+FROM scratch
 
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
