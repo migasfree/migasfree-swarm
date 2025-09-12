@@ -125,7 +125,7 @@ services:
             - datastore
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
         networks:
             - {{STACK}}_network
             - proxy
@@ -415,7 +415,7 @@ services:
                 window: 180s
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/assistant:/app/backend/data
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
 
         secrets:
             - source: {{STACK}}_superadmin_pass
@@ -450,8 +450,8 @@ services:
                 max_attempts: 0
                 window: 180s
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}:/mnt/datashare
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
 
         networks:
             - {{STACK}}_network
@@ -487,7 +487,7 @@ services:
             - proxy
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/etc/certificates
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
 {% endif %}
 
 
