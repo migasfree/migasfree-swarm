@@ -1,5 +1,5 @@
 # Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Metadatos
 LABEL maintainer="alberto@migasfree.org"
@@ -38,6 +38,7 @@ RUN apt-get update && \
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/app /app
+COPY defaults/usr/bin /usr/bin
 RUN chown -R mcpuser:mcpuser /app
 
 # Cambiar a usuario no-root
