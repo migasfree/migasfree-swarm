@@ -78,6 +78,8 @@ function init_datashare {
     # plugins
     mkdir -p ${_ROOT}/plugins || :
 
+    # ca-certificates
+    mkdir -p ${_ROOT}/ca-certificates || :
 
     # Changes owner if neccesary (local volume)
     OWN=$(stat -c '%u' ${_ROOT}/keys)

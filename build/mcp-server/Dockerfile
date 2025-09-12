@@ -25,7 +25,7 @@ COPY requirements.txt .
 
 # Instalar dependencias del sistema
 RUN apt-get update && \
-    apt-get install -y postgresql-client curl  && \
+    apt-get install -y postgresql-client curl ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && \
     groupadd -r -g 890 mcpuser && useradd -r -u 890 -g mcpuser mcpuser && \

@@ -5,6 +5,7 @@ trap exit TERM
 #mkdir -p $(dirname ${MIGASFREE_CERTIFICATES_DIR})
 #ln -s /mnt/datashare/certificates ${MIGASFREE_CERTIFICATES_DIR}
 
+update-ca-certificates
 
 send_message "init certbot"
 

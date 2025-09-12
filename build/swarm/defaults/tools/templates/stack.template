@@ -124,7 +124,8 @@ services:
             - database
             - datastore
         volumes:
-            -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
         networks:
             - {{STACK}}_network
             - proxy
@@ -400,7 +401,7 @@ services:
             - EMAIL={{EMAIL}}
 
             - OLLAMA_BASE_URL={{OLLAMA_BASE_URL}}
-            - OPENWEBUI_BASE_URL=https://assistant.{{FQDN}}
+            - OPENWEBUI_BASE_URL=https://assistant-{{FQDN}}
 
             # Disables network connections for update checks and automatic model downloads.
             - OFFLINE_MODE=True
@@ -414,6 +415,8 @@ services:
                 window: 180s
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/consoles/assistant:/app/backend/data
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -448,6 +451,8 @@ services:
                 window: 180s
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}:/mnt/datashare
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
+
         networks:
             - {{STACK}}_network
             - proxy
@@ -482,6 +487,7 @@ services:
             - proxy
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/etc/certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/${STACK}/ca-certificates:/usr/local/share/ca-certificates
 {% endif %}
 
 

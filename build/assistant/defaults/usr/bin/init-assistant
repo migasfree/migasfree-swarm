@@ -43,6 +43,8 @@ do
     sleep 5
 done
 
+update-ca-certificates
+
 # Create superadmin
 # =================
 ADMIN_USER_PASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
