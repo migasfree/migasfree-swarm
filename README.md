@@ -286,9 +286,22 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Certificates
 
-When you start the Migasfree cluster for the first time, a self-signed certificate is automatically generated and saved at `/var/lib/docker/volumes/migasfree-swarm/_data/certificates/<STACK>.pem`.
+There are three methods available to configure the server certificates:    
 
-If you have a certificate issued by a trusted certificate authority, you will need to replace the auto-generated certificate with this file. The certificate must be valid for the following domain names:
+  * Self-Signed
+  * Manual Replacement 
+  * Automatic Certificate Management
+
+
+### Self-Signed
+
+When the Migasfree cluster is started for the first time, a self-signed certificate is automatically generated and saved at `/var/lib/docker/volumes/migasfree-swarm/_data/certificates/<STACK>.pem`.
+
+This allows you to quickly begin using Migasfree without additional setup.
+
+### Manual Replacement
+
+If you have a certificate issued by a trusted certificate authority, replace the auto-generated certificate with your own. The certificate must be valid for the following domain names:
 
 
 * `<FQDN>`
@@ -299,19 +312,37 @@ If you have a certificate issued by a trusted certificate authority, you will ne
 * `worker-<FQDN>`
 * `assistant-<FQDN>`
 
-For example, if you have generated a certificate with a wildcard SAN of the form `*.<FQDN>` using a DNS-01 challenge, replace the `<STACK>.pem` file with the generated certificate and the `<STACK>.pem.key` file with the corresponding private key.
 
-### LetsEncrypt
+For example, if you have obtained a wildcard certificate with a Subject Alternative Name (SAN) of the form `*.<FQDN>` using a DNS-01 challenge, replace the existing `<STACK>.pem` file with the new certificate and the `<STACK>.pem.key` file with the associated private key. Then, reconfigure the proxy as follows:
 
-The recommended approach is to configure the STACK to automatically obtain a certificate from LetsEncrypt via ACME, so you don’t have to worry about managing certificates manually. Note that the cluster must be accessible from the internet for LetsEncrypt to validate and issue the certificate.
+```bash
+    # SAMPLE
+    # ======
+    STACK=mystack
+    
+    # copy certificate
+    cp mycertificate.cer /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
 
-1. Access the `datashare console` and set the `HTTPSMODE` variable to `'auto'` in the `env.py` file.
+    # copy key
+    cp mykey.key /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem.key
+    
+    # reconfigure proxy
+    docker exec $(docker ps | grep proxy_proxy | awk '{print $1}') reconfigure
+```
 
-2. Run:
-    ```bash
-    ./migasfree-swarm undeploy
-    ./migasfree-swarm deploy
-    ```
+### Automatic Certificate Management
+
+The recommended approach is to configure the STACK to automatically obtain certificates from LetsEncrypt using the ACME protocol with the HTTP-01 challenge. This eliminates the need for manual certificate management. Note that the cluster must be accessible from the internet for Let's Encrypt to verify and issue the certificate.
+
+Steps to enable automatic certificate management:
+
+  1. Open the `datashare console` and set the `HTTPSMODE` variable to `'auto'` in the `env.py` file.
+
+  2. Redeploy the stack with the following commands:
+     ```bash
+     ./migasfree-swarm undeploy
+     ./migasfree-swarm deploy
+     ```
 
 ## Backups
 
