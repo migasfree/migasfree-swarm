@@ -597,7 +597,7 @@ body {
       <circle id="public" cx="48" cy="103.5" r="1.5" fill="orange" />
       <text id="nodes_public" class="circle-text" x="48" y="104"></text>
       <circle id="public_link" class="link" cx="55" cy="97" r="7"
-        onclick="window.open('https://' + location.hostname + '/pool/', '_blank');"
+        onclick="window.open('https://' + location.hostname + '/pool/', '_blank'); window.open('https://' + location.hostname + '/public/', '_blank');"
       >
         <title> public files </title>
       </circle>
