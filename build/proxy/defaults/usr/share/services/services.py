@@ -118,7 +118,6 @@ class message:
                         global_data['need_reload'] = True
                     else:
                         if global_data['need_reload']:
-                            reload_haproxy()
                             global_data['need_reload'] = False
                         global_data['ok'] = True
 
