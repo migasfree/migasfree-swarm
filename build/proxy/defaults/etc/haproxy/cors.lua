@@ -7,8 +7,6 @@
 -- Copyright (c) 2019. Nick Ramirez <nramirez@haproxy.com>
 -- Copyright (c) 2019. HAProxy Technologies, LLC.
 
--- https://github.com/haproxytech/haproxy-lua-cors/tree/master
-
 local M={}
 
 -- Loops through array to find the given string.
@@ -52,7 +50,7 @@ M.build_pattern = function(pattern)
   pattern = M.trim(pattern)
 
   if pattern ~= nil and pattern ~= '' then
-    -- if there is no scheme and the pattern does not begin with a dot, 
+    -- if there is no scheme and the pattern does not begin with a dot,
     -- add the generic scheme to the beginning of the pattern
     if M.specifies_scheme(pattern) == false and M.specifies_generic_scheme(pattern) == false and M.begins_with_dot(pattern) == false then
       pattern = "//" .. pattern
@@ -85,11 +83,11 @@ end
 --   e.g. //mydomain.com           : allow only http(s)://mydomain.com
 --   e.g. .mydomain.com            : allow ALL subdomains of mydomain.com from ALL source ports
 --   e.g. .mydomain.com:443        : allow ALL subdomains of mydomain.com from default HTTPS source port
--- 
+--
 --  e.g. ".mydomain.com:443, //mydomain.com:443, //localhost"
---    allows all subdomains and main domain of mydomain.com only for HTTPS from default HTTPS port and allows 
+--    allows all subdomains and main domain of mydomain.com only for HTTPS from default HTTPS port and allows
 --    all HTTP and HTTPS connections from ALL source port for localhost
---    
+--
 M.get_allowed_origin = function(origin, allowed_origins)
   if origin ~= nil then
     -- if wildcard (*) is allowed, return it, which allows all origins
@@ -117,7 +115,7 @@ end
 
 -- Adds headers for CORS preflight request and then attaches them to the response
 -- after it comes back from the server. This works with versions of HAProxy prior to 2.2.
--- The downside is that the OPTIONS request must be sent to the backend server first and can't 
+-- The downside is that the OPTIONS request must be sent to the backend server first and can't
 -- be intercepted and returned immediately.
 -- txn: The current transaction object that gives access to response properties
 -- allowed_methods: Comma-delimited list of allowed HTTP methods. (e.g. GET,POST,PUT,DELETE)
@@ -177,7 +175,7 @@ function cors_request(txn, allowed_methods, allowed_origins, allowed_headers)
   local transaction_data = {}
   local origin = nil
   local allowed_origins = core.tokenize(allowed_origins, ",")
-  
+
   if headers["origin"] ~= nil and headers["origin"][0] ~= nil then
     core.Debug("CORS: Got 'Origin' header: " .. headers["origin"][0])
     origin = headers["origin"][0]
@@ -188,7 +186,7 @@ function cors_request(txn, allowed_methods, allowed_origins, allowed_headers)
   if origin == nil or origin == '' then
     return
   end
-  
+
   transaction_data["origin"] = origin
   transaction_data["allowed_methods"] = allowed_methods
   transaction_data["allowed_origins"] = allowed_origins
@@ -212,7 +210,7 @@ function cors_response(txn)
   if transaction_data == nil then
     return
   end
-  
+
   local origin = transaction_data["origin"]
   local allowed_origins = transaction_data["allowed_origins"]
   local allowed_methods = transaction_data["allowed_methods"]
@@ -232,7 +230,7 @@ function cors_response(txn)
     if method == "OPTIONS" and txn.reply == nil then
       preflight_request_ver1(txn, allowed_methods, allowed_headers)
     end
-    
+
     core.Debug("CORS: " .. origin .. " allowed")
     txn.http:res_set_header("Access-Control-Allow-Origin", allowed_origin)
 
