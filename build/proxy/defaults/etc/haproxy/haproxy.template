@@ -11,6 +11,7 @@ global
     master-worker
 
     # https://www.haproxy.com/blog/enabling-cors-in-haproxy
+    tune.lua.bool-sample-conversion normal
     lua-load /etc/haproxy/cors.lua
 
 
