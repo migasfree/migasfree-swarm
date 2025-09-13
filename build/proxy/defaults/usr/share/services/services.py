@@ -500,7 +500,7 @@ body {
           'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + location.hostname
         );
         $("#worker_console_link title").text(
-          'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.hostname
+          'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.hostname + '/tasks'
         );
         $("#assistant_link title").text(
           'assistant:' + String.fromCharCode(10) + 'https://assistant-' + location.hostname
@@ -580,7 +580,7 @@ body {
       <circle id="worker" cx="90" cy="112" r="1.5" fill="orange" />
       <text id="nodes_worker" class="circle-text" x="90" y="112.5"></text>
       <circle id="worker_console_link" class="link" cx="97" cy="105" r="7"
-        onclick="window.open('https://worker-' + location.hostname, '_blank');"
+        onclick="window.open('https://worker-' + location.hostname + '/tasks', '_blank');"
       >
         <title> worker console </title>
       </circle>
