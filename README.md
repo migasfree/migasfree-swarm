@@ -110,7 +110,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   #     mkdir /data/cluster
   #     cd /data/cluster
 
-  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta12 config
+  docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta13 config
   ```
 
 
@@ -286,10 +286,10 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Certificates
 
-There are three methods available to configure the server certificates:    
+There are three methods available to configure the server certificates:
 
   * Self-Signed
-  * Manual Replacement 
+  * Manual Replacement
   * Automatic Certificate Management
 
 
@@ -319,13 +319,13 @@ For example, if you have obtained a wildcard certificate with a Subject Alternat
     # SAMPLE
     # ======
     STACK=mystack
-    
+
     # copy certificate
     cp mycertificate.cer /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
 
     # copy key
     cp mykey.key /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem.key
-    
+
     # reconfigure proxy
     docker exec $(docker ps | grep proxy_proxy | awk '{print $1}') reconfigure
 ```
