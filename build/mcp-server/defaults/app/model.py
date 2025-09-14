@@ -14,8 +14,24 @@ from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API
 
 
 from prompts import PROMPTS
+from docs import CONTENT_MANUAL
 
-
+def get_api_key():
+    auth_url = f"{ASSISTANT_API_URL}/api/v1/auths/signin"
+    auth_data = {"email": "admin@domain.com", "password": "wG2WrGjcSWwBZlQEPlFlFoswPntHXr"}
+    headers={"Content-Type":"application/json"}
+    auth_response = requests.post(auth_url, json=auth_data, headers=headers)
+    if auth_response.status_code != 200:
+        raise Exception("No se pudo autenticar")
+    jwt_token = auth_response.json().get("token")
+    api_key_url = f"{ASSISTANT_API_URL}/api/v1/auths/api_key"
+    headers = {"Authorization": f"Bearer {jwt_token}"}
+    api_key_response = requests.post(api_key_url, headers=headers)
+    if api_key_response.status_code == 200:
+        api_key = api_key_response.json().get("api_key")
+        return api_key
+    else:
+        raise Exception("No se pudo obtener la api_key")
 
 logging.basicConfig(
     filename='/app/mcp.log',   # Ruta del archivo donde se guardarán los logs
@@ -25,9 +41,7 @@ logging.basicConfig(
 
 
 ASSISTANT_API_URL = "http://assistant:8080"
-ASSISTANT_API_KEY = "sk-2541056f37804b6b82aeee21415a5e2d"
-
-
+ASSISTANT_API_KEY = get_api_key()
 MODEL_BASE = None
 
 
@@ -128,13 +142,13 @@ def guru(question):
 
     system_prompt = PROMPTS["classifier"]
 
-    logging.info(f"**************************** {MODEL_BASE} *****************************************")
+    logging.info(f"**************************** Model base: {MODEL_BASE} *****************************************")
     logging.info(f"🤖 QUESTION: {question}")
 
     classification = call_model(system_prompt, question)
     classification = classification.strip()
 
-    logging.info(f"🤖 CLASSICATION: {classification}")
+    logging.info(f"🤖 CLASSIFICATION: {classification}")
 
     try:
         if classification == "database":
@@ -259,71 +273,25 @@ ANSWER:
 
 
 def retrieve_docs(question):
-
-    resume_docs = read_file(RESUME_FILE_DOCS)
-
-    system_prompt = PROMPTS["docs_selector"]
-    user_prompt = f"""
-DOCUMENT CATALOG:
-{resume_docs}
-
-USER QUESTION: {question}
-
-INSTRUCTIONS:
-Analyze the user's question and select up to 3 most relevant documents from the catalog. Consider:
-- Direct topic matches
-- Related concepts and keywords
-- Context and user intent
-- Information completeness
-
-Return only a JSON array of the selected filenames, ordered by relevance.
-"""
-
-    filenames_json = call_model(system_prompt, user_prompt)
-
-
-    logging.info(f"🤖 CHAPTERS: {filenames_json}")
-    filenames = json.loads(clean_code(filenames_json))
-    context = ""
-    """
-    for filename in filenames:
-        logging.info(f"🤖 SOURCE DOCUMENT {filename}")
-        context += f"SOURCE DOCUMENT {filename}:\n{get_chapter_content(filename)}"
-    """
-
-    try:
-
-        searcher = SemanticChapterSearch()
-        chunks = searcher.search_chunks_with_context(question)
-
-        for chunk in chunks:
-            if not chunk['filename'] in filenames:
-                logging.info(f"🤖 SOURCE DOCUMENT (chunk)  {chunk['filename']}")
-                context += f"SOURCE DOCUMENT (chunk) {chunk['filename']}:\n{chunk['full_text']}"
-
-
-    except Exception as e:
-        context += f"🤖 CHUNKS: {e}"
-
-
     system_prompt = PROMPTS["docs"]
-
     user_prompt = f"""
 CONTEXT:
-{context}
+{CONTENT_MANUAL}
+
+INSTRUCTIONS:
+Please analyze the CONTEXT and answer the QUESTION.
 
 QUESTION:
 {question}
-
-INSTRUCTIONS: Please analyze the provided context and answer the question using only the
-information available in the source documents. Include the name of source documents and indicate if any
-part of the question cannot be answered based on the available context.
 """
 
     response = call_model(system_prompt, user_prompt)
 
     return f"""
-** Context lenght: ({len(context)} bytes)
+
+** Context lenght: ({len(CONTENT_MANUAL)} bytes)
+
+
 
 ANSWER:
 {response}

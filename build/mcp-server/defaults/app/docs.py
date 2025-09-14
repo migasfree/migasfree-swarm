@@ -24,3 +24,17 @@ def create_docs():
 
 def get_chapter_content(filename):
     return read_file(f"{CORPUS_PATH_DOCS}/{filename}")
+
+
+def read_docs():
+    create_docs()
+    content = ""
+    with open("resources/docs/resume.json", "r") as f:
+        CHAPTERS = json.load(f)
+    for chapter in CHAPTERS:
+        filename = chapter['filename']
+        with open(f"{CORPUS_PATH_DOCS}/{filename}", "r") as file:
+            content += file.read()
+    return content
+
+CONTENT_MANUAL = read_docs().replace('\n', '').replace('\r', '')
