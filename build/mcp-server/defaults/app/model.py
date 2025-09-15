@@ -10,43 +10,19 @@ from docs import get_chapter_content
 from api import get_api_category
 #from semantic import SemanticChapterSearch
 from resources import read_file
-from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API
+from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API, STACK, ASSISTANT_API_URL
 
+from assistant import ASSISTANT_API_KEY, MODEL_BASE
 
 from prompts import PROMPTS
 from docs import CONTENT_MANUAL
 
-
-def get_api_key():
-    auth_url = f"{ASSISTANT_API_URL}/api/v1/auths/signin"
-    EMAIL = os.environ['EMAIL']
-    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
-        PASSWORD = f.read()
-    auth_data = {"email": EMAIL, "password": PASSWORD}
-    headers={"Content-Type":"application/json"}
-    auth_response = requests.post(auth_url, json=auth_data, headers=headers)
-    if auth_response.status_code != 200:
-        raise Exception("No se pudo autenticar")
-    jwt_token = auth_response.json().get("token")
-    api_key_url = f"{ASSISTANT_API_URL}/api/v1/auths/api_key"
-    headers = {"Authorization": f"Bearer {jwt_token}"}
-    api_key_response = requests.post(api_key_url, headers=headers)
-    if api_key_response.status_code == 200:
-        api_key = api_key_response.json().get("api_key")
-        return api_key
-    else:
-        raise Exception("No se pudo obtener la api_key")
 
 logging.basicConfig(
     filename='/app/mcp.log',   # Ruta del archivo donde se guardarán los logs
     level=logging.INFO,            # Nivel mínimo de log (INFO, DEBUG, WARNING, etc.)
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-
-
-ASSISTANT_API_URL = "http://assistant:8080"
-ASSISTANT_API_KEY = get_api_key()
-MODEL_BASE = None
 
 
 def clean_code(text):
@@ -67,33 +43,11 @@ def clean_code(text):
     return text
 
 
-def get_base_model_id(id="gas"):
-    headers = {
-        "Authorization": f"Bearer {ASSISTANT_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    response = requests.get(f"{ASSISTANT_API_URL}/api/models", headers=headers)
-    if response.status_code == 200:
-        result = response.json()
-        model = next((m for m in result["data"] if m["id"] == id), None)
-        return model["info"]["base_model_id"]
-    else:
-        raise Exception("ERROR in model {id}: base_model_id not found")
-        return ""
-
-
 def call_model(system_prompt, user_prompt):
-
-    global MODEL_BASE
-
-    if MODEL_BASE is None:
-        MODEL_BASE = get_base_model_id("gas")
-
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-
 
     headers = {
         "Authorization": f"Bearer {ASSISTANT_API_KEY}",
@@ -129,14 +83,15 @@ def call_model(system_prompt, user_prompt):
             else:
                 wait_seconds = 2 ** attempt  # Backoff exponencial por defecto
 
-            logging.info(f"⚠️ Límite alcanzado. Esperando {wait_seconds} segundos antes del intento {attempt + 1}/{max_retries}...")
+            logging.info(f"❗  Limit reached. Waiting {wait_seconds} seconds before attempt {attempt + 1}/{max_retries}...")
             time.sleep(wait_seconds)
 
         else:
             logging.info(f"❌ Error {response.status_code}: {response.text}")
-            return f"❌ Error {response.status_code}: {response.text}"
+            raise RuntimeError(f"❌ Error HTTP {response.status_code}: {response.text}")
 
-    return "❌ Se agotaron los intentos tras múltiples errores 429."
+    logging.info(f"❌ Error 429. We couldn't complete your request because too many attempts failed. Please try again later.")
+    raise RuntimeError("❌ We couldn't complete your request because too many attempts failed. Please try again later.")
 
 
 
@@ -149,7 +104,11 @@ def guru(question):
     logging.info(f"**************************** Model base: {MODEL_BASE} *****************************************")
     logging.info(f"🤖 QUESTION: {question}")
 
-    classification = call_model(system_prompt, question)
+    try:
+        classification = call_model(system_prompt, question)
+    except Exception as e:
+        return f"❌ {str(e)}"
+
     classification = classification.strip()
 
     logging.info(f"🤖 CLASSIFICATION: {classification}")
@@ -168,7 +127,7 @@ def guru(question):
         else:
             answer = "I’m not sure how to address this matter."
     except Exception as e:
-        answer = f"❌ {e}"
+        answer = f"❌ {str(e)}"
 
 
     logging.info(answer)
@@ -197,8 +156,10 @@ QUESTION: {question}
 
 Return only the JSON array of relevant table names:
 """
-
-    tables_json = call_model(system_prompt, user_prompt)
+    try:
+        tables_json = call_model(system_prompt, user_prompt)
+    except Exception as e:
+        return f"❌ {str(e)}"
 
     logging.info(f"🤖 TABLES: {tables_json}")
     tables = json.loads(clean_code(tables_json))
@@ -211,7 +172,7 @@ Return only the JSON array of relevant table names:
 
 def retrieve_data(question):
     """
-    Dada una question, genera una SELECT de SQL, la ejecuta y devuelve los datos
+    Given a question, generates a SQL SELECT statement, executes it, and returns the data
     """
 
     schema = retrieve_schema_db(question)
@@ -229,7 +190,13 @@ Generate the SQL SELECT statement following all requirements above.
     # =========================
     check = {"valid": False}
     for i in range(3):
-        select = call_model(system_prompt, user_prompt)
+        time.sleep(1)
+        try:
+            select = call_model(system_prompt, user_prompt)
+        except Exception as e:
+            return f"❌ {str(e)}"
+
+
         select = clean_code(select)
         check = validate_sql(select)
 
@@ -249,7 +216,6 @@ select {i}:
 """
 
             logging.info(f"❌ {user_prompt}")
-
 
     if not check["valid"]:
         return f"""
@@ -288,13 +254,14 @@ Please analyze the CONTEXT and answer the QUESTION.
 QUESTION:
 {question}
 """
-
-    response = call_model(system_prompt, user_prompt)
+    try:
+        response = call_model(system_prompt, user_prompt)
+    except Exception as e:
+        return f"❌ {str(e)}"
 
     return f"""
 
 ** Context lenght: ({len(CONTENT_MANUAL)} bytes)
-
 
 
 ANSWER:
@@ -321,8 +288,10 @@ Analyze the user's question and select up to 2 most relevant documents from the 
 
 Return only a JSON array of the selected filenames, ordered by relevance. No comments. ONLY JSON.
 """
-
-    filenames_json = call_model(system_prompt, user_prompt)
+    try:
+        filenames_json = call_model(system_prompt, user_prompt)
+    except Exception as e:
+        return f"❌ {str(e)}"
 
     logging.info(f"🤖 APIS: {filenames_json}")
 
@@ -352,8 +321,10 @@ Please provide:
 A detailed explanation of the relevant API endpoints
 Any important considerations or limitations
 """
-
-    response = call_model(system_prompt, user_prompt)
+    try:
+        response = call_model(system_prompt, user_prompt)
+    except Exception as e:
+        return f"❌ {str(e)}"
 
     return f"""
 ** Context lenght: ({len(context)} bytes)
@@ -377,8 +348,10 @@ QUESTION: {question}
 Please provide:
 A script
 """
-
-    response = call_model(system_prompt, user_prompt)
+    try:
+        response = call_model(system_prompt, user_prompt)
+    except Exception as e:
+        return f"❌ {str(e)}"
 
     return f"""
 ** Context lenght: ({len(context)} bytes)
@@ -387,3 +360,8 @@ ANSWER:
 {response}
 
 """
+
+
+
+
+

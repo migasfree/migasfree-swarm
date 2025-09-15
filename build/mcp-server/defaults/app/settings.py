@@ -1,7 +1,12 @@
 import os
 
-STACK = os.getenv("STACK","")
+STACK = os.getenv("STACK", "")
+
+EMAIL = os.getenv("EMAIL", "admin@domain.com")
+
 FQDN = os.getenv("FQDN","localhost")
+
+ASSISTANT_API_URL = "http://assistant:8080"
 
 AI_PATH = f"/mnt/datashare/pool/ai"
 
