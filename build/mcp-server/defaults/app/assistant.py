@@ -64,9 +64,7 @@ def wait_for_url(url, timeout=10, check_interval=0.5):
 
 def wait_mcp_server():
     url = "http://localhost:8080/openapi.json"
-    if not wait_for_url(url, timeout=10):
-        sys.exit(1)
-
+    wait_for_url(url, timeout=60)
 
 def verify_connection():
     wait_mcp_server()
