@@ -16,9 +16,13 @@ from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API
 from prompts import PROMPTS
 from docs import CONTENT_MANUAL
 
+
 def get_api_key():
     auth_url = f"{ASSISTANT_API_URL}/api/v1/auths/signin"
-    auth_data = {"email": "admin@domain.com", "password": "wG2WrGjcSWwBZlQEPlFlFoswPntHXr"}
+    EMAIL = os.environ['EMAIL']
+    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
+        PASSWORD = f.read()
+    auth_data = {"email": EMAIL, "password": PASSWORD}
     headers={"Content-Type":"application/json"}
     auth_response = requests.post(auth_url, json=auth_data, headers=headers)
     if auth_response.status_code != 200:
