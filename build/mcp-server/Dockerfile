@@ -34,7 +34,10 @@ COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/app /app
 COPY defaults/usr/bin /usr/bin
 
-RUN chown -R mcpuser:mcpuser /app
+RUN chown -R mcpuser:mcpuser /app && \
+    echo "mcpuser ALL=(ALL) NOPASSWD: /usr/sbin/update-ca-certificates" >> /etc/sudoers
+
+USER mcpuser
 
 EXPOSE 8080
 

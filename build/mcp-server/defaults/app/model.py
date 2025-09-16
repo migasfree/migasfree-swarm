@@ -12,11 +12,13 @@ from api import get_api_category
 from resources import read_file
 from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API, STACK, ASSISTANT_API_URL
 
-from assistant import ASSISTANT_API_KEY, MODEL_BASE
+from assistant import ASSISTANT_API_KEY, get_base_model_id
 
 from prompts import PROMPTS
 from docs import CONTENT_MANUAL
 
+
+MODEL_BASE = None
 
 logging.basicConfig(
     filename='/app/mcp.log',   # Ruta del archivo donde se guardarán los logs
@@ -44,6 +46,8 @@ def clean_code(text):
 
 
 def call_model(system_prompt, user_prompt):
+    global MODEL_BASE
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
@@ -98,6 +102,10 @@ def call_model(system_prompt, user_prompt):
 
 
 def guru(question):
+
+    global MODEL_BASE
+
+    MODEL_BASE = get_base_model_id("gas")
 
     system_prompt = PROMPTS["classifier"]
 
