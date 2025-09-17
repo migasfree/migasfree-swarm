@@ -5,7 +5,7 @@ set -e
 MIGASFREE_SECRET_DIR=/var/run/secrets
 
 
-function set_TZ {
+set_TZ() {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]
     then
@@ -35,14 +35,14 @@ echo "
                         ●●
 
         $SERVICE ($TAG)
-        $(/filebrowser version)
+        $(filebrowser version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)
         Processes: $(nproc)
 
 "
 
-function init_datashare {
+init_datashare() {
     # Structure of paths in datashare
 
     # conf
@@ -91,9 +91,8 @@ function init_datashare {
     # /pool/install
 
 
-    if [ "${HTTPSMODE}" = "manual" ];
+    if [ "${HTTPSMODE}" = "manual" ]
     then
-        #cp ${MIGASFREE_SECRET_DIR}/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
         cp /mnt/cluster/certificates/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
 
         cat <<-EOF > ${_ROOT}/pool/install/migasfree-client.txt
@@ -124,15 +123,14 @@ EOF
 }
 
 
-function waiting_fs {
-
+waiting_fs() {
     if [ "${DATASHARE_FS}" = "nfs" ]
     then
         echo "waiting NFS..."
         while true
         do
             RET=$(mount | grep " type nfs4 " | grep /mnt/cluster) || :
-            if ! [ -z $RET ]
+            if ! [ -z "$RET" ]
             then
                 break
             else
@@ -151,9 +149,6 @@ _DATABASE="${_ROOT}/consoles/datashare/database.db"
 waiting_fs
 init_datashare
 
-
-
-
 cat << EOF > /.filebrowser.json
 {
   "port": 80,
@@ -167,13 +162,12 @@ EOF
 
 if ! [ -f ${_DATABASE} ]
 then
-    /filebrowser config init --branding.name "datashare"
-    /filebrowser users add $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name) $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass) --perm.admin
-    /filebrowser users add assistant assistant --scope /consoles/assistant/ --lockPassword --perm.download --perm.share
+    su user -c "/bin/filebrowser config init --branding.name datashare"
+    su user -c "/bin/filebrowser users add $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name) $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass) --perm.admin"
+    su user -c "/bin/filebrowser users add assistant assistant --scope /consoles/assistant/ --lockPassword --perm.download --perm.share"
 fi
 
 send_message ""
 reload_proxy 3
 
 su user -c "/bin/filebrowser"
-
