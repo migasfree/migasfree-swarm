@@ -200,7 +200,7 @@ mkdir -p $(dirname ${MIGASFREE_TMP_DIR})
 ln -s ${DATASHARE_MOUNT_PATH}/tmp ${MIGASFREE_TMP_DIR}
 
 export MIGASFREE_PLUGINS_DIR=/migasfree/core/pms/plugins
-cp -r ${DATASHARE_MOUNT_PATH}/plugins/* ${MIGASFREE_PLUGINS_DIR}
+cp -r ${DATASHARE_MOUNT_PATH}/plugins/* ${MIGASFREE_PLUGINS_DIR} || :
 
 . /venv/bin/activate
 
