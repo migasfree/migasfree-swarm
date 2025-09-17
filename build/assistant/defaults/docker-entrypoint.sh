@@ -5,5 +5,5 @@ cd /app/backend
 
 init-assistant &
 
-reload_proxy 5
+reload_proxy 30
 bash start.sh
