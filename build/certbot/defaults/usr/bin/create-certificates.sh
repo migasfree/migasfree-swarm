@@ -2,7 +2,7 @@
 
 # Request certificates from Let's Encrypt
 certbot certonly --standalone \
---non-interactive --agree-tos --email ${EMAIL} --http-01-port=380 \
+--non-interactive --agree-tos --http-01-port=380 \
 --cert-name ${FQDN} \
 -d ${FQDN} -d portainer-${FQDN} -d datastore-${FQDN} -d database-${FQDN} -d datashare-${FQDN} -d worker-${FQDN} -d assistant-${FQDN}
 

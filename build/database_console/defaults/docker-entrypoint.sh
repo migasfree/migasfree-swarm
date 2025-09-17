@@ -3,6 +3,7 @@ set -e
 
 MIGASFREE_SECRET_DIR=/var/run/secrets
 
+export PGADMIN_DEFAULT_EMAIL="$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name)@${FQDN}"
 
 function set_TZ {
     # send_message "setting the time zone"
@@ -19,7 +20,7 @@ send_message "starting ${SERVICE:(${#STACK})+1}"
 set_TZ
 
 
-chown pgadmin:root /run/pgadmin 
+chown pgadmin:root /run/pgadmin
 chown pgadmin:root /pgadmin4/config_distro.py
 
 send_message "init database_console"

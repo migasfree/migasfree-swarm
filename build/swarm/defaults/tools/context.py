@@ -108,7 +108,6 @@ class ContextLoader:
         # ===============
         self.prompt("FQDN", "migasfree.acme.com")
         self.default("TZ", "Europe/Madrid")
-        self.default("EMAIL", "admin@domain.com")
 
         # Network Management
         # ==================
@@ -120,15 +119,14 @@ class ContextLoader:
         self.default("PORT_HTTPS", "443")
         self.default("HTTPSMODE", "manual")
 
-        # TODO
-        # ====
-        self.default("SUPERADMIN_NAME", "migasfree")
 
         # Postgres (database)
         # ===================
         self.default("POSTGRES_HOST", "database")
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
+        self.default("POSTGRES_USER", "migasfree")
+
 
         # Redis (datastore)
         # =================
@@ -198,11 +196,6 @@ class ContextLoader:
 #     Set the system time zone.
 # {line}
 """,
-            "EMAIL": f"""# {line}
-# EMAIL
-#     email account for notifications and to access the database management console.
-# {line}
-""",
             "NETWORK_MNG": f"""# {line}
 # NETWORK_MNG
 #     Networks or hosts that are permitted to access the administrative consoles.
@@ -227,11 +220,6 @@ class ContextLoader:
 #     Accepted values are 'manual' or 'auto'.
 #     In manual mode, self-signed certificates are created.
 #     In auto mode, certificates are issued using the ACME HTTP-01 challenge provided by Let's Encrypt.
-# {line}
-""",
-            "SUPERADMIN_NAME": f"""# {line}
-# SUPERADMIN_NAME
-#     PostgreSQL database administrative username."
 # {line}
 """,
 

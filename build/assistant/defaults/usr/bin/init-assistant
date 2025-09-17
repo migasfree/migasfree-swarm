@@ -48,6 +48,8 @@ update-ca-certificates
 # Create superadmin
 # =================
 ADMIN_USER_PASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
+EMAIL="$(cat /run/secrets/${STACK}_superadmin_name)@${FQDN}"
+
 _CODE=$(api_request "POST" \
     '/api/v1/auths/signup' \
     '{"email": "'${EMAIL}'", "password": "'${ADMIN_USER_PASSWORD}'", "name": "Admin"}'

@@ -104,7 +104,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
@@ -140,7 +140,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
@@ -173,7 +173,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
@@ -206,7 +206,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
@@ -290,10 +290,10 @@ services:
         environment:
             - TZ={{TZ}}
             - STACK={{STACK}}
+            - FQDN={{FQDN}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - PGADMIN_DEFAULT_EMAIL={{EMAIL}}
             - PGADMIN_DEFAULT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
             - PGADMIN_LISTEN_PORT=5050
             - PGADMIN_LISTEN_ADDRESS=0.0.0.0
@@ -301,6 +301,7 @@ services:
             replicas: 1
         secrets:
             - source: {{STACK}}_superadmin_pass
+            - source: {{STACK}}_superadmin_name
         volumes:
 #            - database_console:/var/lib/pgadmin
 #            - datashare:{{DATASHARE_MOUNT_PATH}}
@@ -398,8 +399,6 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - GOOGLE_API_KEY={{GOOGLE_API_KEY}}
-            - EMAIL={{EMAIL}}
-
             - OLLAMA_BASE_URL={{OLLAMA_BASE_URL}}
             - OPENWEBUI_BASE_URL=https://assistant-{{FQDN}}
 
@@ -418,6 +417,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
 
         secrets:
+            - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
         depends_on:
             - mcp-server
@@ -434,12 +434,12 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
-            - POSTGRES_USER={{SUPERADMIN_NAME}}
+            - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
-            - EMAIL={{EMAIL}}
         secrets:
+            - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
         depends_on:
             - core
@@ -472,7 +472,6 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
-            - EMAIL={{EMAIL}}
         deploy:
             replicas: 1
             restart_policy:
