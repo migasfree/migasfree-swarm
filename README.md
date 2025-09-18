@@ -101,6 +101,22 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 * [Install docker engine](https://docs.docker.com/engine/install) on each Swarm node.
 
+#### 5. Datastore Node Configuration Requirement (Redis)
+
+  * To ensure proper operation and avoid potential
+    failures during background save (RDB snapshots) or replication, the Linux kernel parameter vm.overcommit_memory must be set to 1 on the node where the Redis (datastore) is running.
+
+    This setting allows the kernel to permit memory overcommitment, which is critical for Redis because it relies on the ability to fork child processes that temporarily require more memory than the system may physically have available.
+
+    To make this setting persistent across reboots, add the following line to `/etc/sysctl.conf`:
+
+    ```text
+    vm.overcommit_memory=1
+    ```
+
+    And reboot the node.
+
+
 ## Deployment
 
 * On the host that will act as the `Swarm manager`, create an empty directory and run:
