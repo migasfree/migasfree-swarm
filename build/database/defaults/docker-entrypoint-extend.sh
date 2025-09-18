@@ -37,7 +37,7 @@ function cron_init
 }
 
 
-if nc -z database 5432 >/dev/null
+if nc -z database 5432 >/dev/null 2>&1
 then
    echo "WARNING: Only one database replica is allowed."
    exit 1
