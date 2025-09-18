@@ -1,6 +1,6 @@
 #!/bin/sh
 
-pg_isready
+pg_isready -d "${POSTGRES_DB}" -U "${POSTGRES_USER}"
 if [ $? -eq 0 ]
 then
     if ! [ -f /var/tmp/healthy ]
