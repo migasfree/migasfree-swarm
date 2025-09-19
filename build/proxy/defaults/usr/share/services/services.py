@@ -10,10 +10,13 @@ import select
 import requests
 import web
 import dns.resolver
+import html
+import datetime
 
 from datetime import datetime
 from web.httpserver import StaticMiddleware
 from jinja2 import Template
+from collections import deque
 
 FILECONFIG = '/etc/haproxy/haproxy.cfg'
 FILECONFIG_TEMPLATE = '/etc/haproxy/haproxy.template'
@@ -28,6 +31,7 @@ HTTPSMODE = os.environ['HTTPSMODE']
 TAG = os.environ['TAG']
 NETWORK_MNG = os.environ['NETWORK_MNG']
 
+MESSAGES_LOG = deque(maxlen=500)
 
 # Global Variable
 # ===============
@@ -54,6 +58,81 @@ class manifest:
 /services-static/*
         """
         return Template(template).render(context)
+
+
+class logs:
+    def GET(self):
+        web.header('Content-Type', 'text/html; charset=utf-8')
+        try:
+            if not list(MESSAGES_LOG):
+                return "<p>No hay registros disponibles.</p>"
+            columnas = ["text", "service", "node", "container", "time"]
+
+            html_out = """<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="refresh" content="2">
+  </head>
+<style>
+@font-face {
+  font-family: 'Virgil';
+  src: url('/services-static/fonts/Virgil.ttf') format('truetype');
+}
+
+h1 {
+  text-align: center;
+}
+
+body {
+  width: 100%;
+  margin: 0 auto;
+  font-family: 'Virgil', sans-serif;
+  color: #222;
+}
+
+table {
+  margin-left: auto;
+  margin-right: auto;
+  border-collapse: collapse;  /* Une los bordes de celdas adyacentes */
+  border: 1px solid black;    /* Borde externo de la tabla */
+}
+
+th, td {
+  border: 1px solid black;    /* Borde en cada celda */
+  padding: 5px;               /* Espacio interno para mejor lectura */
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+</style>
+<title>Messages Log</title>
+
+"""
+
+            html_out += "<body><h1>Messages Log</h1><table>\n"
+            html_out += "  <thead>\n    <tr>\n"
+            for col in columnas:
+                html_out += f"      <th>{html.escape(str(col))}</th>\n"
+            html_out += "    </tr>\n  </thead>\n"
+            html_out += "  <tbody>\n"
+            for fila in list(MESSAGES_LOG):
+                html_out += "    <tr>\n"
+                for col in columnas:
+                    valor = fila.get(col, "")
+                    if col=="text" and valor == "" :
+                        valor = "🚀"
+                    html_out += f"      <td>{html.escape(str(valor))}</td>\n"
+                html_out += "    </tr>\n"
+            html_out += "  </tbody>\n</table></body>"
+            html_out += '<image id="spoon" src="/services-static/img/spoon-checking-1.svg" height="64" width="64" />'
+            return html_out
+        except Exception as e:
+            return f"<p>Error al procesar la petición: {html.escape(str(e))}</p>"
 
 
 class message:
@@ -137,6 +216,8 @@ class message:
         except Exception:
             print('ERROR', web.data())
             data = {}
+        data["time"] = datetime.now().strftime("%Y%m%d %H:%M:%S")
+        MESSAGES_LOG.append(data)
         ips = dns.resolver.resolve('tasks.proxy', 'A')
         for ip in ips:
             requests.post(f'http://{str(ip)}:8001/services/update_message', json=data)
@@ -514,7 +595,9 @@ body {
       <-- force download file spoon-disconnect.svg-->
       <image id="spoon-disconnected" href="/" x=0 y=0 height="0" width="0" />
 
-      <image id="spoon" href="/" x=155 y=120 height="10" width="10" />
+      <a href="/services/logs">
+          <image id="spoon" href="/" class="link" x=155 y=120 height="10" width="10" />
+      </a>
 
       <switch>
         <foreignObject x="145.5" y="107.5" width="38" height="10" font-size="2" color="#999999">
@@ -888,6 +971,8 @@ if __name__ == '__main__':
         'update_message',
         '/services/nginx_extensions',
         'nginx_extensions',
+        '/services/logs',
+        'logs'
     )
 
     global_data = {
