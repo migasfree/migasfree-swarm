@@ -36,22 +36,6 @@ function wait {
     exit 1
 }
 
-function send_message {
-    local _POINT="http://proxy:8001/services/message"
-    local _DATA="{ \"text\":\"$1\", \"service\":\"$SERVICE\" ,\"node\":\"$NODE\",\"container\":\"$HOSTNAME\" }"
-
-    until [ $(curl -s -o /dev/null  -w '%{http_code}' -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT) = "200" ]
-    do
-        sleep 2
-    done
-}
-
-function reload_proxy {
-    curl -d "" -X POST http://proxy:8001/services/reconfigure &> /dev/null
-}
-
-
-
 send_message "init worker console"
 send_message "wait worker"
 
@@ -93,7 +77,6 @@ echo "timezone = '${TZ}'" >> ${CONFIG_FILE}
 
 send_message ""
 
-export FLOWER_UNAUTHENTICATED_API=True 
-#export FLOWER_BASIC_AUTH=default:oh4zd_JKphLw7AWwE_lJ
-celery --config celeryconfig flower --persistent=True --state_save_interval=15000 --db="/data/flower" --broker-api=${BROKER_URL}/api/ 
-#--basic-auth=admin:oh4zd_JKphLw7AWwE_lJ
+export FLOWER_UNAUTHENTICATED_API=True
+celery --config celeryconfig flower --persistent=True --state_save_interval=15000 --db="/data/flower" --broker-api=${BROKER_URL}/api/
+
