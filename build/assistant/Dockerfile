@@ -5,7 +5,8 @@ LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 ARG TAG=latest
 
 ENV TAG=${TAG} \
-    RUNTIME_DEPENDS='tzdata'
+    RUNTIME_DEPENDS='tzdata' \
+    USE_EMBEDDING_MODEL_DOCKER=''
 
 COPY VERSION /VERSION
 
