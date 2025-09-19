@@ -3,7 +3,13 @@
 _MESSAGE="$1"
 _POINT="http://proxy:8001/services/message"
 _DATA="{ \"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\" ,\"node\":\"$NODE\",\"container\":\"$HOSTNAME\" }"
-until [ $(curl -s -o /dev/null  -w '%{http_code}' -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT) = "200" ]
-do
-    sleep 2
+
+while true; do
+    HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT)
+    if [ "$HTTP_CODE" = "200" ]; then
+        break
+    else
+        echo "Received HTTP status $HTTP_CODE when sending message to proxy:8001. Retrying in 2 seconds..."
+        sleep 2
+    fi
 done
