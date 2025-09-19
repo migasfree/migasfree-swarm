@@ -595,7 +595,7 @@ body {
       <-- force download file spoon-disconnect.svg-->
       <image id="spoon-disconnected" href="/" x=0 y=0 height="0" width="0" />
 
-      <a href="/services/logs">
+      <a href="/services/logs" target="_blank">
           <image id="spoon" href="/" class="link" x=155 y=120 height="10" width="10" />
       </a>
 
