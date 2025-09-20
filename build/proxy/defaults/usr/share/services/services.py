@@ -16,6 +16,7 @@ import datetime
 from datetime import datetime
 from web.httpserver import StaticMiddleware
 from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from collections import deque
 
 FILECONFIG = '/etc/haproxy/haproxy.cfg'
@@ -56,6 +57,7 @@ class manifest:
         template = """CACHE MANIFEST
 /services/status
 /services-static/*
+/services/logs
         """
         return Template(template).render(context)
 
@@ -63,76 +65,22 @@ class manifest:
 class logs:
     def GET(self):
         web.header('Content-Type', 'text/html; charset=utf-8')
+        columnas = ["text", "service", "node", "container", "time"]
+        env = Environment(
+            loader=FileSystemLoader('services-static/templates'),
+            autoescape=select_autoescape(['html', 'xml'])
+        )
+        template = env.get_template('logs.html')
         try:
-            if not list(MESSAGES_LOG):
-                return "<p>No hay registros disponibles.</p>"
-            columnas = ["text", "service", "node", "container", "time"]
-
-            html_out = """<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta http-equiv="refresh" content="2">
-  </head>
-<style>
-@font-face {
-  font-family: 'Virgil';
-  src: url('/services-static/fonts/Virgil.ttf') format('truetype');
-}
-
-h1 {
-  text-align: center;
-}
-
-body {
-  width: 100%;
-  margin: 0 auto;
-  font-family: 'Virgil', sans-serif;
-  color: #222;
-}
-
-table {
-  margin-left: auto;
-  margin-right: auto;
-  border-collapse: collapse;  /* Une los bordes de celdas adyacentes */
-  border: 1px solid black;    /* Borde externo de la tabla */
-}
-
-th, td {
-  border: 1px solid black;    /* Borde en cada celda */
-  padding: 5px;               /* Espacio interno para mejor lectura */
-}
-
-img {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-</style>
-<title>Messages Log</title>
-
-"""
-
-            html_out += "<body><h1>Messages Log</h1><table>\n"
-            html_out += "  <thead>\n    <tr>\n"
-            for col in columnas:
-                html_out += f"      <th>{html.escape(str(col))}</th>\n"
-            html_out += "    </tr>\n  </thead>\n"
-            html_out += "  <tbody>\n"
-            for fila in list(MESSAGES_LOG):
-                html_out += "    <tr>\n"
-                for col in columnas:
-                    valor = fila.get(col, "")
-                    if col=="text" and valor == "" :
-                        valor = "🚀"
-                    html_out += f"      <td>{html.escape(str(valor))}</td>\n"
-                html_out += "    </tr>\n"
-            html_out += "  </tbody>\n</table></body>"
-            html_out += '<image id="spoon" src="/services-static/img/spoon-checking-1.svg" height="64" width="64" />'
-            return html_out
+            # Envía columnas pero no registros, porque se cargarán por AJAX
+            return template.render(columnas=columnas)
         except Exception as e:
-            return f"<p>Error al procesar la petición: {html.escape(str(e))}</p>"
+            return f"<p>Error: {html.escape(str(e))}</p>"
+
+class logs_json:
+    def GET(self):
+        web.header('Content-Type', 'application/json')
+        return json.dumps(list(MESSAGES_LOG))
 
 
 class message:
@@ -259,458 +207,16 @@ def make_global_data(data):
 
 
 def status_page(context):
-    template = """
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width">
-
-<style>
-@font-face {
-  font-family: 'Virgil';
-  src: url('/services-static/fonts/Virgil.ttf') format('truetype');
-}
-
-.tooltip {
-  position: relative;
-  display: inline-block;
-  border-bottom: 1px dotted black;
-}
-
-.tooltip .tooltiptext {
-  visibility: hidden;
-  width: 120px;
-  background-color: #555;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 5px 0;
-  position: absolute;
-  z-index: 1;
-  bottom: 125%;
-  left: 50%;
-  margin-left: -60px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.tooltip .tooltiptext::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #555 transparent transparent transparent;
-}
-
-.tooltip:hover .tooltiptext {
-  visibility: visible;
-  opacity: 1;
-}
-
-.link {
-  fill: green;
-  fill-opacity: 0.07;
-  cursor: pointer;
-}
-
-.circle-text {
-  text-anchor: middle;
-  font-size: 3px;
-}
-
-body {
-  width: 100%;
-  margin: 0 auto;
-  font-family: 'Virgil', sans-serif;
-  color: #ddd;
-}
-</style>
-
-    <title>Status</title>
-
-    <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
-
-    <script type="text/javascript">
-      function sleep(time) {
-        return new Promise((resolve) => setTimeout(resolve, time));
-      }
-
-      let time = +new Date;
-      let circles = "#proxy, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer";
-      let links = "#proxy_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link, #core_link";
-      let serv = ""
-
-      $(document).ready(function () {
-        setInterval(function () {
-          let now = +new Date;
-          let retraso = parseInt((now - time) / 1000);
-
-          if (retraso > 1.5) {
-            $("#message").text('disconnected');
-            $("#message_serv").text('');
-            $("#spoon").attr("href", "/services-static/img/spoon-disconnect.svg");
-            $(circles).hide(200);
-            $(links).hide(200);
-          }
-
-          $.ajax({
-            url: '/services/message',
-            success: function (data) {
-              function missing_pms() {
-                let _missing = false;
-                let _message = false;
-                let _service = "";
-                let _nodes = 0;
-                let _stack = data["stack"];
-
-                for (const [key, value] of Object.entries(data['services'])) {
-                  if (key.startsWith(_stack+'_pms-')) {
-                    if (data['services'][key]["missing"]) {
-                      _missing = true;
-                      _service = key; // last service found in data
-                    }
-                    if (data['services'][key]["message"] != "" ) {
-                      _message = true;
-                      _service = key; // last service found in data
-                    }
-                    _nodes += data['services'][key]["nodes"]
-                  }
-                }
-                if (_message) {
-                  _missing = false;
-                }
-
-                if (_missing) {
-                  $("#pms").attr('fill', 'red');
-                  $("#pms").show(500);
-                } else if (_message) {
-                  $("#pms").attr('fill', 'orange');
-                  $("#pms").hide(500);
-                  $("#pms").show(500);
-                } else {
-                  $("#pms").attr('fill', '#a9dfbf'); // GREEN
-                  $("#pms").show(500);
-                }
-
-                if (_nodes < 2) {
-                  $("#nodes_pms").text("");
-                } else {
-                  $("#nodes_pms").text(_nodes);
-                }
-
-                return _service;
-              }
-
-              function missing_image(id) {
-                let services = data["services"];
-                let _missing = false;
-                _missing = services[`${_stack}_${id}`]["missing"];
-                if (_missing) {
-                  document.getElementById(id+'_svg').style.display = 'none';
-                } else {
-                  document.getElementById(id+'_svg').style.display = 'block';
-                }
-              }
-
-
-              function missing_console(id) {
-                let services = data["services"];
-                let _missing = false;
-                _missing = services[`${_stack}_${id}`]["missing"];
-                if (_missing) {
-                  $(`#${id}_link`).hide(500);
-                } else {
-                  $(`#${id}_link`).show(500);
-                }
-              }
-
-              function missing(id) {
-                let services = data["services"];
-                let _missing = false;
-                let _message = "";
-                let _nodes = 0;
-                let _stack = data["stack"];
-                _missing = services[`${_stack}_${id}`]["missing"];
-                _message = services[`${_stack}_${id}`]["message"];
-                _nodes = services[`${_stack}_${id}`]["nodes"];
-
-                if (_missing) {
-                  $(`#${id}`).attr('fill', 'red');
-                  $(`#${id}`).show(500);
-                  services[`${_stack}_${id}`]["message"]='missing';
-                } else if (_message != "") {
-                  $(`#${id}`).attr('fill', 'orange');
-                  $(`#${id}`).hide(500);
-                  $(`#${id}`).show(500);
-                } else {
-                  $(`#${id}`).attr('fill', '#a9dfbf'); // GREEN
-                  $(`#${id}`).show(500);
-                }
-
-                if (_nodes < 2) {
-                  $(`#nodes_${id}`).text("");
-                } else {
-                  $(`#nodes_${id}`).text(_nodes);
-                }
-              }
-
-              time = +new Date;
-              let _stack = data["stack"];
-              missing("proxy");
-              missing("console");
-              missing("core");
-              missing("beat");
-              missing("worker");
-              missing("public");
-              missing("database");
-              missing("datastore");
-              missing("portainer");
-              missing("datashare_console");
-
-              missing_console("console");
-              missing_console("portainer");
-              missing_console("proxy");
-              missing_console("public");
-              missing_console("core");
-              missing_console("database_console");
-              missing_console("datastore_console");
-              missing_console("datashare_console");
-              missing_console("worker_console");
-
-              missing_console("assistant");
-              missing_image("assistant");
-
-              let message_pms = missing_pms();
-              let message_from = "";
-              let message_serv = `${_stack}_${serv}`;
-
-              if (serv == "") {
-                message_serv = data['last_message'];
-              } else if (serv == "datashare_console") {
-                message_serv = `${_stack}_${serv}`;
-              }
-
-              if (typeof(data) != "undefined") {
-                if (serv == "pms" && message_pms != "") {
-                  message = data['services'][message_pms]['message'];
-                  message_serv = message_pms;
-                  message_from = `${data['services'][message_pms]['container']}@${data['services'][message_pms]['node']}`;
-                } else {
-                  message = data['services'][message_serv]['message'];
-                  message_from = `${data['services'][message_serv]['container']}@${data['services'][message_serv]['node']}`;
-                }
-              }
-
-              let sprite;
-              if (data['ok']) {
-                sprite = parseInt((now / 1000) % 2);
-                $("#spoon").attr("href", `/services-static/img/spoon-ok-${sprite}.svg`);
-                $(".bocadillo").hide(200);
-
-              } else if (message_serv in data['services'] && data['services'][message_serv]['missing']) {
-                sprite = parseInt((now / 1000) % 2);
-                $("#spoon").attr("href", `/services-static/img/spoon-starting-${sprite}.svg`);
-                $(".bocadillo").show(200);
-              } else {
-                sprite = parseInt((now / 1000) % 3);
-                $("#spoon").attr("href", `/services-static/img/spoon-checking-${sprite}.svg`);
-                $(".bocadillo").show(200);
-              }
-
-              $("#stack").text(data['stack']);
-              $("#tag").text(data['tag']);
-
-              if (message == "") {
-                $("#message").text('ready');
-              } else {
-                $("#message").text(message);
-              }
-
-              $("#message_serv").text(message_serv.split('_').slice(1).join('_'));
-
-              $("#message_from").text(message_from);
-
-              if (! location.pathname.startsWith('/services/status')) {
-                if (data["ok"]) {
-                  $(location).attr('href', location.href);
-                }
-              }
-            },
-          });
-        }, 1000);
-      });
-
-      $(window).load(function () {
-        // force download image
-        $("#spoon-disconnected").attr('href', '/services-static/img/spoon-disconnect.svg');
-
-        $("#database-svg").attr('href', '/services-static/img/database.svg');
-
-        $(circles).attr('fill', 'orange');
-        $(circles).hide(200);
-        $(links).hide(200);
-        $("#spoon").hide(200);
-        $("#spoon").attr('href', '/services-static/img/spoon-welcome.svg');
-        $("#spoon").show(100);
-
-        const welcome = ["salut!", "Hi!", "¡hola!", "¡hola, co!", "kaixo!", "ola!", "Hallo!"];
-        $("#message").text(welcome[Math.floor(Math.random() * 7)]);
-
-        // tooltips
-        $("#proxy_link title").text(
-          'proxy statistics:' + String.fromCharCode(10) + 'https://' + location.hostname + '/stats'
-        );
-        $("#console_link title").text('migasfree console:' + String.fromCharCode(10) +'https://'+location.hostname);
-        $("#public_link title").text('public files:' + String.fromCharCode(10) +'https://'+location.hostname+'/pool/');
-        $("#core_link title").text('API:' + String.fromCharCode(10) +'https://'+location.hostname+'/docs/');
-        $("#portainer_link title").text(
-          'portainer console:' + String.fromCharCode(10) + 'https://portainer-' + location.hostname
-        );
-        $("#database_console_link title").text(
-          'database console:' + String.fromCharCode(10) + 'https://database-' + location.hostname
-        );
-        $("#datastore_console_link title").text(
-          'datastore console:' + String.fromCharCode(10) + 'https://datastore-' + location.hostname
-        );
-        $("#datashare_console_link title").text(
-          'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + location.hostname
-        );
-        $("#worker_console_link title").text(
-          'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.hostname + '/tasks'
-        );
-        $("#assistant_link title").text(
-          'assistant:' + String.fromCharCode(10) + 'https://assistant-' + location.hostname
-        );
-      });
-    </script>
-  </head>
-  <body>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70">
-      <image href="/services-static/img/background.svg" x=30 y=50 height="100" width="100" />
-
-      <-- force download file spoon-disconnect.svg-->
-      <image id="spoon-disconnected" href="/" x=0 y=0 height="0" width="0" />
-
-      <a href="/services/logs" target="_blank">
-          <image id="spoon" href="/" class="link" x=155 y=120 height="10" width="10" />
-      </a>
-
-      <switch>
-        <foreignObject x="145.5" y="107.5" width="38" height="10" font-size="2" color="#999999">
-          <p class="bocadillo" id="message_serv">  </p>
-        </foreignObject>
-      </switch>
-      <switch>
-        <foreignObject x="145.5" y="109.5" width="38" height="10" font-size="2.5" color="#999999">
-          <p class="bocadillo" id="message"> one moment, please </p>
-        </foreignObject>
-      </switch>
-
-      <switch>
-        <foreignObject x="66" y="123" width="38" height="6">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 3px; color: #999999;">
-            <p id="stack"> </p>
-          </div>
-        </foreignObject>
-      </switch>
-
-      <switch>
-        <foreignObject x="66" y="125" width="38" height="6" font-size="1.6" color="#999999">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 2px; color: #999999;">
-            <p id="tag"> </p>
-          </div>
-        </foreignObject>
-      </switch>
-
-      <circle id="proxy" cx="29" cy="103.5" r="1.5" fill="orange "/>
-      <circle id="proxy_link" class="link" cx="36" cy="97" r="7"
-        onclick="window.open('https://' + location.hostname + '/stats', '_blank');"
-      >
-        <title> proxy statistics </title>
-      </circle>
-
-      <circle id="console" cx="48" cy="82" r="1.5" fill="orange" />
-      <text id="nodes_console" class="circle-text" x="48" y="82.5"></text>
-      <circle id="console_link" class="link" cx="55" cy="76" r="7"
-        onclick="window.open('https://' + location.hostname, '_blank');"
-      >
-        <title> migasfree console </title>
-      </circle>
-
-      <circle id="portainer" cx="48" cy="123" r="1.5" fill="orange" />
-      <circle id="portainer_link" class="link" cx="55" cy="117" r="7"
-        onclick="window.open('https://portainer-' + location.hostname, '_blank');"
-      >
-        <title> portainer console </title>
-      </circle>
-
-      <circle id="core" cx="70" cy="112" r="1.5" fill="orange" />
-      <text id="nodes_core" class="circle-text" x="70" y="112.5"></text>
-      <circle id="core_link" class="link" cx="77.5" cy="105" r="7"
-        onclick="window.open('https://' + location.hostname + '/docs/', '_blank');"
-      >
-        <title> migasfree API </title>
-      </circle>
-
-      <circle id="beat" cx="90" cy="91" r="1.5" fill="orange" />
-      <text id="nodes_beat" class="circle-text" x="90" y="91.5"></text>
-
-      <circle id="worker" cx="90" cy="112" r="1.5" fill="orange" />
-      <text id="nodes_worker" class="circle-text" x="90" y="112.5"></text>
-      <circle id="worker_console_link" class="link" cx="97" cy="105" r="7"
-        onclick="window.open('https://worker-' + location.hostname + '/tasks', '_blank');"
-      >
-        <title> worker console </title>
-      </circle>
-
-      <image id="assistant_svg" href="/services-static/img/assistant.svg"
-        x="136" y="91" width="13" height="13" style="display: none;"
-      />
-      <circle id="assistant_link" class="link" cx="143" cy="97" r="7"
-        onclick="window.open('https://assistant-' + location.hostname, '_blank');"
-      >
-        <title> assistant </title>
-      </circle>
-
-      <circle id="public" cx="48" cy="103.5" r="1.5" fill="orange" />
-      <text id="nodes_public" class="circle-text" x="48" y="104"></text>
-      <circle id="public_link" class="link" cx="55" cy="97" r="7"
-        onclick="window.open('https://' + location.hostname + '/pool/', '_blank'); window.open('https://' + location.hostname + '/public/', '_blank');"
-      >
-        <title> public files </title>
-      </circle>
-
-      <circle id="pms" cx="70" cy="91" r="1.5" fill="orange" />
-      <text id="nodes_pms" class="circle-text" x="70" y="91.5"></text>
-      <circle id="database" cx="114" cy="82" r="1.5" fill="orange" />
-      <circle id="database_console_link" class="link" cx="121" cy="76" r="7"
-        onclick="window.open('https://database-' + location.hostname, '_blank');"
-      >
-        <title> database console </title>
-      </circle>PORT_HTTPS
-
-      <circle id="datastore" cx="114" cy="103.5" r="1.5" fill="orange" />
-      <circle id="datastore_console_link" class="link" cx="121" cy="97" r="7"
-        onclick="window.open('https://datastore-' + location.hostname, '_blank');"
-      >
-        <title> datastore console </title>
-      </circle>
-
-      <circle id="datashare_console" cx="114" cy="123" r="1.5" fill="orange" />
-      <circle id="datashare_console_link" class="link" cx="121" cy="117" r="7"
-        onclick="window.open('https://datashare-' + location.hostname, '_blank');"
-      >
-        <title> datashare console </title>
-      </circle>
-    </svg>
-  </body>
-</html>
-"""
-    return Template(template).render(context)
+    web.header('Content-Type', 'text/html; charset=utf-8')
+    env = Environment(
+        loader=FileSystemLoader('services-static/templates'),
+        autoescape=select_autoescape(['html', 'xml'])
+    )
+    template = env.get_template('status.html')
+    try:
+        return template.render(context)
+    except Exception as e:
+        return f"<p>Error: {html.escape(str(e))}</p>"
 
 
 def notfound():
@@ -972,7 +478,9 @@ if __name__ == '__main__':
         '/services/nginx_extensions',
         'nginx_extensions',
         '/services/logs',
-        'logs'
+        'logs',
+        '/services/logs/json',
+        'logs_json'
     )
 
     global_data = {

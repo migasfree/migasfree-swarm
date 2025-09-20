@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Messages Log</title>
+  <style>
+    @font-face { font-family: 'Virgil'; src: url('/services-static/fonts/Virgil.ttf') format('truetype'); }
+    h1 { text-align: center; }
+    body { width: 100%; margin: 0 auto; font-family: 'Virgil', sans-serif; color: #222; }
+    table { margin-left: auto; margin-right: auto; border-collapse: collapse; border: 1px solid black; }
+    th, td { border: 1px solid black; padding: 5px; }
+    img { display: block; margin-left: auto; margin-right: auto; }
+    .center {text-align: center;}
+  </style>
+  <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
+  <script type="text/javascript">
+
+    const columnas = {{ columnas | tojson }};
+
+    function buildTable(data) {
+      if (!data || data.length === 0) {
+        return '<p class="center">No messages available.</p>';
+      }
+      let html = '<table><thead><tr>';
+      columnas.forEach(col => { html += `<th>${col}</th>`; });
+      html += '</tr></thead><tbody>';
+      data.forEach(row => {
+        html += '<tr>';
+        columnas.forEach(col => {
+          let valor = row[col] !== undefined && row[col] !== null ? row[col] : '';
+          if (col === "text" && valor === '') valor = '🚀';
+          html += `<td>${valor}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    window.onload = function()  {
+        var base64_spoon = null;
+        fetch('/services-static/img/spoon-disconnect.svg')
+        .then(response => response.text())
+        .then(svgText => {
+            const base64Encoded = btoa(unescape(encodeURIComponent(svgText)));
+            base64_spoon = `data:image/svg+xml;base64,${base64Encoded}`;
+        }).catch(err => {
+            console.error("spoon-disconnect.svg not download", err);
+        });
+
+
+        function updateLogs() {
+            $.ajax({
+            url: '/services/logs/json',
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                $('#log-container').html(buildTable(data));
+                $("#spoon").attr("src", "/services-static/img/spoon-checking-1.svg");
+            },
+            error: function() {
+                $('#log-container').html('<p class="center">disconnected</p>');
+                $("#spoon").attr("src", base64_spoon);
+            }
+            });
+        }
+
+      updateLogs();
+      setInterval(updateLogs, 2000);
+    }
+
+  </script>
+</head>
+<body>
+  <h1>Messages Log</h1>
+  <div id="log-container" class="center">
+    <p>Loading messages...</p>
+  </div>
+  <img id="spoon" src="/" height="64" width="64" />
+</body>
+</html>
