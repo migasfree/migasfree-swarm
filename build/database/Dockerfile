@@ -1,4 +1,4 @@
-FROM postgres:18rc1-alpine3.22
+FROM postgres:18.0-alpine3.22
 
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
