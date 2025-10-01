@@ -1,5 +1,8 @@
 # https://ilhicas.com/2018/04/07/Haproxy-ssl-termination-jekyll.html
-FROM haproxy:lts-alpine3.22 AS builder
+FROM haproxy:lts-alpine3.21 AS builder
+# WARNING !!! BUG with haproxy:lts-alpine3.22  (haproxy 3.2.5)
+# ./migasfree-swarm deploy -> /services/status -> disconnected
+
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 USER root
