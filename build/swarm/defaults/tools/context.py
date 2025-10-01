@@ -142,6 +142,10 @@ class ContextLoader:
         self.default("REPLICAS_core", "1")
         self.default("REPLICAS_public", "1")
         self.default("REPLICAS_worker", "1")
+        self.default("REPLICAS_database_console", "1")
+        self.default("REPLICAS_datastore_console", "1")
+        self.default("REPLICAS_worker_console", "1")
+
 
         # BACKUP
         # ======
@@ -271,6 +275,30 @@ class ContextLoader:
 # REPLICAS_worker
 #     Sets the number worker instances that will run when deploying the stack.
 #     The default value is '1'
+# {line}
+""",
+
+            "REPLICAS_database_console": f"""# {line}
+# REPLICAS_database_console
+#     Sets the number database_console instances that will run when deploying the stack.
+#     The default value is '1' for development
+#     Set 0 for production
+# {line}
+""",
+
+            "REPLICAS_datastore_console": f"""# {line}
+# REPLICAS_datastore_console
+#     Sets the number datastore_console instances that will run when deploying the stack.
+#     The default value is '1' for development
+#     Set 0 for production
+# {line}
+""",
+
+            "REPLICAS_worker_console": f"""# {line}
+# REPLICAS_worker_console
+#     Sets the number worker_console instances that will run when deploying the stack.
+#     The default value is '1' for development
+#     Set 0 for production
 # {line}
 """,
 
