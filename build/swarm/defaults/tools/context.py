@@ -89,9 +89,11 @@ class ContextLoader:
 
         self.save()
 
-    def load_stack(self, stack=""):
+    def load_stack(self, stacks=""):
 
-        self.prompt("STACK", stack)
+        self.context['STACK'] = os.getenv('STACK', '')
+        if not self.context['STACK']:
+            self.prompt("STACK", stacks)
 
         _PATH_STACK = f"/mnt/cluster/datashares/{self.context['STACK']}"
         if not os.path.exists(_PATH_STACK):
