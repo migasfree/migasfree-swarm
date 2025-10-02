@@ -13,9 +13,16 @@
 * TODO: Crear comando help
 
 
-* TODO Documentar Personalizacion del stack (env.py)
+* TODO: Documentar Personalizacion del stack (env.py)
 
 * TODO: Documentar labels del swarm y la relación con los volumenes
+
+* TODO:Document the change of secret <STACK>_pms_pass:
+    - Change password for user "pms" in Migasfree console
+    - ./migasfree-swarm undeploy
+    - Delete secret <STACK>_pms_pass in Portainer
+    - Create secret <STACK>_pms_pass in Portainer with the new password
+    - ./migasfree-swarm deploy
 
 * BUG: `datastore_console` no crea la configuración inicial de la DB.
        Si se reinicia el service entonces si que la crea.
