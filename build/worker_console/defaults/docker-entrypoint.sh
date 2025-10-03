@@ -78,5 +78,5 @@ echo "timezone = '${TZ}'" >> ${CONFIG_FILE}
 send_message ""
 
 export FLOWER_UNAUTHENTICATED_API=True
-celery --config celeryconfig flower --persistent=True --state_save_interval=15000 --db="/data/flower" --broker-api=${BROKER_URL}/api/
+celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api=${BROKER_URL}/api/
 
