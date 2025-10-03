@@ -11,7 +11,6 @@ import requests
 import web
 import dns.resolver
 import html
-import datetime
 
 from datetime import datetime
 from web.httpserver import StaticMiddleware
@@ -36,7 +35,14 @@ MESSAGES_LOG = deque(maxlen=500)
 
 # Global Variable
 # ===============
-global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
+global_data = {
+    'services': {},
+    'message': '',
+    'need_reload': True,
+    'extensions': [],
+    'ok': False,
+    'now': datetime.now()
+}
 
 
 class icon:
@@ -65,17 +71,18 @@ class manifest:
 class logs:
     def GET(self):
         web.header('Content-Type', 'text/html; charset=utf-8')
-        columnas = ["text", "service", "node", "container", "time"]
+        columns = ["text", "service", "node", "container", "time"]
         env = Environment(
             loader=FileSystemLoader('services-static/templates'),
             autoescape=select_autoescape(['html', 'xml'])
         )
         template = env.get_template('logs.html')
         try:
-            # Envía columnas pero no registros, porque se cargarán por AJAX
-            return template.render(columnas=columnas)
+            # Envía columns pero no registros, porque se cargarán por AJAX
+            return template.render(columns=columns)
         except Exception as e:
             return f"<p>Error: {html.escape(str(e))}</p>"
+
 
 class logs_json:
     def GET(self):
@@ -164,7 +171,7 @@ class message:
         except Exception:
             print('ERROR', web.data())
             data = {}
-        data["time"] = datetime.now().strftime("%Y%m%d %H:%M:%S")
+        data["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         MESSAGES_LOG.append(data)
         ips = dns.resolver.resolve('tasks.proxy', 'A')
         for ip in ips:
