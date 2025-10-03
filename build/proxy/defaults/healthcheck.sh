@@ -9,6 +9,6 @@ then
     fi
 else
     rm /var/tmp/healthy || :
-    exit 1  
+    exit 1
 fi
 
