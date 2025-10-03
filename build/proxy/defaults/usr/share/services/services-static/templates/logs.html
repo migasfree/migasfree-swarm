@@ -15,18 +15,18 @@
   <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
   <script type="text/javascript">
 
-    const columnas = {{ columnas | tojson }};
+    const columns = {{ columns | tojson }};
 
     function buildTable(data) {
       if (!data || data.length === 0) {
         return '<p class="center">No messages available.</p>';
       }
       let html = '<table><thead><tr>';
-      columnas.forEach(col => { html += `<th>${col}</th>`; });
+      columns.forEach(col => { html += `<th>${col}</th>`; });
       html += '</tr></thead><tbody>';
       data.forEach(row => {
         html += '<tr>';
-        columnas.forEach(col => {
+        columns.forEach(col => {
           let valor = row[col] !== undefined && row[col] !== null ? row[col] : '';
           if (col === "text" && valor === '') valor = '🚀';
           html += `<td>${valor}</td>`;
