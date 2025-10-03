@@ -12106,7 +12106,6 @@ paths:
           - dnf
           - giman
           - pacman
-          - winget
           - wpt
           - yum
           - zypper
@@ -12115,7 +12114,6 @@ paths:
           * `dnf` - dnf
           * `giman` - plugins.giman
           * `pacman` - pacman
-          * `winget` - winget
           * `wpt` - wpt
           * `yum` - yum
           * `zypper` - zypper
@@ -22441,7 +22439,6 @@ components:
       - dnf
       - giman
       - pacman
-      - winget
       - wpt
       - yum
       - zypper
@@ -22451,7 +22448,6 @@ components:
         * `dnf` - dnf
         * `giman` - plugins.giman
         * `pacman` - pacman
-        * `winget` - winget
         * `wpt` - wpt
         * `yum` - yum
         * `zypper` - zypper
