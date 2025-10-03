@@ -89,7 +89,7 @@
     },
     {
       "filename": "projects.yaml",
-      "description": "Manages **projects** in the Migasfree system. Provides endpoints to list, create, retrieve, update, and delete projects (`/api/v1/token/projects/` and `/{id}/`). Offers **extensive filtering capabilities** by attributes such as `name`, `pms` (package management system: apt, dnf, pacman, winget, wpt, yum, zypper), `architecture`, and related entities (computers, deployments, packages). Key schema properties of `Project` include `name`, `pms`, `architecture`, and `auto_register_computers` (which allows registering computers without needing a user). The API supports **pagination, search functionality**, and **authentication** via **cookies, tokens, or JWT**. Includes additional endpoints to get **badges** (`/badge/`), **relationships** (`/relations/`), and **project record exports** (`/export/`)."
+      "description": "Manages **projects** in the Migasfree system. Provides endpoints to list, create, retrieve, update, and delete projects (`/api/v1/token/projects/` and `/{id}/`). Offers **extensive filtering capabilities** by attributes such as `name`, `pms` (package management system: apt, dnf, pacman, wpt, yum, zypper), `architecture`, and related entities (computers, deployments, packages). Key schema properties of `Project` include `name`, `pms`, `architecture`, and `auto_register_computers` (which allows registering computers without needing a user). The API supports **pagination, search functionality**, and **authentication** via **cookies, tokens, or JWT**. Includes additional endpoints to get **badges** (`/badge/`), **relationships** (`/relations/`), and **project record exports** (`/export/`)."
     },
     {
       "filename": "properties.yaml",
