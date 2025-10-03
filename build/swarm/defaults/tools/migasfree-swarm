@@ -211,8 +211,15 @@ fi
 
 if docker volume ls |grep -q $VOLUME
 then
+
+  if [ -t 1 ] && [ -t 0 ] ; then
+    _DETACH=false
+  else
+    _DETACH=true
+  fi
+
   docker run --name migasfree-swarm \
-    --detach=false --rm -ti \
+    --detach=${_DETACH} --rm -ti \
     --env STACK="${STACK}" \
     -v $(pwd):/stack \
     -v /var/run/docker.sock:/var/run/docker.sock \
