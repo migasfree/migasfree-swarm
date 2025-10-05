@@ -101,6 +101,18 @@ elif [ ${COMMAND} = "pull" ]
 then
     /tools/pull.sh
 
+elif [ ${COMMAND} = "url-client-certificate" ]
+then
+    /tools/url-client-certificate.sh
+
+elif [ ${COMMAND} = "revoke-client-certificate" ]
+then
+    /tools/revoke-client-certificate.sh
+
+elif [ ${COMMAND} = "list-client-certificate" ]
+then
+    /tools/list-client-certificate.sh
+
 elif [ ${COMMAND} = "join-worker" ]
 then
     run_manager "/tools/join-worker.sh"

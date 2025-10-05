@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client Certificate</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 320px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    h3 {
+      margin-bottom: 20px;
+      color: gray;
+    }
+
+    body {
+        color: gray;
+    }
+
+    input[type="password"] {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid gray;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    #passwordError {
+      color: red;
+      font-size: 0.85rem;
+      margin: 8px 0;
+      display: block;
+    }
+
+    button {
+      background-color: #1976d2;
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #1565c0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <image id="spoon" src="/services-static/img/spoon-welcome.svg" height="48" width="48" />
+    <h2>Client Certificate</h2>
+    <h4>Issued to: {{ user }}</h4>
+    <h4>validity: {{ days }} days</h4>
+    <p>Please note: You will need this password when importing the client certificate into your web browser.<p>
+    <form action="/services/mtls" method="POST" id="certForm">
+      <input type="hidden" name="token" value="{{ token }}">
+      <input type="password" id="password" name="password" placeholder="Password" required />
+      <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" required />
+      <span id="passwordError"></span>
+      <button type="submit">Download</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('certForm').addEventListener('submit', function(event) {
+      const pwd = document.getElementById('password').value;
+      const pwdConfirm = document.getElementById('password_confirm').value;
+      const errorElem = document.getElementById('passwordError');
+      if (pwd !== pwdConfirm) {
+        event.preventDefault();
+        errorElem.textContent = 'Passwords do not match.';
+      } else {
+        errorElem.textContent = '';
+      }
+    });
+  </script>
+</body>
+</html>

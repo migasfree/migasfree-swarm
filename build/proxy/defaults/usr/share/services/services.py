@@ -11,8 +11,10 @@ import requests
 import web
 import dns.resolver
 import html
+import re
 
-from datetime import datetime
+
+from datetime import datetime, timedelta
 from web.httpserver import StaticMiddleware
 from jinja2 import Template
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -28,10 +30,27 @@ STACK = os.environ['STACK']
 PORT_HTTP = os.environ['PORT_HTTP']
 PORT_HTTPS = os.environ['PORT_HTTPS']
 HTTPSMODE = os.environ['HTTPSMODE']
+MTLS = os.environ['MTLS']
 TAG = os.environ['TAG']
 NETWORK_MNG = os.environ['NETWORK_MNG']
 
 MESSAGES_LOG = deque(maxlen=500)
+
+
+PATH_MTLS = "/mnt/cluster/certificates/mtls"
+PATH_MTLS_CERTS = f"{PATH_MTLS}/certs"
+PATH_MTLS_TOKEN = f"{PATH_MTLS}/token"
+PATH_CONF = f"/mnt/cluster/datashares/{STACK}/conf"
+
+def get_organization():
+    with open( f'{PATH_CONF}/settings.py', 'r') as file:
+        content = file.read()
+    variable_name = "MIGASFREE_ORGANIZATION"
+    pattern = rf'{variable_name}\s*=\s*(.+)'
+    result = re.search(pattern, content)
+    if result:
+        return result.group(1).strip().replace('"','')
+    return ""
 
 # Global Variable
 # ===============
@@ -68,6 +87,90 @@ class manifest:
         return Template(template).render(context)
 
 
+# Certificate Revocation List
+class crl:
+    def GET(self):
+        web.header('Content-Type', 'application/pkix-crl')
+        web.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        web.header('Pragma', 'no-cache')
+        web.header('Connection', 'close')
+        try:
+            with open(f'{PATH_MTLS}/crl.pem', 'rb') as f:
+                crl_data = f.read()
+
+            # Especificar el tamaño del contenido
+            web.header('Content-Length', str(len(crl_data)))
+
+            return crl_data
+
+        except Exception as e:
+            web.ctx.status = '500 Internal Server Error'
+            return f'Error in CRL: {e}'
+
+class mtls:
+    def GET(self):
+        web.header('Content-Type', 'text/html; charset=utf-8')
+        token = web.input().get('token')
+        file_token = os.path.join(PATH_MTLS_TOKEN, token)
+        if os.path.exists(file_token) and len(token) == 64:
+            creation_time = datetime.fromtimestamp(os.path.getctime(file_token))
+            difference = datetime.now() - creation_time
+            if difference > timedelta(hours=72):
+                os.remove(file_token)
+            else:
+                # token exists and is recent
+                with open(file_token, "r", encoding='utf-8') as f:
+                    content = f.read()
+                user, days = content.split("|")
+                env = Environment(
+                    loader=FileSystemLoader('services-static/templates'),
+                    autoescape=select_autoescape(['html', 'xml'])
+                )
+                template = env.get_template('mtls.html')
+                try:
+                    return template.render(user=user, days=days, token=token)
+                except Exception as e:
+                    return f"<p>Error: {html.escape(str(e))}</p>"
+        time.sleep(3)
+        return ""
+
+    def POST(self):
+        data = web.input(password=None)
+        token = web.input().get('token')
+        password = data.password
+        file_token = os.path.join(PATH_MTLS_TOKEN, token)
+        if os.path.exists(file_token) and len(token) == 64:
+            creation_time = datetime.fromtimestamp(os.path.getctime(file_token))
+            difference = datetime.now() - creation_time
+            if difference > timedelta(hours=72):
+                os.remove(file_token)
+            else:
+                with open(file_token, "r", encoding='utf-8') as f:
+                    content = f.read()
+                user, days = content.split("|")
+                user = f"{user}-{FQDN}"
+
+                # Create certificate
+                os.system(f"/usr/bin/mtls.sh '{user}' '{password}' '{days}'")
+
+                # Return tar file
+                file_tar = f"{PATH_MTLS_CERTS}/{user}.tar"
+                if os.path.exists(file_tar):
+                    with open(file_tar, "rb") as f:
+                        content = f.read()
+
+                    web.header('Content-Type', 'application/x-tar')
+                    web.header('Content-Disposition', 'attachment; filename="'+user+'.tar"')
+                    web.header('Content-Length', str(len(content)))
+                    os.remove(file_token)
+                    os.remove(file_tar)
+                    return content
+
+        time.sleep(3)
+        web.header('Content-Type', 'text/html; charset=utf-8')
+        return ""
+
+
 class logs:
     def GET(self):
         web.header('Content-Type', 'text/html; charset=utf-8')
@@ -78,7 +181,7 @@ class logs:
         )
         template = env.get_template('logs.html')
         try:
-            # Envía columns pero no registros, porque se cargarán por AJAX
+            # Sends columns but no records, because they will be loaded via AJAX
             return template.render(columns=columns)
         except Exception as e:
             return f"<p>Error: {html.escape(str(e))}</p>"
@@ -160,8 +263,9 @@ class message:
                 'last_message': global_data['last_message'],
                 'services': global_data['services'],
                 'ok': global_data['ok'],
+                'organization': get_organization(),
                 'stack': STACK,
-                'tag': f'migasfree {TAG}',
+                'tag': TAG,
             }
         )
 
@@ -376,6 +480,7 @@ def config_haproxy():
         'USERLIST_STACK': USERLIST_STACK,
         'USERLIST_CLUSTER': USERLIST_CLUSTER,
         'NETWORK_MNG': NETWORK_MNG,
+        'MTLS': MTLS == 'True'
     }
 
     if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
@@ -468,26 +573,18 @@ def userlist_cluster():
 
 if __name__ == '__main__':
     urls = (
-        '/favicon.ico',
-        'icon',
-        '/services/status/?',
-        'status',
-        '/services/manifest',
-        'manifest',
-        '/services/message',
-        'message',
-        '/services/reconfigure',
-        'reconfigure',
-        '/services/update_haproxy',
-        'update_haproxy',
-        '/services/update_message',
-        'update_message',
-        '/services/nginx_extensions',
-        'nginx_extensions',
-        '/services/logs',
-        'logs',
-        '/services/logs/json',
-        'logs_json'
+        '/favicon.ico', 'icon',
+        '/services/status/?', 'status',
+        '/services/manifest', 'manifest',
+        '/services/message', 'message',
+        '/services/reconfigure', 'reconfigure',
+        '/services/update_haproxy', 'update_haproxy',
+        '/services/update_message', 'update_message',
+        '/services/nginx_extensions', 'nginx_extensions',
+        '/services/logs', 'logs',
+        '/services/logs/json', 'logs_json',
+        '/services/mtls', 'mtls',
+        '/services/crl', 'crl',
     )
 
     global_data = {

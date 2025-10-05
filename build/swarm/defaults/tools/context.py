@@ -121,6 +121,9 @@ class ContextLoader:
         self.default("PORT_HTTPS", "443")
         self.default("HTTPSMODE", "manual")
 
+        # mTLS
+        # ====
+        self.default("MTLS", "False")
 
         # Postgres (database)
         # ===================
@@ -228,6 +231,23 @@ class ContextLoader:
 #     In auto mode, certificates are issued using the ACME HTTP-01 challenge provided by Let's Encrypt.
 # {line}
 """,
+
+            "MTLS": f"""# {line}
+# MTLS
+#     This variable controls whether client certificate authentication is required in browsers
+#     in addition to traditional username and password verification. When set to 'True',
+#     mutual TLS (mTLS) is enforced, mandating clients to present valid X.509 certificates
+#     during the TLS handshake. This mechanism significantly strengthens security by adding
+#     an additional authentication layer based on cryptographic client identity verification,
+#     beyond standard credential checks.
+#     The default value is 'False', meaning client certificates are not required.
+#     Related commands:
+#         ./migasfree-swarm url-client-certificate
+#         ./migasfree-swarm revoke-client-certificate
+#         ./migasfree-swarm list-client-certificate
+# {line}
+""",
+
 
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST

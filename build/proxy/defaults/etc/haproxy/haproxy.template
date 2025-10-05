@@ -14,6 +14,8 @@ global
     tune.lua.bool-sample-conversion normal
     lua-load /etc/haproxy/cors.lua
 
+    ssl-default-bind-options no-tls-tickets ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
 
 defaults
     log global
@@ -22,9 +24,10 @@ defaults
     option httplog
     option dontlognull
     option http-keep-alive
-    timeout connect 20s
-    timeout client 10m
-    timeout server 10m
+    timeout connect 10s
+    timeout client 2m
+    timeout server 2m
+    timeout tunnel 1h
 
 
 http-errors myerrors
@@ -59,7 +62,12 @@ listen stats
 
 frontend http
     bind *:80
+
+{% if MTLS %}
+    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}.pem ca-file /mnt/cluster/certificates/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn h2,http/1.1 crl-file /mnt/cluster/certificates/mtls/crl.pem
+{% else %}
     bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}.pem
+{% endif %}
 
     # redirects
     acl status_path path -i /status
@@ -80,7 +88,7 @@ frontend http
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT" "https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
+    http-request lua.cors "GET,POST,PUT,OPTIONS" "http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
     http-response lua.cors
 
 
@@ -127,12 +135,19 @@ frontend http
     acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
 
 
-    # services static
-    # ===============
+    # services
+    # ========
+
+    acl url_services path /status
+    acl url_services path /services/crl
+    acl url_services_mtls path /services/mtls
     acl url_services path_beg /services
     acl url_services_static path_beg /services-static /favicon.ico
 
     acl is_GET method GET
+    acl is_POST method POST
+    acl is_PATCH method PATCH
+
 
     # external sources
     # ================
@@ -167,6 +182,78 @@ frontend http
     # =========
     acl url_portainer_console  hdr(host) -i portainer-{{FQDN}}
 
+{% if MTLS %}
+    # mTLS certificate
+    # ================
+    acl client_cert_present ssl_c_used
+    acl client_cert_verified ssl_c_verify 0
+
+
+    # URL without mTLS
+    # ----------------
+    acl url_no_mTLS_get   path_beg /repo/ # Compatibility client v4
+    acl url_no_mTLS_get   path     /api/ # Compatibility client v4
+
+    acl url_no_mTLS_get   path     /services/mtls  # url-client-certificate
+    acl url_no_mTLS_post  path     /services/mtls  # make client certificate
+    acl url_no_mTLS_get   path     /services/crl   # Certificate Revoke List
+
+    acl url_no_mTLS_get   path_beg /services-static/
+
+    acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
+    acl url_no_mTLS_get   path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
+
+    # required for clients
+    acl url_no_mTLS_get   path_beg /api/v1/public/
+    acl url_no_mTLS_post  path_beg /api/v1/public/
+    acl url_no_mTLS_get   path_beg /api/public/
+    acl url_no_mTLS_post  path_beg /api/v1/safe/
+    acl url_no_mTLS_get   path_beg /rest-auth/
+    acl url_no_mTLS_get   path_beg /token-auth-jwt/
+    acl url_no_mTLS_get   path_beg /token-auth/
+    acl url_no_mTLS_get   path_beg /token-refresh/
+    acl url_no_mTLS_get   path     /favicon.ico
+    acl url_no_mTLS_get   path     /  # Checks if it is active
+
+
+    # migasfree-play 5.0 -> https://github.com/migasfree/migasfree-play/blob/master/src/config/app.conf.js
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/catalog/apps/available/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/catalog/categories/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/computers/[^/]+/label/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/computers/[^/]+/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/computers/[^/]+/devices/$
+    acl url_no_mTLS_patch path_reg ^/api/v1/token/computers/[^/]+/devices/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/devices/devices/available/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/devices/devices/[^/]+/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/devices/logical/$
+    acl url_no_mTLS_patch path_reg ^/api/v1/token/devices/logical/[^/]+/$
+    acl url_no_mTLS_get   path_reg ^/api/v1/token/attributes/$
+
+
+    # 403 Forbidden for all other endpoints
+    # =================================================
+
+    # GET
+    http-request deny deny_status 403 if is_GET !url_no_mTLS_get !client_cert_present
+    http-request deny deny_status 403 if is_GET !url_no_mTLS_get client_cert_present !client_cert_verified
+
+    # POST
+    http-request deny deny_status 403 if is_POST !url_no_mTLS_post !client_cert_present
+    http-request deny deny_status 403 if is_POST !url_no_mTLS_post client_cert_present !client_cert_verified
+
+    # PATCH
+    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch !client_cert_present
+    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch client_cert_present !client_cert_verified
+
+    # Other methods:
+    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH !client_cert_present
+    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH client_cert_present !client_cert_verified
+
+
+
+{% endif %}
+
+
 
     # USE BACKENDS SECTION
     # Warning: The order is important !!!
@@ -188,6 +275,8 @@ frontend http
     use_backend mf_core if network_mng url_core_mng
 
     use_backend services if network_mng is_GET url_services || url_services_static
+    use_backend services if network_mng url_services_mtls
+
     use_backend mf_public if url_public || url_packages || url_src
 
     use_backend stats if is_fqdn is_stats network_mng
@@ -262,7 +351,6 @@ backend datastore_console  # REDISINSIGHT
     balance leastconn
     acl auth_ok http_auth(users_stack)
     http-request auth realm datastore_console_realm if !auth_ok
-    mode http
     {% for node in mf_datastore_console %}
         server {{ node }} {{ node }}:5540 check
     {% endfor %}

@@ -21,6 +21,7 @@ services:
             - SERVICE={{SERVICE}}
             - PORT_HTTP={{PORT_HTTP}}
             - PORT_HTTPS={{PORT_HTTPS}}
+            - MTLS={{MTLS}}
             - MIGASFREE_CONF_DIR=
             - HTTPSMODE={{HTTPSMODE}}
             - PMS_ENABLED={{PMS_ENABLED}}

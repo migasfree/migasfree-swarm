@@ -259,8 +259,9 @@ body {
                 $(".bocadillo").show(200);
               }
 
-              $("#stack").text(data['stack']);
-              $("#tag").text(data['tag']);
+              $("#organization").text(data['organization']);
+              $("#stack").text('stack: '+ data['stack']);
+              $("#tag").text('migasfree server: ' + data['tag']);
 
               if (message == "") {
                 $("#message").text('ready');
@@ -349,16 +350,25 @@ body {
       </switch>
 
       <switch>
-        <foreignObject x="66" y="123" width="38" height="6">
+        <foreignObject x="66" y="121" width="38" height="6">
           <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 3px; color: #999999;">
+            <p id="organization"> </p>
+          </div>
+        </foreignObject>
+      </switch>
+
+
+      <switch>
+        <foreignObject x="66" y="123" width="38" height="6">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 2px; color: #999999;">
             <p id="stack"> </p>
           </div>
         </foreignObject>
       </switch>
 
       <switch>
-        <foreignObject x="66" y="125" width="38" height="6" font-size="1.6" color="#999999">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 2px; color: #999999;">
+        <foreignObject x="66" y="125" width="38" height="6">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 1.5px; color: #999999;">
             <p id="tag"> </p>
           </div>
         </foreignObject>

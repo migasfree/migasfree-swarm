@@ -1,14 +1,57 @@
 #!/bin/bash
 
-if [ ! -f /var/run/haproxy/haproxy.pid ]
+HAPROXY_PID_FILE="/var/run/haproxy/haproxy.pid"
+LOCK_FILE="/tmp/haproxy-reload.lock"
+
+
+function is_reload_in_progress() {
+    if [[ -f $LOCK_FILE ]]; then
+        local old_pid
+        old_pid=$(cat $LOCK_FILE)
+        if ps -p $old_pid > /dev/null 2>&1; then
+            return 0
+        else
+            rm -f $LOCK_FILE
+            return 1
+        fi
+    else
+        return 1
+    fi
+}
+
+function reload_haproxy() {
+    if is_reload_in_progress; then
+        while is_reload_in_progress; do
+            sleep 1
+        done
+    fi
+
+    local pid=$(cat "$HAPROXY_PID_FILE")
+
+    kill -SIGUSR2 $pid
+
+    echo $pid > $LOCK_FILE
+
+    while ps -p $pid > /dev/null 2>&1; do
+        sleep 1
+    done
+
+    rm -f $LOCK_FILE
+
+}
+
+
+
+if [ ! -f ${HAPROXY_PID_FILE} ]
 then
     echo -n "waiting to proxy, please wait "
 fi
 
-until [ -f /var/run/haproxy/haproxy.pid ]
-do 
+until [ -f ${HAPROXY_PID_FILE} ]
+do
     echo -n "."
     sleep 1
 done
 
-kill -SIGUSR2 $(cat /var/run/haproxy/haproxy.pid)
+#kill -SIGUSR2 $(cat ${HAPROXY_PID_FILE})
+reload_haproxy

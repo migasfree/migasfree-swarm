@@ -214,17 +214,22 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
     Example credentials:
 
     ```txt
-    proxy & portainer:
+      ● proxy & portainer:
 
-        ryuPnPkU:rPi3iHdjBUoE0RudZZo6R53tPDifRD
+          3GPtv76r lMyr2vNK5A3guYUr5nKefzqZZHxWfZ
 
-    Stack inv:
+      ● Stack inv:
 
-        admin:ajwtcC788fkipE5nh2ZU0Hcmlrj4tR
+          ● database_console & assistant:
 
+              gA6WXBAb@inv.org MmdtABHFsoE8ofoLjru5z3VBTXIalv
+
+          ● Others:
+
+              gA6WXBAb MmdtABHFsoE8ofoLjru5z3VBTXIalv
     ```
 
-    The format is `username:password`.
+    The format is `username password`.
 
     ![consoles](doc/consoles.png)
 
@@ -302,22 +307,26 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Certificates
 
-There are three methods available to configure the server certificates:
+### 1. Server Certificate.
 
-  * Self-Signed
-  * Manual Replacement
-  * Automatic Certificate Management
+Migasfree uses TLS certificates to secure HTTPS communication within the cluster and with external clients. Depending on your deployment scenario, you can choose one of the following methods to configure the server certificates:
+
+  * Self-Signed (default, for testing or internal use)
+  * Manual Replacement (production with your own trusted certificates)
+  * Automatic Certificate Management (recommended, using Let’s Encrypt)
 
 
-### Self-Signed
+#### Self-Signed
 
 When the Migasfree cluster is started for the first time, a self-signed certificate is automatically generated and saved at `/var/lib/docker/volumes/migasfree-swarm/_data/certificates/<STACK>.pem`.
 
 This allows you to quickly begin using Migasfree without additional setup.
 
-### Manual Replacement
+> **Note:** This certificate is intended for testing or internal environments only. Browsers and clients will show security warnings since it is not signed by a trusted Certificate Authority (CA). If this folder or the certificate is removed, a new self-signed certificate will be automatically generated upon next startup.
 
-If you have a certificate issued by a trusted certificate authority, replace the auto-generated certificate with your own. The certificate must be valid for the following domain names:
+#### Manual Replacement of Certificates
+
+For production deployments, it is recommended to replace the auto-generated certificate with one issued by a trusted CA. The certificate must be valid for all relevant domain names used by Migasfree services:
 
 
 * `<FQDN>`
@@ -329,28 +338,35 @@ If you have a certificate issued by a trusted certificate authority, replace the
 * `assistant-<FQDN>`
 
 
-For example, if you have obtained a wildcard certificate with a Subject Alternative Name (SAN) of the form `*.<FQDN>` using a DNS-01 challenge, replace the existing `<STACK>.pem` file with the new certificate and the `<STACK>.pem.key` file with the associated private key. Then, reconfigure the proxy as follows:
+If you have a wildcard or SAN certificate that covers these domains, for example `*.<FQDN>`, replace the existing certificate with a combined PEM file containing both the full certificate chain and the private key, as follows:
 
-```bash
+  ```bash
     # SAMPLE
     # ======
+
     STACK=mystack
 
-    # copy certificate
-    cp mycertificate.cer /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
+    # Combine your certificate, any intermediate certificates, and the private key into a single PEM file
+    cat mycertificate.pem myintermediate.pem mykey.key > /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
 
-    # copy key
-    cp mykey.key /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem.key
+    # Ensure correct file permissions
+    chmod 600 /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
 
-    # reconfigure proxy
+    # Reconfigure the proxy to apply changes
     docker exec $(docker ps | grep proxy_proxy | awk '{print $1}') reconfigure
-```
 
-### Automatic Certificate Management
+  ```
 
-The recommended approach is to configure the STACK to automatically obtain certificates from LetsEncrypt using the ACME protocol with the HTTP-01 challenge. This eliminates the need for manual certificate management. Note that the cluster must be accessible from the internet for Let's Encrypt to verify and issue the certificate.
+  > **Tip:** Verify the certificate validity and subject with:
+  >
+  > openssl x509 -in /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem -noout -subject -dates
 
-Steps to enable automatic certificate management:
+
+#### Automatic Certificate Management (Recommended)
+
+Migasfree can automatically obtain and renew TLS certificates from Let’s Encrypt using the ACME HTTP-01 challenge. This requires that your Migasfree cluster is publicly accessible on port 80 for domain validation.
+
+To enable automatic certificate management:
 
   1. Open the `datashare console` and set the `HTTPSMODE` variable to `'auto'` in the `env.py` file.
 
@@ -359,22 +375,58 @@ Steps to enable automatic certificate management:
      ./migasfree-swarm undeploy
      ./migasfree-swarm deploy
      ```
+Certificates will be obtained automatically and renewed before expiration without further user intervention.
 
-## CA Root Certificate
+### 2. Client Certificate (mTLS)
 
-In many organizations, internet access requires installing a root certificate issued by the organization's own certificate authority. This root certificate is typically used in firewalls to inspect and control internet traffic securely.
+To add an additional security layer, especially when your Migasfree server is exposed to the internet, enable mutual TLS (mTLS) authentication **for accessing administrative consoles and sensitive APIs**.
+
+Steps to enable mTLS:
+
+  1. Open the `datashare console` and set the `MTLS` variable to `'True'` in the `env.py` file.
+
+  2. Redeploy the stack:
+     ```bash
+     ./migasfree-swarm undeploy
+     ./migasfree-swarm deploy
+     ```
+
+Manage client certificates with the following commands:
+
+  1. Generate a URL for users to create their client certificate:
+
+     ```bash
+     ./migasfree-swarm url-client-certificate
+     ```
+  2. Revoke a client certificate:
+
+     ```bash
+     ./migasfree-swarm revoke-client-certificate
+     ```
+  3. List all client certificates:
+
+     ```bash
+     ./migasfree-swarm list-client-certificate
+     ```
+> **Warning:** When mTLS is enabled, clients without a valid certificate will be denied access. Make sure users generate and install their client certificates before enabling this mode.
+
+### 3. HTTPS Proxy Root Certificate
+
+In some organizations, **outbound HTTPS traffic** is inspected by a corporate proxy using a private root CA. To allow Migasfree services to trust this proxy and avoid TLS errors, install the organization’s root CA certificate in Migasfree.
 
 To configure this, follow these steps:
 
   1. Open the `datashare console`
 
-  2. Navigate to the `ca-certificates` folder and copy the root certificate issued by your organization's certificate authority.
+  2. Navigate to the `ca-certificates` folder and copy your organization’s root CA certificate.
 
-  3. Redeploy the stack with the following commands:
+  3. Redeploy the stack:
      ```bash
      ./migasfree-swarm undeploy
      ./migasfree-swarm deploy
      ```
+
+This configuration enables secure outbound HTTPS connections through the proxy with trusted inspection.
 
 ## Backups
 
