@@ -19,6 +19,7 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
+            - PORT_HTTPS={{PORT_HTTPS}}
             - MTLS={{MTLS}}
             - HTTPSMODE={{HTTPSMODE}}
             - PMS_ENABLED={{PMS_ENABLED}}

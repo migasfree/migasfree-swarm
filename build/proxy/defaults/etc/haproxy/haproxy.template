@@ -92,8 +92,6 @@ frontend http
     http-response lua.cors
 
 
-    # Is FQDN
-    acl is_fqdn hdr(host) -i {{FQDN}}
 
     # Stats HAProxy
     acl is_stats path_beg /stats
@@ -154,33 +152,24 @@ frontend http
     acl url_src path_beg /src/
     acl url_packages path_end {{ extensions }}
 
+    {% if PORT_HTTPS == 443 %}
+        acl is_fqdn hdr(host) -i {{FQDN}}
+        acl url_datashare_console hdr(host) -i datashare-{{FQDN}}
+        acl url_datastore_console hdr(host) -i datastore-{{FQDN}}
+        acl url_database_console hdr(host) -i database-{{FQDN}}
+        acl url_worker_console  hdr(host) -i worker-{{FQDN}}
+        acl url_assistant hdr(host) -i assistant-{{FQDN}}
+        acl url_portainer_console  hdr(host) -i portainer-{{FQDN}}
+    {% else %}
+        acl is_fqdn hdr_reg(host) -i ^{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_datashare_console hdr_reg(host) -i ^datashare-{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_datastore_console hdr_reg(host) -i ^datastore-{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_database_console hdr_reg(host) -i ^database-{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_worker_console  hdr_reg(host) -i ^worker-{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_assistant hdr_reg(host) -i ^assistant-{{FQDN}}(:{{PORT_HTTPS}})?$
+        acl url_portainer_console hdr_reg(host) -i ^portainer-{{FQDN}}(:{{PORT_HTTPS}})?$
+    {% endif %}
 
-    # datashare
-    # =========
-    acl url_datashare_console hdr(host) -i datashare-{{FQDN}}
-
-    # datastore_console
-    # =================
-    acl url_datastore_console hdr(host) -i datastore-{{FQDN}}
-
-
-    # database_console
-    # ================
-    acl url_database_console hdr(host) -i database-{{FQDN}}
-
-
-    # worker_console
-    # ==============
-    acl url_worker_console  hdr(host) -i worker-{{FQDN}}
-
-    # assistant
-    # =========
-#    acl url_assistant path_beg /services/assistant/
-    acl url_assistant hdr(host) -i assistant-{{FQDN}}
-
-    # portainer
-    # =========
-    acl url_portainer_console  hdr(host) -i portainer-{{FQDN}}
 
 {% if MTLS %}
     # mTLS certificate

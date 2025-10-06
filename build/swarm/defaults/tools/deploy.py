@@ -154,7 +154,10 @@ def deploy_proxy(context):
     deploy_stack(deploy, "proxy")
     wait_for_service("proxy_proxy", 300)
     print()
-    print(f"● https://{context['FQDN']}/status")
+    if context['PORT_HTTPS'] == '443':
+        print(f"👍 https://{context['FQDN']}/status")
+    else:
+        print(f"👍 https://{context['FQDN']}:{context['PORT_HTTPS']}/status")
     print()
     os.remove(deploy)
 

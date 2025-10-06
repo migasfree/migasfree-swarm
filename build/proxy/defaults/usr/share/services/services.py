@@ -26,6 +26,7 @@ with open(FILECONFIG_TEMPLATE, encoding='utf-8') as f:
 
 FQDN = os.environ['FQDN']
 STACK = os.environ['STACK']
+PORT_HTTPS = os.environ['PORT_HTTPS']
 HTTPSMODE = os.environ['HTTPSMODE']
 MTLS = os.environ['MTLS']
 TAG = os.environ['TAG']
@@ -477,6 +478,7 @@ def config_haproxy():
         'mf_portainer_console': get_nodes('portainer'),
         'mf_certbot': get_nodes('certbot'),
         'certbot': HTTPSMODE == 'auto',
+        'PORT_HTTPS': PORT_HTTPS,
         'USERLIST_STACK': USERLIST_STACK,
         'USERLIST_CLUSTER': USERLIST_CLUSTER,
         'NETWORK_MNG': NETWORK_MNG,
