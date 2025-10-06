@@ -3,54 +3,48 @@
 _LOG=/var/log/backup
 
 {
+    _PATH=${DATASHARE_MOUNT_PATH}/dump
+    _PATH_ASSISTANT=${DATASHARE_MOUNT_PATH}/consoles/assistant
 
-_PATH=${DATASHARE_MOUNT_PATH}/dump
-_PATH_ASSISTANT=${DATASHARE_MOUNT_PATH}/consoles/assistant
+    DUMP_SCHEMA="migasfree-schema.txt"
+    DUMP_FILE="${1:-migasfree.sql}"
 
-DUMP_FILE="$1"
-DUMP_SCHEMA="migasfree-schema.txt"
+    mkdir -p "$_PATH" || :
 
-if [ -z $DUMP_FILE ]
-then
-    DUMP_FILE=migasfree.sql
-fi
+    export PGPASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
+    echo "Time zone: $TZ"
 
-mkdir -p $_PATH || :
+    # SCHEMA FOR ASSISTANT AI
+    $(/usr/bin/which pg_dump) --schema-only \
+        --no-owner \
+        --no-acl \
+        -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" "$POSTGRES_DB" \
+        -U "$POSTGRES_USER" > "$_PATH_ASSISTANT/$DUMP_SCHEMA"
+    sed -i '/^$/d;/^--/d;/^SET /d;/^CREATE INDEX /d;/^SELECT /d;/^CREATE EXTENSION /d;/^ALTER SEQUENCE /d; /\/\*/,/\*\//d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
+    sed -i '/ALTER TABLE .* IDENTITY (/,/);/d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
+    sed -i '/CREATE SEQUENCE /,/CACHE 1;/d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
+    sed -i "/ALTER TABLE ONLY .* ALTER COLUMN .* SET DEFAULT/d" "$_PATH_ASSISTANT/$DUMP_SCHEMA"
+    sed -i '/^ALTER TABLE ONLY/{N;/\n.*UNIQUE/d}' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
 
-export PGPASSWORD=$(cat /run/secrets/${STACK}_superadmin_pass)
-echo "Time zone: $TZ"
+    # DUMP DATABASE
+    echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."
+    $(/usr/bin/which pg_dump) -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" \
+        "$POSTGRES_DB" -U "$POSTGRES_USER" > "$_PATH/$DUMP_FILE"
+    if [ $? = 0 ]
+    then
+        echo "$(date) Done!"
+    else
+        echo "$(date) ERROR !!! "
+    fi
 
-# SCHEMA FOR ASSISTANT AI
-$(/usr/bin/which pg_dump) --schema-only \
-    --no-owner \
-    --no-acl \
-    -h $POSTGRES_HOST -p $POSTGRES_PORT $POSTGRES_DB -U $POSTGRES_USER > $_PATH_ASSISTANT/$DUMP_SCHEMA
-sed -i '/^$/d;/^--/d;/^SET /d;/^CREATE INDEX /d;/^SELECT /d;/^CREATE EXTENSION /d;/^ALTER SEQUENCE /d; /\/\*/,/\*\//d' $_PATH_ASSISTANT/$DUMP_SCHEMA
-sed -i '/ALTER TABLE .* IDENTITY (/,/);/d' $_PATH_ASSISTANT/$DUMP_SCHEMA
-sed -i '/CREATE SEQUENCE /,/CACHE 1;/d' $_PATH_ASSISTANT/$DUMP_SCHEMA
-sed -i "/ALTER TABLE ONLY .* ALTER COLUMN .* SET DEFAULT/d" $_PATH_ASSISTANT/$DUMP_SCHEMA
-sed -i '/^ALTER TABLE ONLY/{N;/\n.*UNIQUE/d}' $_PATH_ASSISTANT/$DUMP_SCHEMA
-
-
-# DUMP DATABASE
-echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."
-$(/usr/bin/which pg_dump) -h $POSTGRES_HOST -p $POSTGRES_PORT $POSTGRES_DB -U $POSTGRES_USER > $_PATH/$DUMP_FILE
-
-if [ $? = 0 ]; then
-  echo "$(date) Done!"
-else
-  echo "$(date) ERROR !!! "
-fi
-
-echo ""
-echo "-----------------------------------------"
-echo "$(date) VACUUM database $POSTGRES_DB..."
-/bin/su postgres -c "psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c 'VACUUM VERBOSE'"
-if [ $? = 0 ]; then
-  echo "$(date) VACUUM Done!"
-else
-  echo "$(date) VACUUM ERROR !!! "
-fi
-
+    echo ""
+    echo "-----------------------------------------"
+    echo "$(date) VACUUM database $POSTGRES_DB..."
+    /bin/su postgres -c "psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c 'VACUUM VERBOSE'"
+    if [ $? = 0 ]
+    then
+        echo "$(date) VACUUM Done!"
+    else
+        echo "$(date) VACUUM ERROR !!! "
+    fi
 } 2>&1 | tee $_LOG
-
