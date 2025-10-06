@@ -13,22 +13,14 @@ function capture_message {
     fi
 }
 
-function set_TZ {
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
-}
-
 
 function cron_init
 {
-    if [ -z "$BACKUP_CRON" ]; then
+    if [ -z "$BACKUP_CRON" ]
+    then
         BACKUP_CRON="0 0 * * *"
     fi
-    CRON=$(echo "$BACKUP_CRON" |tr -d "'") # remove single quote
+    CRON=$(echo "$BACKUP_CRON" | tr -d "'") # remove single quote
     echo "$CRON /usr/bin/backup" > /tmp/cron
     crontab /tmp/cron
     rm /tmp/cron
@@ -43,16 +35,13 @@ then
    exit 1
 fi
 
-
 # Changes UID and GID for backup and restore in datashare
 OWNER_UID=890
 OWNER_GID=890
 sed -e "/^postgres/s=^postgres:x:[0-9]*:[0-9]*:=postgres:x:${OWNER_UID}:${OWNER_GID}:=" -i /etc/passwd
 sed -e "/^postgres/s=^postgres:x:[0-9]*:=postgres:x:${OWNER_GID}:=" -i /etc/group
 
-
 send_message "starting ${SERVICE:(${#STACK})+1}"
-#set_TZ
 cron_init
 
 echo "
@@ -76,14 +65,11 @@ echo "
 
 "
 
-
-
-
 send_message ""
 reload_proxy
 
-# if no database dump exists, one will be created.
-if ! [ -f ${DATASHARE_MOUNT_PATH}/dump/migasfree.sql ]
+# if no database dump exists, one will be created
+if ! [ -f "${DATASHARE_MOUNT_PATH}/dump/migasfree.sql" ]
 then
     sh -c "sleep 60;backup" &
 fi
