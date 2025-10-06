@@ -1,18 +1,11 @@
-import os
 import asyncio
+
 from typing import Any, Dict, List
-
-
-import datetime
-import json
-import orjson
-
-from fastapi import FastAPI
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.server.models import InitializationOptions
-from mcp.types import ServerCapabilities, Tool, TextContent
+from mcp.types import Tool, TextContent
 
 from model import guru
 
@@ -45,30 +38,20 @@ async def list_tools() -> List[Tool]:
 
 @app.call_tool()
 async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
-
     if name == "guru":
         question = arguments.get("question", "")
         return [TextContent(
-            type = "text",
-            text = guru(question)
+            type="text",
+            text=guru(question)
         )]
-
 
     return [TextContent(type="text", text=f"Tool unknown: {name}")]
 
 
-
-
 async def main():
-
     create_docs()
-
-
     create_schema()
-
-
     create_api_categories()
-
 
     async def run_mcp():
         async with stdio_server() as (read_stream, write_stream):
@@ -96,5 +79,5 @@ async def main():
     await run_mcp()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
