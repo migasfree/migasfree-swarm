@@ -1,8 +1,10 @@
 import os
+
 from resources import read_file
 from settings import AI_PATH
 
 PROMPTS = {}
+
 
 def load_prompt(name):
     global PROMPTS
@@ -10,6 +12,7 @@ def load_prompt(name):
         PROMPTS[name] = read_file(f"{AI_PATH}/prompts/{name}.txt")
     else:
         PROMPTS[name] = read_file(f"prompts/{name}.txt")
+
 
 load_prompt("classifier")
 load_prompt("docs_selector")
