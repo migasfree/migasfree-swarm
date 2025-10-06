@@ -1,7 +1,8 @@
 import os
 import numpy as np
-from sentence_transformers import SentenceTransformer
 import pickle
+
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 
@@ -9,23 +10,20 @@ from settings import CORPUS_PATH_DOCS, CORPUS_PATH_EMBEDDING
 
 # pip install sentence-transformers scikit-learn numpy
 
+# os.environ['HF_HOME'] = '/app/huggingface'
+# os.environ['TRANSFORMERS_CACHE'] = '/app/huggingface'
 
-#os.environ['HF_HOME'] = '/app/huggingface'
-#os.environ['TRANSFORMERS_CACHE'] = '/app/huggingface'
 
 class SemanticChapterSearch:
-    #def __init__(self, model_name='all-MiniLM-L6-v2'):
     def __init__(self, model_name='embaas/sentence-transformers-multilingual-e5-large'):
-        self.model = SentenceTransformer(model_name,cache_folder='/app/model_cache',local_files_only=True)
+        self.model = SentenceTransformer(model_name, cache_folder='/app/model_cache', local_files_only=True)
         self.chunks = []
         self.embeddings = None
         self.file_embedding = f'{CORPUS_PATH_EMBEDDING}/docs.pkl'
-        if not os.path.exists(self.file_embedding ):
+        if not os.path.exists(self.file_embedding):
             self.create_embeddings(CORPUS_PATH_DOCS)
         else:
             self.load_embeddings()
-
-
 
     def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 100) -> List[str]:
         """Versión simple y robusta"""
@@ -88,7 +86,10 @@ class SemanticChapterSearch:
         texts = [chunk['text'] for chunk in all_chunks]
         self.embeddings = self.model.encode(texts)
 
-        print(f"Procesados {len(all_chunks)} chunks de {len([f for f in os.listdir(chapters_dir) if f.startswith('chapter')])} capítulos")
+        chapter_count = len([f for f in os.listdir(chapters_dir) if f.startswith('chapter')])
+        print(
+            f"Procesados {len(all_chunks)} chunks de {chapter_count} capítulos"
+        )
 
         # Guardar automáticamente
         self.save_embeddings()
@@ -104,7 +105,6 @@ class SemanticChapterSearch:
         with open(self.file_embedding, 'wb') as f:
             pickle.dump(data, f)
 
-
     def load_embeddings(self):
         """Carga embeddings y chunks"""
         try:
@@ -114,9 +114,8 @@ class SemanticChapterSearch:
             self.embeddings = data['embeddings']
             return True
         except FileNotFoundError:
-            print(f"Archivo {filepath} no encontrado. Necesitas crear los embeddings primero.")
+            print(f"Archivo {self.file_embedding} no encontrado. Necesitas crear los embeddings primero.")
             return False
-
 
     def search_chunks_with_context(self, query: str, top_k: int = 10, similarity_threshold: float = 0.3) -> List[dict]:
         """
@@ -203,7 +202,6 @@ class SemanticChapterSearch:
 
         return results
 
-
     def search_text_with_context(self, query: str, top_k: int = 10, similarity_threshold: float = 0.3) -> str:
         """
         Versión simplificada que devuelve solo el texto concatenado con contexto
@@ -230,17 +228,10 @@ class SemanticChapterSearch:
         return "\n".join(text_parts)
 
 
-
-
-
-# Ejemplo de uso
 if __name__ == "__main__":
-
+    # Ejemplo de uso
     searcher = SemanticChapterSearch()
 
     text = searcher.search_text_with_context("huevo frito")
     print(text)
     exit(0)
-
-
-
