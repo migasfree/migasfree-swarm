@@ -1,19 +1,14 @@
 import requests
 import logging
 import time
-import os
 import json
 import re
 
 from database import get_tables_catalog, get_table_schema, validate_sql, run_sql_select_query
-from docs import get_chapter_content
 from api import get_api_category
-#from semantic import SemanticChapterSearch
 from resources import read_file
-from settings import CORPUS_PATH_DOCS, RESUME_FILE_DOCS, RESUME_FILE_API, STACK, ASSISTANT_API_URL
-
+from settings import RESUME_FILE_API, ASSISTANT_API_URL
 from assistant import ASSISTANT_API_KEY, get_base_model_id
-
 from prompts import PROMPTS
 from docs import CONTENT_MANUAL
 
@@ -21,8 +16,8 @@ from docs import CONTENT_MANUAL
 MODEL_BASE = None
 
 logging.basicConfig(
-    filename='/app/mcp.log',   # Ruta del archivo donde se guardarán los logs
-    level=logging.INFO,            # Nivel mínimo de log (INFO, DEBUG, WARNING, etc.)
+    filename='/app/mcp.log',  # Ruta del archivo donde se guardarán los logs
+    level=logging.INFO,  # Nivel mínimo de log (INFO, DEBUG, WARNING, etc.)
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -64,13 +59,11 @@ def call_model(system_prompt, user_prompt):
         "stream": False
     }
 
-
     max_retries = 5
-
     for attempt in range(max_retries):
         response = requests.post(f"{ASSISTANT_API_URL}/api/chat/completions", headers=headers, json=payload)
 
-        if response.status_code == 200:
+        if response.status_code == requests.codes.ok:
             result = response.json()
             reply = result["choices"][0]["message"]["content"]
             return reply
@@ -87,22 +80,18 @@ def call_model(system_prompt, user_prompt):
             else:
                 wait_seconds = 2 ** attempt  # Backoff exponencial por defecto
 
-            logging.info(f"❗  Limit reached. Waiting {wait_seconds} seconds before attempt {attempt + 1}/{max_retries}...")
+            logging.info(f"❗ Limit reached. Waiting {wait_seconds} seconds before attempt {attempt + 1}/{max_retries}...")
             time.sleep(wait_seconds)
 
         else:
             logging.info(f"❌ Error {response.status_code}: {response.text}")
             raise RuntimeError(f"❌ Error HTTP {response.status_code}: {response.text}")
 
-    logging.info(f"❌ Error 429. We couldn't complete your request because too many attempts failed. Please try again later.")
+    logging.info("❌ Error 429. We couldn't complete your request because too many attempts failed. Please try again later.")
     raise RuntimeError("❌ We couldn't complete your request because too many attempts failed. Please try again later.")
 
 
-
-
-
 def guru(question):
-
     global MODEL_BASE
 
     MODEL_BASE = get_base_model_id("gas")
@@ -137,7 +126,6 @@ def guru(question):
     except Exception as e:
         answer = f"❌ {str(e)}"
 
-
     logging.info(answer)
 
     return json.dumps({
@@ -148,15 +136,14 @@ def guru(question):
     })
 
 
-
 def retrieve_schema_db(question):
-    #logging.info(f"🤖 QUESTION: {question}")
+    # logging.info(f"🤖 QUESTION: {question}")
 
     available_tables = get_tables_catalog()
 
     system_prompt = PROMPTS["database_selector"]
 
-    user_prompt =f"""
+    user_prompt = f"""
 AVAILABLE_TABLES:
 {available_tables}
 
@@ -177,6 +164,7 @@ Return only the JSON array of relevant table names:
         schema.append(json.loads(get_table_schema(table)))
 
     return schema
+
 
 def retrieve_data(question):
     """
@@ -204,13 +192,12 @@ Generate the SQL SELECT statement following all requirements above.
         except Exception as e:
             return f"❌ {str(e)}"
 
-
         select = clean_code(select)
         check = validate_sql(select)
 
         logging.info(f"🤖 CHECK: {check}")
 
-        if check["valid"] == True:
+        if check["valid"] is True:
             break
         else:
             user_prompt = f"""{user_prompt}
@@ -236,9 +223,9 @@ ANSWER:
 """
 
     data = run_sql_select_query(select)
-    #logging.info(f"🤖 DATA: {data}")
+    # logging.info(f"🤖 DATA: {data}")
 
-    result  = f"""
+    result = f"""
 ** SQL executed:
 {select}
 
@@ -309,12 +296,11 @@ Return only a JSON array of the selected filenames, ordered by relevance. No com
     for filename in filenames:
         logging.info(f"🤖 API {filename}")
         api.append(get_api_category(filename))
+
     return api
 
 
-
 def retrieve_api(question):
-
     context = retrieve_schema_api(question)
 
     system_prompt = PROMPTS["api"]
@@ -342,6 +328,7 @@ ANSWER:
 
 """
 
+
 def retrieve_code(question):
     context = retrieve_schema_api(question)
 
@@ -368,8 +355,3 @@ ANSWER:
 {response}
 
 """
-
-
-
-
-
