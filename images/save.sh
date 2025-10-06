@@ -10,6 +10,5 @@ fi
 
 for _IMAGE in ${_IMAGES}
 do
-    docker save --output ./migasfree-${_IMAGE}-${_VERSION}.tar migasfree/${_IMAGE}:${_VERSION}
+    docker save --output "./migasfree-${_IMAGE}-${_VERSION}.tar" "migasfree/${_IMAGE}:${_VERSION}"
 done
-
