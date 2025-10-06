@@ -26,7 +26,7 @@ def create_token(name, username, password):
         payload = {"username": username, "password": password}
         try:
             response = session.post(f"{server_portainer}/api/auth", json=payload)
-            if response and response.status_code == 200:
+            if response and response.status_code == requests.codes.ok:
                 break
         except Exception as e:
             print("Error creating token:", e)
@@ -42,15 +42,15 @@ def create_token(name, username, password):
         headers = session.headers
         headers["x-csrf-token"] = response.headers["x-csrf-token"]
         session.headers = headers
-        if response and response.status_code == 200:
+        if response and response.status_code == requests.codes.ok:
             userid = response.json()["Id"]
             response = session.get(f'{server_portainer}/api/users/{userid}/tokens')
-            if response and response.status_code == 200:
+            if response and response.status_code == requests.codes.ok:
                 if not token_exists(response.json(), name):
                     # create token
                     payload = {"description": name, "password": password}
                     response = session.post(f'{server_portainer}/api/users/{userid}/tokens', json=payload)
-                    if response and response.status_code == 200:
+                    if response and response.status_code == requests.codes.ok:
                         return response.json()["rawAPIKey"]
 
     # remove token
@@ -209,11 +209,12 @@ class PortainerAPI:
     def get_service_containers(self, service_name):
         url = f"/endpoints/{self.endpoint_id}/docker/containers/json"
         response = self.get(url)
-        containers=[]
+        containers = []
         for container in response:
             if "com.docker.swarm.service.name" in container["Labels"]:
                 if container["Labels"]["com.docker.swarm.service.name"] == service_name:
                     containers.append(container["Id"])
+
         return containers
 
     def execute_command_in_container(self, container_id, command):
@@ -234,8 +235,7 @@ class PortainerAPI:
             "Detach": False,
             "Tty": False
         }
-
-        response= self.session.post(f'{self.base_url}{url}', json=payload, verify=False)
+        response = self.session.post(f'{self.base_url}{url}', json=payload, verify=False)
         return response
 
     def execute_in_service(self, service_name, command):
