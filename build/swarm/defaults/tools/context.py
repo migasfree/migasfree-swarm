@@ -3,21 +3,18 @@ import sys
 import importlib.util
 from pathlib import Path
 
-_PATH = "/stack"
-_FILE_CLUSTER_VARS = os.path.join(_PATH, "env.py")
+_PATH = '/stack'
+_FILE_CLUSTER_VARS = os.path.join(_PATH, 'env.py')
 
 
 def get_stacks():
-
     # SHARED DATA
-    if not os.path.exists("/mnt/cluster/"):
-        os.mkdir("/mnt/cluster/")
-    if not os.path.exists("/mnt/cluster/datashares"):
-        os.mkdir("/mnt/cluster/datashares")
-    if not os.path.exists("/mnt/cluster/portainer"):
-        os.mkdir("/mnt/cluster/portainer")
+    base = Path('/mnt/cluster')
+    (base / 'datashares').mkdir(parents=True, exist_ok=True)
+    (base / 'portainer').mkdir(parents=True, exist_ok=True)
 
-    path = "/mnt/cluster/datashares"
+    path = base / 'datashares'
+
     return [d.name for d in Path(path).iterdir() if d.is_dir()]
 
 
@@ -32,6 +29,7 @@ def import_source_file(filename):
         spec.loader.exec_module(module)
     except FileNotFoundError as e:
         raise ImportError(f"{e.strerror}: {filename}") from e
+
     return module
 
 
@@ -71,9 +69,6 @@ class ContextLoader:
 
         # nfs || s3 || local (datashare)
         # ==============================
-        # self.default("DATASHARE_PLUGING","rexray/s3fs:0.11.4")
-        # self.default("DATASHARE_SERVER","")  # Empty -> Internal s3/nfs
-        # self.default("DATASHARE_FS","local")
         if self.context["DATASHARE_FS"] == "local":
             self.default("DATASHARE_PATH", "")
         elif self.context["DATASHARE_FS"] == "nfs":
@@ -90,7 +85,6 @@ class ContextLoader:
         self.save()
 
     def load_stack(self, stacks=""):
-
         self.context['STACK'] = os.getenv('STACK', '')
         if not self.context['STACK']:
             self.prompt("STACK", stacks)
@@ -132,7 +126,6 @@ class ContextLoader:
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
 
-
         # Redis (datastore)
         # =================
         self.default("REDIS_HOST", "datastore")
@@ -150,7 +143,6 @@ class ContextLoader:
         self.default("REPLICAS_database_console", "1")
         self.default("REPLICAS_datastore_console", "1")
         self.default("REPLICAS_worker_console", "1")
-
 
         # BACKUP
         # ======
@@ -347,7 +339,6 @@ class ContextLoader:
 #     The default value is ''
 # {line}
 """,
-
         }
 
         if key in comments:
@@ -368,6 +359,7 @@ class ContextLoader:
         for key, value in self.context.items():
             string += self.comment(key)
             string += f"{key}='{value}'\n\n\n"
+
         return string
 
     def save(self):
@@ -378,5 +370,6 @@ class ContextLoader:
         _PATH_STACK = f"/mnt/cluster/datashares/{self.context['STACK']}"
         if not os.path.exists(_PATH_STACK):
             os.mkdir(_PATH_STACK)
+
         with open(os.path.join(_PATH_STACK, "env.py"), "w") as f:
             f.write(self.environment())
