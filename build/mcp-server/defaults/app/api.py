@@ -1,12 +1,14 @@
-import yaml
-import json
 import os
 import re
+import yaml
+import json
+
 from collections import defaultdict
 
 from resources import download_url, read_file
 
 from settings import FQDN, CORPUS_PATH_API, RESUME_FILE_API
+
 
 def create_api_schema_old():
     file_openapi = f'{CORPUS_PATH_API}/migasfree.yaml'
@@ -31,7 +33,7 @@ def create_api_schema_old():
                     description = method_data.get('description', '')
 
                     # Add to resume data
-                    element={"filename": f'{operation_id}.yaml'}
+                    element = {"filename": f'{operation_id}.yaml'}
                     if description:
                         element["description"] = description
                     resume_data.append(element)
@@ -45,12 +47,9 @@ def create_api_schema_old():
         with open(RESUME_FILE_API, 'w') as resume_file:
             json.dump(resume_data, resume_file)
 
+
 def get_api_schema_old(filename):
     return read_file(f"{CORPUS_PATH_API}/{filename}")
-
-# =======================
-
-
 
 
 def extract_used_schemas(data):
@@ -72,19 +71,19 @@ def extract_used_schemas(data):
 
     return schemas
 
-def create_api_categories():
 
+def create_api_categories():
     file_openapi = f'{CORPUS_PATH_API}/migasfree.yaml'
 
     os.makedirs(CORPUS_PATH_API, exist_ok=True)
 
     if not os.path.exists(RESUME_FILE_API):
 
-        resume =  json.loads(read_file("resources/api/resume.json"))
-        with open(RESUME_FILE_API,"w") as file:
+        resume = json.loads(read_file("resources/api/resume.json"))
+        with open(RESUME_FILE_API, "w") as file:
             file.write(json.dumps(resume))
 
-        download_url(f"http://core:8080/api/schema/", file_openapi)
+        download_url("http://core:8080/api/schema/", file_openapi)
 
         with open(file_openapi, 'r') as file:
             full_yaml = yaml.safe_load(file)
@@ -143,7 +142,6 @@ def create_api_categories():
                     dependencies = extract_used_schemas(components[current_schema])
                     new_schemas |= dependencies - added_schemas
 
-
         # Guardar cada categoría en un archivo YAML separado
         for category, data in categories.items():
             # Sanitizar el nombre del archivo
@@ -154,4 +152,5 @@ def create_api_categories():
 
 def get_api_category(filename):
     content = read_file(f"{CORPUS_PATH_API}/{filename}")
+
     return yaml.safe_load(content)
