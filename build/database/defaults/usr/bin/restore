@@ -1,65 +1,58 @@
 #!/bin/bash
-#set -x
+
 _PATH=${DATASHARE_MOUNT_PATH}/dump
 _LOG=/var/log/restore
 
-DUMP_FILE="$1"
-
-if [ -z $DUMP_FILE ]
-then
-    DUMP_FILE=migasfree.sql
-fi
-
+DUMP_FILE="${1:-migasfree.sql}"
 
 {
+    echo "Restore '$DUMP_FILE' dump."
+    ls -la "$_PATH/$DUMP_FILE"
 
-  echo "Restore '$DUMP_FILE' dump. "
-  ls  -la $_PATH/$DUMP_FILE
+    read -r -p "This process kill all connections to the database. Are you sure [yes/N]? "
+    echo
 
-  read -p "This process kill all connections to the database. Are you sure [yes/N]? "
-  echo
+    if [[ $REPLY = "yes" ]]
+    then
+        if pgrep -x pg_dump > /dev/null
+        then
+            echo "error: pg_dump is running!"
+            exit 1
+        fi
 
-  if [[ $REPLY = "yes" ]] ; then
+        echo "Time zone: $TZ"
 
-    ps aux|grep pg_dump > /dev/null
-    if [ $? = 1 ] ; then
-       echo "error: pg_dump is running!"
-       exit 1
+        POSTGRES_PASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
+        echo "$POSTGRES_HOST:$POSTGRES_PORT:$POSTGRES_DB:$POSTGRES_USER:$POSTGRES_PASSWORD" > /.pgpass
+        chmod 0600 /.pgpass
+
+        echo "$(date) Kill the connections to database"
+        _RET=$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" "$POSTGRES_DB" -tAc "
+          SELECT
+            pg_terminate_backend(pid)
+          FROM
+            pg_stat_activity
+          WHERE
+              -- don't kill my own connection!
+            pid <> pg_backend_pid()
+              -- don't kill the connections to other databases
+            AND datname = '$POSTGRES_DB';"
+        )
+        echo "$(date) $_RET connections killed"
+
+        echo "$(date) Drop Database: $POSTGRES_DB ..."
+        PGPASSWORD=$POSTGRES_PASSWORD dropdb -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" "$POSTGRES_DB"
+
+        echo "$(date) Create DB ..."
+        PGPASSWORD=$POSTGRES_PASSWORD createdb -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" "$POSTGRES_DB"
+
+        echo "$(date) Restore DB ..."
+        su postgres -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -f $_PATH/$DUMP_FILE" -
+        if [ $? -eq 0 ]
+        then
+            echo "$(date) Done."
+        else
+            echo "$(date) ERROR !!!"
+        fi
     fi
-
-    echo "Time zone: $TZ"
-
-    POSTGRES_PASSWORD=$(cat /run/secrets/${STACK}_superadmin_pass)
-    echo "$POSTGRES_HOST:$POSTGRES_PORT:$POSTGRES_DB:$POSTGRES_USER:$POSTGRES_PASSWORD" > /.pgpass
-    chmod 0600 /.pgpass
-
-    echo "$(date) Kill the connections to database"    
-    _RET=$(PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER $POSTGRES_DB -tAc " 
-      SELECT
-        pg_terminate_backend(pid) 
-      FROM 
-        pg_stat_activity 
-      WHERE 
-          -- don't kill my own connection!
-        pid <> pg_backend_pid()
-          -- don't kill the connections to other databases
-        AND datname = '$POSTGRES_DB'; "
-      )   
-    echo "$(date) $_RET connections killed"
-
-    echo "$(date) Drop Database: $POSTGRES_DB ..."
-    PGPASSWORD=$POSTGRES_PASSWORD dropdb -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER $POSTGRES_DB
-
-    echo "$(date) Create BD ..."
-    PGPASSWORD=$POSTGRES_PASSWORD createdb -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER $POSTGRES_DB
-
-    echo "$(date) Restore BD ..."
-    su postgres -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -f $_PATH/$DUMP_FILE" -
-    if [ $? = 0 ] ; then
-      echo "$(date) Done."
-    else
-      echo "$(date) ERROR !!!"
-    fi
-
-  fi
 } 2>&1 | tee $_LOG
