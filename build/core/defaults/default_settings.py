@@ -103,7 +103,7 @@ MIGASFREE_EXTERNAL_ACTIONS = {
         'ping': {'title': 'PING', 'description': 'check connectivity'},
         'ssh': {'title': 'SSH', 'description': 'remote control via ssh'},
         'vnc': {'title': 'VNC', 'description': 'remote control vnc', 'many': False},
-        'sync': {'title': 'SYNC', 'description': 'ssh -> run migasfree -u'},
+        'sync': {'title': 'SYNC', 'description': 'ssh -> run client synchronization'},
         'install': {
             'title': 'INSTALL',
             'description': 'ssh -> install a package',
