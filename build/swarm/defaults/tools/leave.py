@@ -70,8 +70,6 @@ def system_prune():
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-# PROGRAM
-# =======
 
 print()
 print("Warning!")
@@ -80,12 +78,10 @@ response = input("Do you want to leave the Swarm cluster? (y/N): ") or response
 if response.lower() != "y":
     exit()
 else:
-
     cl = ContextLoader()
     CONTEXT = cl.context
     client = docker.from_env()
 
     remove_stacks(get_stacks() + ['portainer', 'proxy'])
-
     leave_swarm_force()
     system_prune()
