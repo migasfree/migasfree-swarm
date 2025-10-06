@@ -372,8 +372,7 @@ To enable automatic certificate management:
 
   2. Redeploy the stack with the following commands:
      ```bash
-     ./migasfree-swarm undeploy
-     ./migasfree-swarm deploy
+     ./migasfree-swarm redeploy
      ```
 Certificates will be obtained automatically and renewed before expiration without further user intervention.
 
@@ -387,8 +386,7 @@ Steps to enable mTLS:
 
   2. Redeploy the stack:
      ```bash
-     ./migasfree-swarm undeploy
-     ./migasfree-swarm deploy
+     ./migasfree-swarm redeploy
      ```
 
 Manage client certificates with the following commands:
@@ -422,8 +420,7 @@ To configure this, follow these steps:
 
   3. Redeploy the stack:
      ```bash
-     ./migasfree-swarm undeploy
-     ./migasfree-swarm deploy
+     ./migasfree-swarm redeploy
      ```
 
 This configuration enables secure outbound HTTPS connections through the proxy with trusted inspection.
@@ -457,7 +454,7 @@ You can restore the database and datastore volumes as follows (ensure the dump f
     docker volume rm <STACK>_database <STACK>_datastore
     ```
 
-3. Redeploy the stack (this will create empty databases):
+3. Deploy the stack (this will create empty databases):
     ```bash
     ./migasfree-swarm deploy
     ```

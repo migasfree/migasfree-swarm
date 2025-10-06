@@ -73,6 +73,25 @@ elif [ ${COMMAND} = "undeploy" ]
 then
     run_manager "python3 /tools/undeploy.py"
 
+elif [ ${COMMAND} = "redeploy" ]
+then
+    run_manager "python3 /tools/undeploy.py"
+    python3 /tools/deploy.py
+
+
+elif [ ${COMMAND} = "deploy_all" ]
+then
+    run_manager "/tools/deploy_all.sh"
+
+elif [ ${COMMAND} = "undeploy_all" ]
+then
+    run_manager "/tools/undeploy_all.sh"
+
+elif [ ${COMMAND} = "redeploy_all" ]
+then
+    run_manager "/tools/undeploy_all.sh"
+    run_manager "/tools/deploy_all.sh"
+
 elif [ ${COMMAND} = "consoles-dev" ]
 then
     run_manager "python3 /tools/consoles.py 'dev'"
