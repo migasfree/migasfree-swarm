@@ -19,6 +19,7 @@ from context import ContextLoader, get_stacks
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -29,13 +30,14 @@ _PATH_CERTIFICATE = os.path.join(_PATH_SHARE, "certificates")
 _FILE_SETTINGS = os.path.join(_PATH, "settings.py")
 
 
-# FUNCTIONS
-# =========
 def is_self_signed(certificate_path):
     with open(certificate_path, "rb") as cert_file:
         cert_data = cert_file.read()
+
     cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+
     return 'CN=Insecure Certificate Authority' in str(cert.issuer)
+
 
 def resolver_dns(domain):
     while True:
@@ -73,12 +75,14 @@ def swarm_init():
                 else:
                     print("Error: cluster not initiate", e)
                     return None
+
     return cluster_id
 
 
 def generate_password(length):
     valid_characters = string.ascii_letters + string.digits
     password = ''.join(random.choice(valid_characters) for _ in range(length))
+
     return password
 
 
@@ -102,7 +106,7 @@ def wait_for_service(service_name, timeout=30):
 
 def download_resource(url, output_path):
     response = requests.get(url)
-    if response.status_code == 200:
+    if response.status_code == requests.codes.ok:
         with open(output_path, 'wb') as f:
             f.write(response.content)
         print(f"Archivo descargado correctamente en {output_path}")
@@ -142,7 +146,10 @@ def deploy_proxy(context):
 
     # Secrets swarm-credential
     credentials("swarm-credential", generate_password(8))
-    create_secret_file("swarm-credential", os.path.join(_PATH_CREDENTIALS, "swarm-credential"))
+    create_secret_file(
+        "swarm-credential",
+        os.path.join(_PATH_CREDENTIALS, "swarm-credential")
+    )
 
     deploy_stack(deploy, "proxy")
     wait_for_service("proxy_proxy", 300)
@@ -160,10 +167,8 @@ def proxy_reconfigure():
 
 
 def deploy_portainer(context):
-
     # Deploy Portainer if it doesn't exist
     if "portainer" not in [stack.name for stack in client.services.list()]:
-
         # Render portainer.template
         # template_file = "/tools/templates/portainer.template"
         file_yml = "/stack/portainer.yml"
@@ -257,6 +262,7 @@ def deploy_stack(compose_file, stack_name):
 
 def create_network_overlay(network_name):
     os.system(f'docker network create --attachable --driver overlay --opt encrypted {network_name} 2>/dev/null')
+
 
 def create_network_internal(network_name):
     os.system(f'docker network create --internal --driver overlay --opt encrypted {network_name} 2>/dev/null')
@@ -365,7 +371,12 @@ client = docker.from_env()
 swarm_init()
 
 if CONTEXT["HTTPSMODE"] == 'manual':
-    subprocess.run(['sh', '/usr/bin/self-certificate.sh', CONTEXT['FQDN'], CONTEXT['STACK']])
+    subprocess.run([
+        'sh',
+        '/usr/bin/self-certificate.sh',
+        CONTEXT['FQDN'],
+        CONTEXT['STACK']
+    ])
 
 (user, password) = credentials(f"{CONTEXT['STACK']}", generate_password(8))
 
@@ -393,10 +404,10 @@ if CONTEXT["HTTPSMODE"] == 'auto' and is_self_signed(f"{_PATH_CERTIFICATE}/{CONT
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
     api = PortainerAPI("http://portainer:9000/api", token)
     api.set_enpoint_id("primary")
-    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message","HTTPSMODE='auto'"])
+    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", "HTTPSMODE='auto'"])
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"])
-    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message",""])
-    api.execute_in_service(f"proxy_proxy", ["/usr/bin/reload"])
+    api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", ""])
+    api.execute_in_service("proxy_proxy", ["/usr/bin/reload"])
 
 try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")
