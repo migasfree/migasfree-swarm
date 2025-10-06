@@ -1,21 +1,16 @@
 import json
 import os
 import psycopg2
-import requests
-from psycopg2.extras import DictCursor
-from mcp.types import TextContent
-import time
 
+from psycopg2.extras import DictCursor
 
 from resources import read_file
 from settings import CORPUS_PATH_DATABASE, RESUME_FILE_DATABASE
 
+
 def get_secret_pass():
     stack = os.environ['STACK']
-    password = ''
-    with open(f'/run/secrets/{stack}_superadmin_pass', 'r') as f:
-        password = f.read()
-    return password
+    return read_file(f'/run/secrets/{stack}_superadmin_pass')
 
 
 DB_CONFIG = {
@@ -25,7 +20,6 @@ DB_CONFIG = {
     "user": os.getenv("POSTGRES_USER", "migasfree"),
     "password": get_secret_pass()
 }
-
 
 _conn = None
 
@@ -38,10 +32,6 @@ def get_table_schema(name):
     return read_file(f"{CORPUS_PATH_DATABASE}/{name}.json")
 
 
-
-
-
-
 def get_connection():
     global _conn
     if _conn is None or _conn.closed:
@@ -52,6 +42,7 @@ def get_connection():
             print(f"Error establishing database connection: {e}")
             _conn = None
             raise
+
     return _conn
 
 
@@ -59,6 +50,7 @@ def validate_sql(statement):
     data = run_sql_select_query(f"EXPLAIN {statement}")
     if isinstance(data, dict) and "ERROR" in data:
         return {"valid": False, "message": f"{data}"}
+
     return {"valid": True, "message": ""}
 
 
@@ -98,19 +90,14 @@ def simplify_type_with_length(pg_type: str, type_mod: int) -> str:
     return type_mapping.get(pg_type, pg_type)
 
 
-
-
 def run_sql_select_query(query: str,) -> str:
     query_upper = query.upper().strip()
 
     if not query_upper:
-        #return  {"ERROR": "SELECT empty"}
         raise Exception("ERROR: SELECT empty")
     if not (query_upper.startswith("SELECT") or query_upper.startswith("EXPLAIN") or query_upper.startswith("```SQL\nSELECT")):
-        #return  {"ERROR": "Solo se permiten sentencias SELECT"}
         raise Exception("ERROR: Only SELECT SQL is allowed")
     if any(k in query_upper for k in ["DROP ", "DELETE ", "UPDATE ", "INSERT ", "ALTER ", "CREATE ", "TRUNCATE "]):
-        #return  {"ERROR": "Solo se permiten sentencias SELECT"}
         raise Exception("ERROR: Only SELECT SQL is allowed")
 
     try:
@@ -130,14 +117,9 @@ def run_sql_select_query(query: str,) -> str:
                 if _conn:
                     _conn.close()
                     _conn = None
+
         return {"ERROR": str(e)}
 
-
-
-
-
-
-#===========================
 
 def tables_catalog() -> str:
     query = """  SELECT
@@ -275,18 +257,14 @@ def get_table_fields(table_name: str) -> list:
         return json.dumps({"ERROR": str(e)})
 
 
-
-
-
 def create_schema():
-
     os.makedirs(CORPUS_PATH_DATABASE, exist_ok=True)
 
     if not os.path.exists(RESUME_FILE_DATABASE):
         tables = []
         rows = tables_catalog()
-        for name,description,foreign_key,referenced_by in rows:
-            table={}
+        for name, description, foreign_key, referenced_by in rows:
+            table = {}
             table["table_name"] = name
             if description:
                 table["description"] = description
@@ -305,8 +283,8 @@ def create_schema():
             if referenced_by:
                 schema["referenced_by"] = referenced_by
             schema["fields"] = get_table_fields(name)
-            with open(f"{CORPUS_PATH_DATABASE}/{name}.json","w") as file:
+            with open(f"{CORPUS_PATH_DATABASE}/{name}.json", "w") as file:
                 file.write(json.dumps(schema))
 
-        with open(RESUME_FILE_DATABASE,"w") as file:
+        with open(RESUME_FILE_DATABASE, "w") as file:
             file.write(json.dumps(tables))
