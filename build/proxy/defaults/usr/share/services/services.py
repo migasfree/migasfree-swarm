@@ -13,7 +13,6 @@ import dns.resolver
 import html
 import re
 
-
 from datetime import datetime, timedelta
 from web.httpserver import StaticMiddleware
 from jinja2 import Template
@@ -36,21 +35,10 @@ NETWORK_MNG = os.environ['NETWORK_MNG']
 
 MESSAGES_LOG = deque(maxlen=500)
 
-
-PATH_MTLS = "/mnt/cluster/certificates/mtls"
-PATH_MTLS_CERTS = f"{PATH_MTLS}/certs"
-PATH_MTLS_TOKEN = f"{PATH_MTLS}/token"
-PATH_CONF = f"/mnt/cluster/datashares/{STACK}/conf"
-
-def get_organization():
-    with open( f'{PATH_CONF}/settings.py', 'r') as file:
-        content = file.read()
-    variable_name = "MIGASFREE_ORGANIZATION"
-    pattern = rf'{variable_name}\s*=\s*(.+)'
-    result = re.search(pattern, content)
-    if result:
-        return result.group(1).strip().replace('"','')
-    return ""
+PATH_MTLS = '/mnt/cluster/certificates/mtls'
+PATH_MTLS_CERTS = f'{PATH_MTLS}/certs'
+PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
+PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
 
 # Global Variable
 # ===============
@@ -62,6 +50,19 @@ global_data = {
     'ok': False,
     'now': datetime.now()
 }
+
+
+def get_organization():
+    with open(f'{PATH_CONF}/settings.py', 'r') as file:
+        content = file.read()
+
+    variable_name = 'MIGASFREE_ORGANIZATION'
+    pattern = rf'{variable_name}\s*=\s*(.+)'
+    result = re.search(pattern, content)
+    if result:
+        return result.group(1).strip().replace('"', '')
+
+    return ''
 
 
 class icon:
@@ -107,6 +108,7 @@ class crl:
             web.ctx.status = '500 Internal Server Error'
             return f'Error in CRL: {e}'
 
+
 class mtls:
     def GET(self):
         web.header('Content-Type', 'text/html; charset=utf-8')
@@ -119,9 +121,10 @@ class mtls:
                 os.remove(file_token)
             else:
                 # token exists and is recent
-                with open(file_token, "r", encoding='utf-8') as f:
+                with open(file_token, 'r', encoding='utf-8') as f:
                     content = f.read()
-                user, days = content.split("|")
+
+                user, days = content.split('|')
                 env = Environment(
                     loader=FileSystemLoader('services-static/templates'),
                     autoescape=select_autoescape(['html', 'xml'])
@@ -130,9 +133,10 @@ class mtls:
                 try:
                     return template.render(user=user, days=days, token=token)
                 except Exception as e:
-                    return f"<p>Error: {html.escape(str(e))}</p>"
+                    return f'<p>Error: {html.escape(str(e))}</p>'
         time.sleep(3)
-        return ""
+
+        return ''
 
     def POST(self):
         data = web.input(password=None)
