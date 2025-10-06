@@ -8,14 +8,19 @@ VOLUME_TMP=${VOLUME}-temporal
 PATH_STACKS=/var/lib/docker/volumes/${VOLUME}/_data/datashares
 
 wait_for_volume() {
+    local in_use
     local volume_name="$1"
-    if [ -z "$volume_name" ]; then
+    if [ -z "$volume_name" ]
+    then
         return 1
     fi
+
     echo -n "Waiting for the volume '$volume_name' "
-    while true; do
-        local in_use=$(docker ps --filter "volume=$volume_name" --format '{{.ID}}')
-        if [ -z "$in_use" ]; then
+    while true
+    do
+        in_use=$(docker ps --filter "volume=$volume_name" --format '{{.ID}}')
+        if [ -z "$in_use" ]
+        then
             echo
             break
         else
@@ -27,20 +32,23 @@ wait_for_volume() {
 
 
 function get_swarm_role() {
-    if ! docker info | grep -q "Swarm: active"; then
+    if ! docker info | grep -q "Swarm: active"
+    then
         echo ""
     else
-      if docker info | grep -q "Is Manager: true"; then
-          echo "MANAGER"
-      else
-          echo "WORKER"
-      fi
+        if docker info | grep -q "Is Manager: true"
+        then
+            echo "MANAGER"
+        else
+            echo "WORKER"
+        fi
     fi
 }
 
 
 check_nfs_client_installed() {
-    if ! [ -x "$(command -v mount.nfs)" ] && ! [ -x "/sbin/mount.nfs" ]; then
+    if ! [ -x "$(command -v mount.nfs)" ] && ! [ -x "/sbin/mount.nfs" ]
+    then
         echo "NFS client is not installed. Please install it using your package manager:"
         echo "  - Debian/Ubuntu: apt install nfs-common"
         echo "  - RHEL/CentOS/Fedora: yum install nfs-utils"
@@ -55,13 +63,15 @@ check_nfs_v4() {
     local path_server="$3"
     local mount_dir="/tmp/nfs_test_mount"
 
-    if [ -z "$ip" ] || [ -z "$port" ] || [ -z "$path_server" ] ; then
+    if [ -z "$ip" ] || [ -z "$port" ] || [ -z "$path_server" ]
+    then
         echo "Usage: check_nfs_v4 <ip> <port> <path_server>"
         exit 1
     fi
 
     check_nfs_client_installed
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ]
+    then
         exit 1
     fi
 
@@ -81,111 +91,108 @@ check_nfs_v4() {
 
 
 function local2nfs {
-
     # TYPE_NFS="0" is 'nfs'
     TYPE_NFS=$(docker volume inspect $VOLUME 2>/dev/null | grep '"type": "nfs"' > /dev/null; echo $?)
 
     # Check nfs in env.py and migasfree-swarm volume is type local
-    if [ $DATASHARE_FS = "nfs" ] && [ "$TYPE_NFS" = "1" ] ; then
-
+    if [ "$DATASHARE_FS" = "nfs" ] && [ "$TYPE_NFS" = "1" ]
+    then
         STACKS="$(find ${PATH_STACKS} -maxdepth 1 -type d ! -path ${PATH_STACKS} -exec basename {} \;)"
 
         check_nfs_v4 "${DATASHARE_SERVER}" "${DATASHARE_PORT}" "${DATASHARE_PATH}"
 
         echo "Detected change in DATASHARE_FS mode from local to nfs"
 
-        read -p "Do you want to keep the data? (y/n): " response
+        read -r -p "Do you want to keep the data? (y/n): " response
         response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
         echo
-        if [[ "$response" == "y" || "$response" == "yes" ]]; then
-          _COPY="YES"
-          echo "  * The $VOLUME volume will be converted from 'local' to 'nfs' type !!!"
+        if [[ "$response" == "y" || "$response" == "yes" ]]
+        then
+            _COPY="YES"
+            echo "  * The $VOLUME volume will be converted from 'local' to 'nfs' type !!!"
         else
-          _COPY="NO"
-          echo "  * Installation from scratch. All data will be erased!!!"
+            _COPY="NO"
+            echo "  * Installation from scratch. All data will be erased!!!"
         fi
 
-        read -p "Do you want to continue? (y/n): " response
+        read -r -p "Do you want to continue? (y/n): " response
         response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
-        if [[ "$response" == "y" || "$response" == "yes" ]]; then
+        if [[ "$response" == "y" || "$response" == "yes" ]]
+        then
+            docker stack rm ${STACKS} portainer proxy
+            docker system prune -f > /dev/null
 
-          docker stack rm ${STACKS} portainer proxy
-          docker system prune -f > /dev/null
+            if [ $_COPY = "YES" ]
+            then
+                echo "Copying 'migasfree-swarm' volume to nfs volume."
+                echo "Depending on the volume size and copy speed, this process may take some time, please wait"
 
-          if [ $_COPY = "YES" ] ; then
-            echo "Copying 'migasfree-swarm' volume to nfs volume."
-            echo "Depending on the volume size and copy speed, this process may take some time, please wait"
+                create_volume_cluster ${VOLUME_TMP}
+                docker run --rm -it \
+                    -v ${VOLUME}:/from \
+                    -v ${VOLUME_TMP}:/to \
+                    alpine:3.20 sh -c "cd /from && cp -a . /to"
 
-            create_volume_cluster ${VOLUME_TMP}
-            docker run --rm -it \
-              -v ${VOLUME}:/from \
-              -v ${VOLUME_TMP}:/to \
-              alpine:3.20 sh -c "cd /from && cp -a . /to"
+                if [ $? = 0 ]
+                then
+                    docker system prune -f
+                    wait_for_volume ${VOLUME}
+                    docker system prune -f
+                    docker volume rm ${VOLUME}
+                    create_volume_cluster ${VOLUME}
+                fi
+                docker volume rm ${VOLUME_TMP} > /dev/null
+            else
+                # Installation from scratch. All data will be erased!!!
+                docker system prune -f
+                wait_for_volume ${VOLUME}
+                docker system prune -f
+                docker volume rm ${VOLUME}
 
-            if [ $? = 0 ] ; then
-              docker system prune -f
-              wait_for_volume ${VOLUME}
-              docker system prune -f
-              docker volume rm ${VOLUME}
-              create_volume_cluster ${VOLUME}
+                for STACK in $STACKS
+                do
+                    # Delete datastore
+                    wait_for_volume ${STACK}_database
+                    docker system prune -f
+                    docker volume rm ${STACK}_database
+
+                    # Delete datastore
+                    wait_for_volume ${STACK}_datastore
+                    docker system prune -f
+                    docker volume rm ${STACK}_datastore
+
+                    # Delete secrets
+                    docker secret rm ${STACK}_pms_pass
+                    docker secret rm ${STACK}_superadmin_name
+                    docker secret rm ${STACK}_superadmin_pass
+                    docker secret rm swarm-credential
+                done
+                create_volume_cluster ${VOLUME}
             fi
-            docker volume rm ${VOLUME_TMP} > /dev/null
 
-          else
-              # Installation from scratch. All data will be erased!!!
-              docker system prune -f
-              wait_for_volume ${VOLUME}
-              docker system prune -f
-              docker volume rm ${VOLUME}
-
-              for STACK in $STACKS
-              do
-
-                # Delete datastore
-                wait_for_volume ${STACK}_database
-                docker system prune -f
-                docker volume rm ${STACK}_database
-
-                # Delete datastore
-                wait_for_volume ${STACK}_datastore
-                docker system prune -f
-                docker volume rm ${STACK}_datastore
-
-                # Delete secrets
-                docker secret rm ${STACK}_pms_pass
-                docker secret rm ${STACK}_superadmin_name
-                docker secret rm ${STACK}_superadmin_pass
-                docker secret rm swarm-credential
-
-              done
-
-              create_volume_cluster ${VOLUME}
-          fi
-
-          # TYPE_NFS="0" is 'nfs'
-          TYPE_NFS=$(docker volume inspect $VOLUME 2>/dev/null | grep '"type": "nfs"' > /dev/null; echo $?)
-          if [ "${TYPE_NFS}" = "0" ] ; then
-             echo
-             echo "Congratulations! The $VOLUME volume has now been converted to NFS type."
-             echo
-          fi
-
+            # TYPE_NFS="0" is 'nfs'
+            TYPE_NFS=$(docker volume inspect $VOLUME 2>/dev/null | grep '"type": "nfs"' > /dev/null; echo $?)
+            if [ "${TYPE_NFS}" = "0" ]
+            then
+                echo
+                echo "Congratulations! The $VOLUME volume has now been converted to NFS type."
+                echo
+            fi
         fi
     fi
-
 }
 
 
 function create_volume_cluster {
   local _VOL="$1"
-  if [ $DATASHARE_FS  = "nfs" ]
+  if [ "$DATASHARE_FS" = "nfs" ]
   then
       docker volume create \
-        --driver local \
-        --opt type=nfs \
-        --opt o=addr=$DATASHARE_SERVER,port=$DATASHARE_PORT,rw,vers=4 \
-        --opt device=:$DATASHARE_PATH \
-        ${_VOL} > /dev/null
+          --driver local \
+          --opt type=nfs \
+          --opt o=addr=$DATASHARE_SERVER,port=$DATASHARE_PORT,rw,vers=4 \
+          --opt device=:$DATASHARE_PATH \
+          ${_VOL} > /dev/null
   else # local
       docker volume create ${_VOL} > /dev/null
   fi
@@ -195,36 +202,35 @@ function create_volume_cluster {
 ROLE="$(get_swarm_role)"
 if [ "${ROLE}" = "" ] || [ "${ROLE}" = "MANAGER" ]
 then
-  if ! [ -f ./env.py ]
-  then
-    docker run --name migasfree-swarm \
-      --detach=false --rm -ti \
-      -v $(pwd):/stack \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      "$_IMAGE" "config"
-  fi
-  . ./env.py
-  local2nfs
-  create_volume_cluster ${VOLUME}
+    if ! [ -f ./env.py ]
+    then
+      docker run --name migasfree-swarm \
+          --detach=false --rm -ti \
+          -v "$(pwd)":/stack \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          "$_IMAGE" "config"
+    fi
+    . ./env.py
+    local2nfs
+    create_volume_cluster ${VOLUME}
 fi
 
-
-if docker volume ls |grep -q $VOLUME
+if docker volume ls | grep -q $VOLUME
 then
-
-  if [ -t 1 ] && [ -t 0 ] ; then
-    _DETACH=false
+  if [ -t 1 ] && [ -t 0 ]
+  then
+      _DETACH=false
   else
-    _DETACH=true
+      _DETACH=true
   fi
 
   docker run --name migasfree-swarm \
-    --detach=${_DETACH} --rm -ti \
-    --env STACK="${STACK}" \
-    -v $(pwd):/stack \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v $VOLUME:/mnt/cluster \
-    "$_IMAGE" "$_COMMAND"
+      --detach=${_DETACH} --rm -ti \
+      --env STACK="${STACK}" \
+      -v "$(pwd)":/stack \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v $VOLUME:/mnt/cluster \
+      "$_IMAGE" "$_COMMAND"
 else
-  echo "volume $VOLUME not found"
+    echo "volume $VOLUME not found"
 fi
