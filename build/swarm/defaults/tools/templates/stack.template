@@ -236,7 +236,7 @@ services:
 #        depends_on:
 #            - datashare
         volumes:
-            - database:/var/lib/postgresql/data
+            - database:/var/lib/postgresql
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
             - {{STACK}}_network
