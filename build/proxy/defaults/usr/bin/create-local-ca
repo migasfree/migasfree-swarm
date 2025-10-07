@@ -22,7 +22,7 @@ then
 
     # Sign the CSR, resulting in CRT and add the v3 SAN extension:
     SAN="DNS.1=${FQDN}\nDNS.2=*.${FQDN}\n"
-    openssl x509 -req -in cert.csr -out cert.crt -CA ca.crt -CAkey ca.key -CAcreateserial -sha256 -days 1095 -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=@san_names\nbasicConstraints=CA:FALSE\nkeyUsage=nonRepudiation,digitalSignature,keyEncipherment\n[san_names]\n${SAN}"))
+    openssl x509 -req -in cert.csr -out cert.crt -CA ca.crt -CAkey ca.key -CAcreateserial -sha256 -days $_DAYS -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=@san_names\nbasicConstraints=CA:FALSE\nkeyUsage=nonRepudiation,digitalSignature,keyEncipherment\n[san_names]\n${SAN}"))
 
     chmod 600 cert.key
 
