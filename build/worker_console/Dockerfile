@@ -38,7 +38,7 @@ RUN set -eux; \
 
 #USER flower
 
-VOLUME $FLOWER_DATA_DIR
+#VOLUME $FLOWER_DATA_DIR
 
 COPY defaults/usr/bin /usr/bin
 COPY defaults/healthcheck.sh /healthcheck.sh
