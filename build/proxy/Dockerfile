@@ -14,7 +14,7 @@ COPY VERSION /VERSION
 ENV TAG=${TAG} \
     LIVE_CERT_FOLDER="/etc/letsencrypt/live" \
     BUILD_DEPENDS='py3-pip' \
-    RUNTIME_DEPENDS='bash tzdata inotify-tools openssl ca-certificates socat curl bind-tools python3 py3-virtualenv curl' \
+    RUNTIME_DEPENDS='bash tzdata inotify-tools openssl ca-certificates socat curl bind-tools python3 py3-virtualenv curl cronie' \
     RUNTIME_PIP='web.py jinja2 dnspython requests'
 
 RUN apk upgrade --no-cache && \

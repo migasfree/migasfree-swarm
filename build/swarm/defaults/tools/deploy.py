@@ -373,14 +373,6 @@ create_paths()
 client = docker.from_env()
 swarm_init()
 
-if CONTEXT["HTTPSMODE"] == 'manual':
-    subprocess.run([
-        'sh',
-        '/usr/bin/self-certificate.sh',
-        CONTEXT['FQDN'],
-        CONTEXT['STACK']
-    ])
-
 (user, password) = credentials(f"{CONTEXT['STACK']}", generate_password(8))
 
 # Stack secrets

@@ -20,55 +20,11 @@ CONFIG_EXT="${CLIENT_NAME}_ext.cnf"
 mkdir -p ${PATH_MTLS}
 cd ${PATH_MTLS}
 
-if ! [ -f "${PATH_CA}/mtls/mtls.cnf" ];
-then
-    echo "[ ca ]
-default_ca = CA_default
-
-[ CA_default ]
-# Directorio base para archivos de la CA
-dir               = ${PATH_CA}
-
-# Rutas a archivos y carpetas importantes
-certs             = \$dir/mtls/certs
-crl_dir           = \$dir/mtls/crl
-database          = \$dir/mtls/index.txt
-new_certs_dir     = \$dir/mtls/newcerts
-certificate       = \$dir/ca.crt
-serial            = \$dir/mtls/serial
-crlnumber         = \$dir/mtls/crlnumber
-crl               = \$dir/mtls/crl.pem
-private_key       = \$dir/ca.key
-RANDFILE          = \$dir/mtls/private/.rand
-
-# Parámetros por defecto para la emisión
-default_days      = 7300
-default_crl_days  = 7300
-default_md        = sha256
-
-# Políticas de firma
-policy            = policy_anything
-email_in_dn       = no
-
-" > "${PATH_CA}/mtls/mtls.cnf"
-
-    mkdir -p ${PATH_CA}/mtls/{certs,crl,newcerts,private}
-    touch "${PATH_CA}/mtls/index.txt"
-    echo 1000 > "${PATH_CA}/mtls/serial"
-    echo 1000 > "${PATH_CA}/mtls/crlnumber"
-
-    # create crl
-    openssl ca -config "${PATH_CA}/mtls/mtls.cnf" -gencrl -out "${PATH_CA}/mtls/crl.pem"
-
-fi
-
-
 cat > $CONFIG_EXT <<EOF
 [ v3_ext ]
 extendedKeyUsage = clientAuth
 crlDistributionPoints = URI:http://${FQDN}/services/crl
 EOF
-
 
 
 # Generate client private key protected with password
@@ -78,8 +34,13 @@ openssl genrsa -aes256 -passout pass:$PASSWORD -out ${CLIENT_NAME}.key 2048
 openssl req -new -key ${CLIENT_NAME}.key -passin pass:$PASSWORD -out ${CLIENT_NAME}.csr -subj "/CN=${CLIENT_NAME}"
 
 # Sign the CSR with the CA to create the client certificate
-openssl x509 -req -in ${CLIENT_NAME}.csr -CA $CA_CERT -CAkey $CA_KEY -CAcreateserial \
-    -out ${CLIENT_NAME}.crt -days $DAYS_VALID -sha256 -extfile $CONFIG_EXT -extensions v3_ext
+#openssl x509 -req -in ${CLIENT_NAME}.csr -CA $CA_CERT -CAkey $CA_KEY -CAcreateserial \
+#    -out ${CLIENT_NAME}.crt -days $DAYS_VALID -sha256 -extfile $CONFIG_EXT -extensions v3_ext
+
+openssl ca -config ${PATH_CA}/mtls/mtls.cnf -extensions v3_ext -extfile $CONFIG_EXT \
+    -in ${CLIENT_NAME}.csr -out ${CLIENT_NAME}.crt -days $DAYS_VALID -batch
+
+
 
 # Create PKCS#12 file for import (contains private key and certificate)
 openssl pkcs12 -export -out ${CLIENT_NAME}.p12 -inkey ${CLIENT_NAME}.key -passin pass:$PASSWORD -in ${CLIENT_NAME}.crt -certfile $CA_CERT -passout pass:$PASSWORD

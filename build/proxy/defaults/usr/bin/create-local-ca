@@ -1,0 +1,105 @@
+#!/bin/sh
+
+#FQDN="$1"
+#STACK="$2"
+
+_PATH_CA=/mnt/cluster/certificates
+_DAYS=7305  # 20 years
+
+if ! [ -f ${_PATH_CA}/${STACK}.pem ]
+then
+    cd ${_PATH_CA}
+    # Create a self signed default certificate, so HAproxy can start
+    # Create your CA crt and key:
+    openssl req -new -x509 -nodes -newkey rsa:4096 -extensions v3_ca -sha256 -days $_DAYS -subj "/C=ES/ST=ZARAGOZA/L=ZARAGOZA/O=migasfree/CN=${FQDN} Root CA" -keyout ca.key -out ca.crt
+    chmod 600 ca.key
+
+    # Create a CSR:
+    openssl req -newkey rsa:2048 -nodes -sha256 -keyout cert.key -out cert.csr -subj "/C=ES/ST=ZARAGOZA/L=ZARAGOZA/O=migasfree/OU=Core/CN=${FQDN}"
+
+    # Check contents of CSR (optional):
+    # openssl req -in cert.csr -text -noout
+
+    # Sign the CSR, resulting in CRT and add the v3 SAN extension:
+    SAN="DNS.1=${FQDN}\nDNS.2=*.${FQDN}\n"
+    openssl x509 -req -in cert.csr -out cert.crt -CA ca.crt -CAkey ca.key -CAcreateserial -sha256 -days 1095 -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=@san_names\nbasicConstraints=CA:FALSE\nkeyUsage=nonRepudiation,digitalSignature,keyEncipherment\n[san_names]\n${SAN}"))
+
+    chmod 600 cert.key
+
+    # Check contents of CRT (optional)
+    openssl x509 -in cert.crt -text -noout
+
+    # Certificate autosigned for SSL in haproxy
+    cat cert.key cert.crt > ${STACK}.pem
+    chmod 600 ${STACK}.pem
+fi
+
+
+
+# mTLS
+# ====
+mkdir -p ${_PATH_CA}/mtls
+cd ${_PATH_CA}/mtls
+
+if ! [ -f "${_PATH_CA}/mtls/mtls.cnf" ];
+then
+    echo "[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+# Directorio base para archivos de la CA
+dir               = ${_PATH_CA}
+
+# Rutas a archivos y carpetas importantes
+certs             = \$dir/mtls/certs
+crl_dir           = \$dir/mtls/crl
+database          = \$dir/mtls/index.txt
+new_certs_dir     = \$dir/mtls/newcerts
+certificate       = \$dir/ca.crt
+serial            = \$dir/mtls/serial
+crlnumber         = \$dir/mtls/crlnumber
+crl               = \$dir/mtls/crl.pem
+private_key       = \$dir/ca.key
+RANDFILE          = \$dir/mtls/private/.rand
+
+# Parámetros por defecto para la emisión
+default_days      = ${_DAYS}
+default_crl_days  = 30
+default_md        = sha256
+unique_subject    = no
+
+# Políticas de firma
+policy            = policy_anything
+email_in_dn       = no
+
+[policy_anything]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+" > "${_PATH_CA}/mtls/mtls.cnf"
+
+    mkdir -p ${_PATH_CA}/mtls/certs
+    mkdir -p ${_PATH_CA}/mtls/crl
+    mkdir -p ${_PATH_CA}/mtls/newcerts
+    mkdir -p ${_PATH_CA}/mtls/private
+    touch "${_PATH_CA}/mtls/index.txt"
+
+    chmod 700 ${_PATH_CA}/mtls/private
+    chmod 755 ${_PATH_CA}/mtls/newcerts
+    chmod 644 ${_PATH_CA}/mtls/serial
+    chmod 644 ${_PATH_CA}/mtls/index.txt
+
+    echo 1000 > "${_PATH_CA}/mtls/serial"
+    echo 1000 > "${_PATH_CA}/mtls/crlnumber"
+
+    # create crl
+    openssl ca -config "${_PATH_CA}/mtls/mtls.cnf" -gencrl -out "${_PATH_CA}/mtls/crl.pem"
+
+    chown -R 890:890 "${_PATH_CA}/mtls"
+
+fi

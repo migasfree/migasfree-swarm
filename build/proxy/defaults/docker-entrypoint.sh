@@ -44,11 +44,15 @@ echo "
 # =============
 mkdir -p /var/run/haproxy/
 
-message ""
 
-# Link certificates
+# Certificates
 rm -rf /usr/local/etc/haproxy/certificates || :
 ln -s /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
+create-local-ca
+/usr/bin/renew_crl
+/usr/sbin/crond &
+
+message ""
 
 haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
     -p /var/run/haproxy/haproxy.pid
