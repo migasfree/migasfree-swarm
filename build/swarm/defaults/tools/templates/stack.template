@@ -212,6 +212,15 @@ services:
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - BACKUP_CRON='{{BACKUP_CRON}}'
+
+        {% if PORT_DATABASE %}  #  Expose PostgreSQL port to external access from the Swarm cluster
+        ports:
+            - published: {{PORT_DATABASE}}
+              target: {{POSTGRES_PORT}}
+              protocol: tcp
+              mode: host
+        {% endif %}
+
         secrets:
             - source: {{STACK}}_superadmin_pass
         deploy:

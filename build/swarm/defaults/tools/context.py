@@ -109,10 +109,14 @@ class ContextLoader:
         # ==================
         self.default("NETWORK_MNG", "0.0.0.0/0")
 
-        # Ports
-        # =====
+        # Exposed Ports
+        # =============
         self.default("PORT_HTTP", "80")
         self.default("PORT_HTTPS", "443")
+        self.default("PORT_DATABASE", "")
+
+        # Server Certificate  mode
+        # ========================
         self.default("HTTPSMODE", "manual")
 
         # mTLS
@@ -215,6 +219,16 @@ class ContextLoader:
 #     Port where the Swarm cluster serves HTTPS.
 # {line}
 """,
+
+            "PORT_DATABASE": f"""# {line}
+# PORT_DATABASE
+#     Port used to expose PostgreSQL externally.
+#     It's best practice to keep the PostgreSQL port closed to the outside world and
+#     only accessible within trusted networks.
+#     Default value: ''  # Port not exposed
+# {line}
+""",
+
             "HTTPSMODE": f"""# {line}
 # HTTPSMODE
 #     Sets the mode in which certificates are generated for the FQDN and its subdomains.
@@ -244,7 +258,10 @@ class ContextLoader:
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST
 #    Domain name or IP address of the PostgreSQL database server.
-#    If you are not using an external database outside the Swarm cluster, this variable should be set to 'database'.
+#    If you are not using an external database outside the Swarm cluster, set
+#        POSTGRES_HOST='database' and
+#        POSTGRES_PORT='5432' to connect internally.
+#    This ensures the service uses the internal Swarm network for better security.
 # {line}
 """,
 
