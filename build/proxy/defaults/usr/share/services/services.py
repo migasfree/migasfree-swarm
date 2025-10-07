@@ -59,7 +59,7 @@ def get_organization():
     pattern = rf'{variable_name}\s*=\s*(.+)'
     result = re.search(pattern, content)
     if result:
-        return result.group(1).strip().replace('"', '')
+        return result.group(1)[1:-1]
 
     return ''
 
