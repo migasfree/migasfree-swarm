@@ -181,7 +181,7 @@ frontend http
     # URL without mTLS
     # ----------------
     acl url_no_mTLS_get   path_beg /repo/ # Compatibility client v4
-    acl url_no_mTLS_get   path     /api/ # Compatibility client v4
+    acl url_no_mTLS_post   path     /api/ # Compatibility client v4
 
     acl url_no_mTLS_get   path     /services/mtls  # url-client-certificate
     acl url_no_mTLS_post  path     /services/mtls  # make client certificate
