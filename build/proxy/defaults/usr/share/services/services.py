@@ -130,7 +130,7 @@ class mtls:
                 )
                 template = env.get_template('mtls.html')
                 try:
-                    return template.render(user=user, days=days, token=token)
+                    return template.render(user=user, days=days, token=token, fqdn=FQDN)
                 except Exception as e:
                     return f'<p>Error: {html.escape(str(e))}</p>'
         time.sleep(3)
@@ -140,6 +140,7 @@ class mtls:
     def POST(self):
         data = web.input(password=None)
         token = web.input().get('token')
+        email = data.email
         password = data.password
         file_token = os.path.join(PATH_MTLS_TOKEN, token)
         if os.path.exists(file_token) and len(token) == 64:
@@ -151,19 +152,19 @@ class mtls:
                 with open(file_token, "r", encoding='utf-8') as f:
                     content = f.read()
                 user, days = content.split("|")
-                user = f"{user}-{FQDN}"
 
                 # Create certificate
-                os.system(f"/usr/bin/mtls.sh '{user}' '{password}' '{days}'")
+                os.system(f"/usr/bin/mtls.sh '{user}' '{FQDN}' '{password}' '{days}' '{email}'")
 
                 # Return tar file
-                file_tar = f"{PATH_MTLS_CERTS}/{user}.tar"
+                CERT_NAME=f"{user}-{FQDN}"
+                file_tar = f"{PATH_MTLS_CERTS}/{CERT_NAME}.tar"
                 if os.path.exists(file_tar):
                     with open(file_tar, "rb") as f:
                         content = f.read()
 
                     web.header('Content-Type', 'application/x-tar')
-                    web.header('Content-Disposition', 'attachment; filename="'+user+'.tar"')
+                    web.header('Content-Disposition', 'attachment; filename="'+CERT_NAME+'.tar"')
                     web.header('Content-Length', str(len(content)))
                     os.remove(file_token)
                     os.remove(file_tar)

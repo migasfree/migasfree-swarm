@@ -38,6 +38,15 @@
         color: gray;
     }
 
+    input[type="email"] {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid gray;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
     input[type="password"] {
       width: 90%;
       padding: 10px;
@@ -75,14 +84,17 @@
   <div class="container">
     <image id="spoon" src="/services-static/img/spoon-welcome.svg" height="48" width="48" />
     <h2>Client Certificate</h2>
-    <h4>Issued to: {{ user }}</h4>
-    <h4>validity: {{ days }} days</h4>
-    <p>Please note: You will need this password when importing the client certificate into your web browser.<p>
+    <p>Server: {{ fqdn }}</p>
+    <p>User: {{ user }}</p>
+    <p>Validity: {{ days }} days</p>
+
     <form action="/services/mtls" method="POST" id="certForm">
       <input type="hidden" name="token" value="{{ token }}">
+      <input type="email" id="email" name="email" placeholder="Email" required />
       <input type="password" id="password" name="password" placeholder="Password" required />
       <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" required />
       <span id="passwordError"></span>
+      <p>Please note: You will need this password when importing the client certificate into your web browser.<p>
       <button type="submit">Download</button>
     </form>
   </div>

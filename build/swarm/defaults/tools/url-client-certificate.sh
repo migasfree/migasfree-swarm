@@ -39,7 +39,11 @@ then
 
 else
 
-    read -p "validity in days (7300):" DAYS
+    read -p "validity in days (7305):" DAYS
+    if [ -z "$DAYS" ]
+    then
+        DAYS=7305
+    fi
 
     UUID=$(openssl rand -hex 32)
     FILE="${PATH_TOKEN}/${UUID}"
@@ -47,8 +51,12 @@ else
     echo -n "${USER}|${DAYS}" > ${FILE}
     chmod 400 ${FILE}
     echo
-    echo "Please, send this url to ${USER}:"
+    echo
+    echo "Please, send this URL to ${USER}:"
+    echo
     echo "    https://${FQDN}/services/mtls?token=${UUID}"
+    echo
+    echo "    (The URL is valid for 72 hours)"
     echo
     exit 0
 fi
