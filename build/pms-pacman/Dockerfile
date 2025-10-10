@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM archlinux/archlinux:base-20250912.0.420446
+FROM archlinux/archlinux:base-20251009.0.433396
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -20,8 +20,8 @@ ENV TAG=${TAG} \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production
 
 RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
-    _DEPENDS='gnupg gzip python3 python-virtualenv curl netcat python-requests python-redis python-celery python-dateutil' && \
-#    _PIP_DEPENDS='' && \
+    _DEPENDS='gnupg gzip python3 python-virtualenv curl netcat python-dateutil' && \
+    _PIP_DEPENDS='celery redis requests' && \
     useradd www-data &&\
     usermod -u $_UID www-data && \
     groupmod -g $_GID www-data && \
@@ -29,8 +29,8 @@ RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
     pacman -Syu --noconfirm && \
     pacman --noconfirm --sync  $_DEPENDS  && \
     pacman --noconfirm --sync  $_BUILD_DEPENDS && \
-#    pip install $_PIP_DEPENDS && \
     virtualenv /venv && \
+    /venv/bin/pip install $_PIP_DEPENDS && \
     mkdir /pms && \
     rm -rf /var/tmp/* /usr/share/man/* /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
 
