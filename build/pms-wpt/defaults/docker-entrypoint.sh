@@ -70,6 +70,7 @@ function save_token_pms {
 }
 
 set_TZ
+. /venv/bin/activate
 send_message "starting ${SERVICE:(${#STACK})+1}"
 
 export MIGASFREE_KEYS_DIR=/var/lib/migasfree-backend/keys
