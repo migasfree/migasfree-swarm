@@ -1,3 +1,5 @@
+#!/bin/bash
+
 export MIGASFREE_FQDN=core:8080
 export MIGASFREE_SECRET_DIR=/var/run/secrets
 
@@ -58,6 +60,7 @@ function save_token_pms {
         2>/dev/null | awk -F "\"" '{print $4}' > ${MIGASFREE_SECRET_DIR}/token_pms
 }
 
+. /venv/bin/activate
 send_message "starting ${SERVICE:(${#STACK})+1}"
 
 export MIGASFREE_KEYS_DIR=/var/lib/migasfree-backend/keys
