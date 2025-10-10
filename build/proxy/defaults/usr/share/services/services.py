@@ -178,7 +178,7 @@ class mtls:
 class logs:
     def GET(self):
         web.header('Content-Type', 'text/html; charset=utf-8')
-        columns = ["text", "service", "node", "container", "time"]
+        columns = ["time", "text", "service", "node", "container"]
         env = Environment(
             loader=FileSystemLoader('services-static/templates'),
             autoescape=select_autoescape(['html', 'xml'])
