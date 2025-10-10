@@ -8,13 +8,13 @@
         />
         <style>
             @font-face {
-            font-family: 'Virgil';
-            src: url('/services-static/fonts/Virgil.ttf') format('truetype');
+                font-family: Pompiere;
+                src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
             }
             body {
                 width: 100%;
                 margin: 0 auto;
-                font-family: 'Virgil', sans-serif;
+                font-family: Pompiere, sans-serif;
                 color: #bbb;
             }
             .center {
@@ -31,6 +31,7 @@
             }
             h1 {
                 font-size: 20vh;
+                font-style: italic;
                 margin: 0;
             }
         </style>
@@ -39,8 +40,12 @@
     <body>
         <main class="center">
             <div id="info">
-                <h1 >Internal Server Error</h1>
-                <img id="spoon" src="/services-static/img/spoon-error.svg" alt="" title="proxy" />
+                <h1>Internal Server Error</h1>
+                <img
+                    src="/services-static/img/spoon-error.svg"
+                    alt=""
+                    title="proxy"
+                />
             </div>
         </main>
     </body>
