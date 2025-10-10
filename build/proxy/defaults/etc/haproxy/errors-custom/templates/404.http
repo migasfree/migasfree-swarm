@@ -11,16 +11,16 @@ Content-Type: text/html
           name="viewport"
           content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"
         />
-        <link rel="icon" href="https://{{FQDN}}/services-static/img/logo.svg" type="image/svg+xml">
+        <link rel="icon" href="https://{{FQDN}}/services-static/img/logo.svg" type="image/svg+xml" />
         <style>
             @font-face {
-            font-family: 'Virgil';
-            src: url('https://{{FQDN}}/services-static/fonts/Virgil.ttf') format('truetype');
+                font-family: Pompiere;
+                src: url('https://{{FQDN}}/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
             }
             body {
                 width: 100%;
                 margin: 0 auto;
-                font-family: 'Virgil', sans-serif;
+                font-family: Pompiere, sans-serif;
                 color: #bbb;
             }
             .center {
@@ -37,6 +37,7 @@ Content-Type: text/html
             }
             h1 {
                 font-size: 16vh;
+                font-style: italic;
                 margin: 0;
             }
         </style>
@@ -45,8 +46,12 @@ Content-Type: text/html
     <body>
         <main class="center">
             <div id="info">
-                <h1 >Not found</h1>
-                <img id="spoon" src="https://{{FQDN}}/services-static/img/spoon-error.svg" alt="" title="proxy" />
+                <h1>Not found</h1>
+                <img
+                    src="https://{{FQDN}}/services-static/img/spoon-error.svg"
+                    alt=""
+                    title="proxy"
+                />
             </div>
         </main>
     </body>
