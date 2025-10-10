@@ -4,17 +4,40 @@
   <meta charset="UTF-8" />
   <title>Messages Log</title>
   <style>
-    @font-face { font-family: 'Virgil'; src: url('/services-static/fonts/Virgil.ttf') format('truetype'); }
-    h1 { text-align: center; }
-    body { width: 100%; margin: 0 auto; font-family: 'Virgil', sans-serif; color: #222; }
-    table { margin-left: auto; margin-right: auto; border-collapse: collapse; border: 1px solid black; }
-    th, td { border: 1px solid black; padding: 5px; }
-    img { display: block; margin-left: auto; margin-right: auto; }
-    .center {text-align: center;}
+    @font-face {
+      font-family: Pompiere;
+      src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+    }
+    h1 {
+      text-align: center;
+    }
+    body {
+      width: 100%;
+      margin: 0 auto;
+      font-family: Pompiere, sans-serif;
+      color: #222;
+    }
+    table {
+      margin-left: auto;
+      margin-right: auto;
+      border-collapse: collapse;
+      border: 1px solid black;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 5px;
+    }
+    img {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .center {
+      text-align: center;
+    }
   </style>
   <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
   <script type="text/javascript">
-
     const columns = {{ columns | tojson }};
 
     function buildTable(data) {
