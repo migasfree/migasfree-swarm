@@ -65,6 +65,29 @@ body {
   font-family: Pompiere, sans-serif;
   color: #ddd;
 }
+
+.bocadillo {
+  font-size: 2.5px;
+  font-style: italic;
+  color: #000;
+  margin: 0;
+}
+
+#organization, #stack, #tag {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 3px;
+  color: #999999;
+}
+
+#stack {
+  font-size: 2.5px;
+}
+
+#tag {
+  font-size: 2px;
+}
     </style>
 
     <title>Status</title>
@@ -337,41 +360,22 @@ body {
           <image id="spoon" href="/" class="link" x=155 y=120 height="10" width="10" />
       </a>
 
-      <switch>
-        <foreignObject x="145.5" y="107.5" width="38" height="10" font-size="2" color="#999999">
+      <foreignObject x="145.5" y="107.5" width="38" height="14">
           <p class="bocadillo" id="message_serv">  </p>
-        </foreignObject>
-      </switch>
-      <switch>
-        <foreignObject x="145.5" y="109.5" width="38" height="10" font-size="2.5" color="#999999">
           <p class="bocadillo" id="message"> one moment, please </p>
-        </foreignObject>
-      </switch>
+      </foreignObject>
 
-      <switch>
-        <foreignObject x="66" y="121" width="38" height="6">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 3px; color: #999999;">
-            <p id="organization"> </p>
-          </div>
-        </foreignObject>
-      </switch>
+      <foreignObject x="66" y="118" width="38" height="6">
+          <p id="organization"> </p>
+      </foreignObject>
 
+      <foreignObject x="66" y="121" width="38" height="6">
+          <p id="stack"> </p>
+      </foreignObject>
 
-      <switch>
-        <foreignObject x="66" y="123" width="38" height="6">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 2px; color: #999999;">
-            <p id="stack"> </p>
-          </div>
-        </foreignObject>
-      </switch>
-
-      <switch>
-        <foreignObject x="66" y="125" width="38" height="6">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; font-size: 1.5px; color: #999999;">
-            <p id="tag"> </p>
-          </div>
-        </foreignObject>
-      </switch>
+      <foreignObject x="66" y="124" width="38" height="6">
+          <p id="tag"> </p>
+      </foreignObject>
 
       <circle id="proxy" cx="29" cy="103.5" r="1.5" fill="orange "/>
       <circle id="proxy_link" class="link" cx="36" cy="97" r="7"
