@@ -1,0 +1,34 @@
+#!/bin/sh
+
+PATH_CA="/mnt/cluster/certificates"
+PATH_DATASHARE="/mnt/cluster/datashares"
+
+function renew {
+    local STACK="$1"
+    local TYPE="$2"
+    local CA_CONF="${PATH_CA}/${STACK}/${TYPE}/openssl.cnf"
+    local CRL_FILE="${PATH_CA}/${STACK}/${TYPE}/crl/crl.pem"
+    openssl ca -config ${CA_CONF} -gencrl -out "${CRL_FILE}"
+}
+
+function crl_combined {
+    local STACK="$1"
+    local CRL_FILE_COMBINED="${PATH_CA}/${STACK}/crl.pem"
+    rm ${CRL_FILE_COMBINED} || :
+    cat "${PATH_CA}/${STACK}/admin/crl/crl.pem" \
+        "${PATH_CA}/${STACK}/computer/crl/crl.pem" > ${CRL_FILE_COMBINED}
+}
+
+STACKS=$(find "${PATH_DATASHARE}" -mindepth 1 -maxdepth 1 -type d)
+for STACK in $STACKS; do
+    STACK=$(basename ${STACK})
+    renew "${STACK}" "admin"
+    renew "${STACK}" "computer"
+    crl_combined "${STACK}"
+done
+
+for ip in $(getent hosts proxy | awk '{ print $1 }'); do
+    echo -e "commit ssl crl-file ${CRL_FILE}" | socat stdio tcp4-connect:"$ip":8404
+done
+
+#reload  ## TODO

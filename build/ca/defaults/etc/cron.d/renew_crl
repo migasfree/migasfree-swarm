@@ -1,0 +1,4 @@
+# Execute the CRL renewal script
+30 0 * * * root /usr/bin/renew_crl
+
+# Important: Leave a blank line above to ensure proper parsing by cron

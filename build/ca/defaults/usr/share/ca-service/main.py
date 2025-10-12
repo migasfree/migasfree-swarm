@@ -1,0 +1,58 @@
+import logging
+
+from fastapi import FastAPI
+from datetime import datetime
+from routers import admin, computer, crl
+
+from core.config import ROOT
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+app = FastAPI(
+    title="Certificate Authority API",
+    version="1.0.0",
+    description="API for certificate management with local CA",
+#    docs_url="/ca/docs",
+    root_path="/ca"
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="ca-static")
+
+
+app.include_router(admin.router)
+app.include_router(computer.router)
+app.include_router(crl.router)
+
+@app.get(f'/health', tags=["health"])
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/img/mtls.svg")
+
+@app.get("/", tags=["root"])
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Certificate Authority API",
+        "docs": "/ca/docs",
+        "health": f"/ca/health"
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
