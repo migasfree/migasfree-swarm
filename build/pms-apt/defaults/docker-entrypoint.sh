@@ -107,7 +107,6 @@ echo "
 
 save_token_pms
 cd /pms
-reload_proxy
 
 
 # CELERY CONFIG

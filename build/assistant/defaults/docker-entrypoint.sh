@@ -29,5 +29,4 @@ echo "
 
 
 send_message ""
-reload_proxy 30
 bash start.sh

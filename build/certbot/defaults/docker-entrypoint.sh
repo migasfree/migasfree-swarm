@@ -30,11 +30,10 @@ echo "
 "
 
 send_message ""
-reload_proxy
 
 while :;
 do
-    send_message "renew certificate letsencrypt" 
+    send_message "renew certificate letsencrypt"
     [ "${HTTPSMODE}" = "auto" ] && . /usr/bin/renew-certificates.sh
     send_message ""
     sleep 12h & wait ${!}

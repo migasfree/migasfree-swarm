@@ -98,4 +98,4 @@ api_request "POST" \
     "$_TOKEN"
 
 send_message ""
-reload_proxy
+

@@ -89,6 +89,6 @@ echo "
 "
 
 echo "daemon off;" >> /etc/nginx/nginx.conf
-reload_proxy
+
 send_message ""
 nginx

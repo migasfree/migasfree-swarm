@@ -12,9 +12,7 @@ then
     then
         touch /var/tmp/healthy
         send_message ""
-        # Important: Reconfigure in the background after 3 seconds; this container must be healthy first.
-        reload_proxy 3
-    fi 
+    fi
 else
     rm /var/tmp/healthy || :
     send_message "Unavailable"
@@ -29,4 +27,4 @@ then
     exit 1
 fi
 
-exit 0 
+exit 0

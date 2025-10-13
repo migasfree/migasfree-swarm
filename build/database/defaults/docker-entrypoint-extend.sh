@@ -66,7 +66,6 @@ echo "
 "
 
 send_message ""
-reload_proxy
 
 # if no database dump exists, one will be created
 if ! [ -f "${DATASHARE_MOUNT_PATH}/dump/migasfree.sql" ]

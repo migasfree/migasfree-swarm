@@ -62,8 +62,6 @@ echo "
 
 "
 
-reload_proxy
-
 
 # CELERY CONFIG
 # =============

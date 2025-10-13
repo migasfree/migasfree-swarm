@@ -49,7 +49,6 @@ echo "
 
 
 send_message ""
-reload_proxy
 
 # Changes to USER pgadmin
 if [ "$(id -u)" = '0' ]; then
