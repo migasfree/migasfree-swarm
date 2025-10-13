@@ -347,10 +347,10 @@ If you have a wildcard or SAN certificate that covers these domains, for example
     STACK=mystack
 
     # Combine your certificate, any intermediate certificates, and the private key into a single PEM file
-    cat mycertificate.pem myintermediate.pem mykey.key > /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
+    cat mycertificate.pem myintermediate.pem mykey.key > /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}/server/${FQDN}.pem
 
     # Ensure correct file permissions
-    chmod 600 /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem
+    chmod 600 /var/lib/docker/volumes/migasfree-swarm/_data/certificates//server/${FQDN}.pem
 
     # Reconfigure the proxy to apply changes
     docker exec $(docker ps | grep proxy_proxy | awk '{print $1}') reconfigure
@@ -376,7 +376,7 @@ To enable automatic certificate management:
      ```
 Certificates will be obtained automatically and renewed before expiration without further user intervention.
 
-### 2. Client Certificate (mTLS)
+### 2. Client Certificate (mTLS) for admins.
 
 To add an additional security layer, especially when your Migasfree server is exposed to the internet, enable mutual TLS (mTLS) authentication **for accessing administrative consoles and sensitive APIs**.
 
@@ -394,18 +394,9 @@ Manage client certificates with the following commands:
   1. Generate a URL for users to create their client certificate:
 
      ```bash
-     ./migasfree-swarm url-client-certificate
+     ./migasfree-swarm url-admin-certificate
      ```
-  2. Revoke a client certificate:
 
-     ```bash
-     ./migasfree-swarm revoke-client-certificate
-     ```
-  3. List all client certificates:
-
-     ```bash
-     ./migasfree-swarm list-client-certificate
-     ```
 > **Warning:** When mTLS is enabled, clients without a valid certificate will be denied access. Make sure users generate and install their client certificates before enabling this mode.
 
 ### 3. HTTPS Proxy Root Certificate
