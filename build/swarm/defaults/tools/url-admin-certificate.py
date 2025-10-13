@@ -46,7 +46,7 @@ if __name__ == "__main__":
     stack, common_name, validity_days = solicitar_parametros()
 
     client = docker.from_env()
-    client.networks.get("proxy").connect(socket.gethostname())
+    client.networks.get("infra_network").connect(socket.gethostname())
 
     try:
         token_info = crear_token_usuario(base_url, stack, common_name, validity_days)
