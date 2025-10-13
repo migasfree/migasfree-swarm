@@ -46,6 +46,7 @@ services:
             - HTTPSMODE={{HTTPSMODE}}
             - PMS_ENABLED={{PMS_ENABLED}}
             - NETWORK_MNG={{NETWORK_MNG}}
+            - GOOGLE_API_KEY={{GOOGLE_API_KEY}}  # TODO: improve token handling — avoid storing sensitive data in environment variables
         depends_on:
             - ca
         deploy:

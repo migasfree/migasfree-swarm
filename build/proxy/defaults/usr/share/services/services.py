@@ -150,6 +150,7 @@ class message:
                 'proxy',
                 'portainer',
                 'certbot',
+                'ca',
             ]
 
             if 'services' not in global_data:
@@ -191,6 +192,12 @@ class message:
                             global_data['need_reload'] = False
                         global_data['ok'] = True
 
+        disables = []
+        if os.environ['HTTPSMODE'] == "manual":
+            disables.append("certbot")
+        if os.environ['GOOGLE_API_KEY'] == "":
+            disables.append("assistant")
+
         return json.dumps(
             {
                 'last_message': global_data['last_message'],
@@ -199,6 +206,7 @@ class message:
                 'organization': get_organization(),
                 'stack': STACK,
                 'tag': TAG,
+                'disables': disables,
             }
         )
 
