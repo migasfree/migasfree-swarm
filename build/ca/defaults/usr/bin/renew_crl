@@ -31,4 +31,5 @@ for ip in $(getent hosts proxy | awk '{ print $1 }'); do
     echo -e "commit ssl crl-file ${CRL_FILE}" | socat stdio tcp4-connect:"$ip":8404
 done
 
-#reload  ## TODO
+# reconfigure haproxy
+curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
