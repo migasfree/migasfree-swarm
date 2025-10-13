@@ -1,5 +1,27 @@
+# https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery
 
 services:
+
+    ca:
+        image: migasfree/ca:{{TAG}}
+        environment:
+            - TZ=Europe/Madrid
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 0
+                window: 180s
+        volumes:
+            - migasfree-swarm:/mnt/cluster
+
+        networks:
+            - proxy
 
     proxy:
         image: migasfree/proxy:{{TAG}}
@@ -12,7 +34,7 @@ services:
               target: 443
               protocol: tcp
               mode: host
-
+        dns: 127.0.0.11
         environment:
             - TZ=Europe/Madrid
             - FQDN={{FQDN}}
@@ -24,6 +46,8 @@ services:
             - HTTPSMODE={{HTTPSMODE}}
             - PMS_ENABLED={{PMS_ENABLED}}
             - NETWORK_MNG={{NETWORK_MNG}}
+        depends_on:
+            - ca
         deploy:
             #replicas: 1
             mode: global

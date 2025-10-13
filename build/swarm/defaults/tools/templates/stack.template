@@ -493,7 +493,7 @@ services:
             - {{STACK}}_network
             - proxy
         volumes:
-            - /var/lib/docker/volumes/migasfree-swarm/_data/certificates:/etc/certificates
+            - /var/lib/docker/volumes/migasfree-swarm/_data/certificates/{{STACK}}/server:/etc/certificates
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
 {% endif %}
 

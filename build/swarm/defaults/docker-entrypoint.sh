@@ -120,17 +120,10 @@ elif [ ${COMMAND} = "pull" ]
 then
     /tools/pull.sh
 
-elif [ ${COMMAND} = "url-client-certificate" ]
+elif [ ${COMMAND} = "url-admin-certificate" ]
 then
-    /tools/url-client-certificate.sh
+    run_manager "python3 /tools/url-admin-certificate.py"
 
-elif [ ${COMMAND} = "revoke-client-certificate" ]
-then
-    /tools/revoke-client-certificate.sh
-
-elif [ ${COMMAND} = "list-client-certificate" ]
-then
-    /tools/list-client-certificate.sh
 
 elif [ ${COMMAND} = "join-worker" ]
 then

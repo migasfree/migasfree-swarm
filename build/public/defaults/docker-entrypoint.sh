@@ -62,9 +62,9 @@ echo "
 
                    ●                          ●●
                                              ●
-         ●●● ●●    ●    ●●     ●●●     ●●●  ●●●●  ●●●  ●●●    ●●● 
+         ●●● ●●    ●    ●●     ●●●     ●●●  ●●●●  ●●●  ●●●    ●●●
         ●   ●  ●   ●   ●  ●       ●   ●      ●   ●    ●   ●  ●   ●
-        ●   ●  ●   ●   ●  ●    ●●●●    ●●    ●   ●    ●●●●   ●●●● 
+        ●   ●  ●   ●   ●  ●    ●●●●    ●●    ●   ●    ●●●●   ●●●●
         ●   ●  ●   ●   ●  ●   ●   ●      ●   ●   ●    ●      ●
         ●   ●  ●   ●    ●●●    ●●●    ●●●    ●   ●     ●●●    ●●●
                           ●
@@ -79,9 +79,9 @@ echo "
 
 "
 
-
-
-reload_proxy
+# Reconfigure extensions for haproxy.cfg
+# ======================================
+curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
 
 # Get external deployments extensions from proxy
 # =================================================

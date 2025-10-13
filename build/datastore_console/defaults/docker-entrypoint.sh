@@ -71,7 +71,6 @@ echo "
 
 
 send_message ""
-reload_proxy
 
 su node -c "/usr/bin/add_connection" &
 su node -c "cd /usr/src/app;node redisinsight/api/dist/src/main"

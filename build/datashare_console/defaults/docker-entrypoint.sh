@@ -92,7 +92,7 @@ init_datashare() {
 
     if [ "${HTTPSMODE}" = "manual" ]
     then
-        cp /mnt/cluster/certificates/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
+        cp /mnt/cluster/certificates/${STACK}/ca/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
 
         cat <<-EOF > ${_ROOT}/pool/install/migasfree-client.txt
 # Run as root
@@ -167,6 +167,5 @@ then
 fi
 
 send_message ""
-reload_proxy 3
 
 su user -c "/bin/filebrowser"

@@ -5,6 +5,10 @@ global
     # log 127.0.0.1 local0
     # log 127.0.0.1 local1 notice
     # tune.bufsize 32768  # workaround -> 414 Request-URI Too Large
+
+    # Administrative port 9999
+    stats socket tcp@:9999 level admin expose-fd listeners
+
     tune.ssl.default-dh-param 2048
     ssl-server-verify none
 
@@ -16,6 +20,19 @@ global
 
     ssl-default-bind-options no-tls-tickets ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+
+
+resolvers docker
+    nameserver dns1 127.0.0.11:53
+    resolve_retries 3
+    timeout resolve 1s
+    timeout retry   1s
+    hold other      10s
+    hold refused    10s
+    hold nx         10s
+    hold timeout    10s
+    hold valid      10s
+    hold obsolete   10s
 
 defaults
     log global
@@ -49,24 +66,25 @@ userlist users_stack
 
 listen stats
     # https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery#haproxy-configuration
-    bind *:8404 ssl crt /mnt/cluster/certificates/{{STACK}}.pem
+    bind *:8404 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
     acl auth_ok http_auth(users_cluster)
     stats http-request auth unless auth_ok
     mode http
     stats enable
     stats hide-version
     stats uri /stats
-    stats refresh 10s
+    stats refresh 30s
     stats admin if auth_ok
-
+    stats show-node
+    stats show-legends
 
 frontend http
     bind *:80
 
 {% if MTLS %}
-    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}.pem ca-file /mnt/cluster/certificates/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn h2,http/1.1 crl-file /mnt/cluster/certificates/mtls/crl.pem
+    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem ca-file /mnt/cluster/certificates/{{STACK}}/ca/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn h2,http/1.1 crl-file /mnt/cluster/certificates/{{STACK}}/crl.pem
 {% else %}
-    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}.pem
+    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
 {% endif %}
 
     # redirects
@@ -92,6 +110,15 @@ frontend http
     http-response lua.cors
 
 
+
+    # ROLES
+    acl is_role_admin    ssl_c_s_dn -m reg "/OU=ADMINS/"
+    acl is_role_computer ssl_c_s_dn -m reg "/OU=COMPUTERS/"
+
+    # DEBUG is_role_admin
+    #http-request set-var(txn.role_admin) str("1") if is_role_admin
+    #http-request set-var(txn.role_admin) str("0") if !is_role_admin
+    #log-format "role_admin=%[var(txn.role_admin)] %r"
 
     # Stats HAProxy
     acl is_stats path_beg /stats
@@ -122,7 +149,6 @@ frontend http
     http-request replace-path /admin/server/computer/(.*)/change /computers/results/\1    # migasfree-play 1.x
 
 
-
     # console
     # ========
     acl url_root path /
@@ -132,6 +158,10 @@ frontend http
     # ======
     acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
 
+
+    # CA
+    # ==
+    acl url_ca path_beg /ca/
 
     # services
     # ========
@@ -180,15 +210,21 @@ frontend http
 
     # URL without mTLS
     # ----------------
-    acl url_no_mTLS_get   path_beg /repo/ # Compatibility client v4
-    acl url_no_mTLS_post   path     /api/ # Compatibility client v4
+    acl url_no_mTLS_get    path_beg /repo/ # Compatibility client v4
+    acl url_no_mTLS_post   path     /api/  # Compatibility client v4
 
-    acl url_no_mTLS_get   path     /services/mtls  # url-client-certificate
-    acl url_no_mTLS_post  path     /services/mtls  # make client certificate
-    acl url_no_mTLS_get   path     /services/crl   # Certificate Revoke List
+
+    # Certificates & tokens
+    acl url_no_mTLS_get   path_beg /ca/static/
+    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/admin/token/[a-f0-9]{64}$
+    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/admin/token/[a-f0-9]{64}$
+    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/admin$
+    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/computer/token/[a-f0-9]{64}$
+    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/computer/token/[a-f0-9]{64}$
+    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/computer$
+    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/crl$
 
     acl url_no_mTLS_get   path_beg /services-static/
-
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
     acl url_no_mTLS_get   path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
 
@@ -219,25 +255,21 @@ frontend http
     acl url_no_mTLS_get   path_reg ^/api/v1/token/attributes/$
 
 
-    # 403 Forbidden for all other endpoints
-    # =================================================
 
-    # GET
-    http-request deny deny_status 403 if is_GET !url_no_mTLS_get !client_cert_present
-    http-request deny deny_status 403 if is_GET !url_no_mTLS_get client_cert_present !client_cert_verified
+    # Deny certifificate present and not verified
+    http-request deny deny_status 403 if client_cert_present !client_cert_verified
 
-    # POST
-    http-request deny deny_status 403 if is_POST !url_no_mTLS_post !client_cert_present
-    http-request deny deny_status 403 if is_POST !url_no_mTLS_post client_cert_present !client_cert_verified
-
-    # PATCH
+    # Deny all except Urls without mTLS
+    http-request deny deny_status 403 if is_GET   !url_no_mTLS_get   !client_cert_present
+    http-request deny deny_status 403 if is_POST  !url_no_mTLS_post  !client_cert_present
     http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch !client_cert_present
-    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch client_cert_present !client_cert_verified
+    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH  !client_cert_present
 
-    # Other methods:
-    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH !client_cert_present
-    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH client_cert_present !client_cert_verified
-
+    # Deny Administrative Console to users no admins
+    http-request deny deny_status 403 if is_GET   !url_no_mTLS_get   !is_role_admin
+    http-request deny deny_status 403 if is_POST  !url_no_mTLS_post  !is_role_admin
+    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch !is_role_admin
+    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH  !is_role_admin
 
 
 {% endif %}
@@ -247,6 +279,9 @@ frontend http
     # USE BACKENDS SECTION
     # Warning: The order is important !!!
     # ===================================
+
+
+    use_backend ca if network_mng url_ca
 
 {% if certbot %}
     use_backend mf_certbot if certbot
@@ -273,66 +308,52 @@ frontend http
     use_backend mf_console if network_mng
 
 
+backend ca
+    mode http
+    balance leastconn
+        server-template ca- 1 ca:80 resolvers docker check init-addr none
+
+
 {% if certbot %}
 backend mf_certbot
     mode http
     balance leastconn
-    {% for node in mf_certbot %}
-        server {{ node }} {{ node }}:380
-    {% endfor %}
+        server-template cerbot- 1 cerbot:380 resolvers docker check init-addr none
 {% endif %}
+
 
 backend mf_public
     mode http
     balance leastconn
-    option tcp-check
-    {% for node in mf_public %}
-        server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
-    {% endfor %}
+        server-template public- 10 tasks.public:80 resolvers docker check init-addr none
+        #server 127.0.0.1 127.0.0.1:8001 backup
 
-    server 127.0.0.1 127.0.0.1:8001 backup
 
 backend mf_core
     mode http
     balance leastconn
     # For SWAGGER and REST-FRAMEWORK. It is also necessary "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')" in settings.py
     http-request add-header X-Forwarded-Proto https
-    # option forwardfor
-    # http-request set-header X-Forwarded-For %[src]
-    # sticky-sessions
-    #cookie SRVNAME insert secure # https://thisinterestsme.com/haproxy-sticky-sessions/
-    #cookie SRVID insert indirect
     cookie SRVNAME insert
-    option tcp-check
-    {% for node in mf_core %}
-        server {{ node }} {{ node }}:8080 check port 8080 inter 2000 rise 1 fall 1
-    {% endfor %}
+        server-template core- 20 tasks.core:8080 resolvers docker check init-addr none
 
 
 backend mf_console
     mode http
     balance leastconn
-    # http-request redirect scheme https unless { ssl_fc }
-    # redirect scheme https code 307 if !{ ssl_fc }
     option tcp-check
-    {% for node in mf_console %}
-        server {{ node }} {{ node }}:80 check port 80 inter 2000 rise 1 fall 1
-    {% endfor %}
-    server 127.0.0.1 127.0.0.1:8001 backup
+        server-template console- 2 tasks.console:80 resolvers docker check init-addr none
+
 
 #backend s3  # MINIO
 #    mode http
-#    {% for node in mf_s3_console %}
-#        server {{ node }} {{ node }}:9001 check
-#    {% endfor %}
+#        server-template s3_console- 1 s3_console:9001 resolvers docker check init-addr none
 
 
 backend database_console  # PGADMIN
     mode http
     balance leastconn
-    {% for node in mf_database_console %}
-        server {{ node }} {{ node }}:5050 check
-    {% endfor %}
+        server-template database_console- 1 database_console:5050 resolvers docker check init-addr none
 
 
 backend datastore_console  # REDISINSIGHT
@@ -340,25 +361,19 @@ backend datastore_console  # REDISINSIGHT
     balance leastconn
     acl auth_ok http_auth(users_stack)
     http-request auth realm datastore_console_realm if !auth_ok
-    {% for node in mf_datastore_console %}
-        server {{ node }} {{ node }}:5540 check
-    {% endfor %}
+        server-template datastore_console- 1 datastore_console:5540 resolvers docker check init-addr none
 
 
 backend datashare_console  # migasfree/datashare_console (filebrowser)
     mode http
     balance leastconn
-    {% for node in mf_datashare_console %}
-        server {{ node }} {{ node }}:80 check
-    {% endfor %}
+        server-template datashare_console- 1 datashare_console:80 resolvers docker check init-addr none
 
 
 backend portainer_console  # PORTAINER
     mode http
     balance leastconn
-    {% for node in mf_portainer_console %}
-        server {{ node }} {{ node }}:9000 check
-    {% endfor %}
+        server-template portainer- 1 portainer:9000 resolvers docker check init-addr none
 
 
 backend worker_console  # Celery Flower
@@ -366,19 +381,14 @@ backend worker_console  # Celery Flower
     http-request auth realm worker_console_realm if !auth_ok
     mode http
     balance leastconn
-    {% for node in mf_worker_console %}
-        server {{ node }} {{ node }}:5555 check
-    {% endfor %}
+        server-template worker_console- 1 worker_console:5555 resolvers docker check init-addr none
+
 
 backend assistant
-    #acl auth_ok http_auth(users_stack)
-    #http-request auth realm assistant_realm if !auth_ok
     mode http
     balance leastconn
-    #http-request set-path %[path,regsub(^/services/assistant/,/)]
-    {% for node in mf_assistant %}
-        server {{ node }} {{ node }}:8080 check
-    {% endfor %}
+        server-template assistant- 1 assistant:8080 resolvers docker check init-addr none
+
 
 backend services
     mode http

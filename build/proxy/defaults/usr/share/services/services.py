@@ -19,6 +19,21 @@ from jinja2 import Template
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from collections import deque
 
+
+import logging
+from logging.handlers import RotatingFileHandler
+logger = logging.getLogger('MiLogger')
+logger.setLevel(logging.DEBUG)
+handler = RotatingFileHandler(
+    '/var/log/services.log',    # Nombre archivo log
+    maxBytes=1024*1024, # Tamaño máximo en bytes (ej. 1MB)
+    backupCount=5       # Número de archivos de respaldo a conservar
+)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+
 FILECONFIG = '/etc/haproxy/haproxy.cfg'
 FILECONFIG_TEMPLATE = '/etc/haproxy/haproxy.template'
 with open(FILECONFIG_TEMPLATE, encoding='utf-8') as f:
@@ -38,6 +53,8 @@ PATH_MTLS = '/mnt/cluster/certificates/mtls'
 PATH_MTLS_CERTS = f'{PATH_MTLS}/certs'
 PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
 PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
+
+
 
 # Global Variable
 # ===============
@@ -85,94 +102,6 @@ class manifest:
 /services/logs
         """
         return Template(template).render(context)
-
-
-# Certificate Revocation List
-class crl:
-    def GET(self):
-        web.header('Content-Type', 'application/pkix-crl')
-        web.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        web.header('Pragma', 'no-cache')
-        web.header('Connection', 'close')
-        try:
-            with open(f'{PATH_MTLS}/crl.pem', 'rb') as f:
-                crl_data = f.read()
-
-            # Especificar el tamaño del contenido
-            web.header('Content-Length', str(len(crl_data)))
-
-            return crl_data
-
-        except Exception as e:
-            web.ctx.status = '500 Internal Server Error'
-            return f'Error in CRL: {e}'
-
-
-class mtls:
-    def GET(self):
-        web.header('Content-Type', 'text/html; charset=utf-8')
-        token = web.input().get('token')
-        file_token = os.path.join(PATH_MTLS_TOKEN, token)
-        if os.path.exists(file_token) and len(token) == 64:
-            creation_time = datetime.fromtimestamp(os.path.getctime(file_token))
-            difference = datetime.now() - creation_time
-            if difference > timedelta(hours=72):
-                os.remove(file_token)
-            else:
-                # token exists and is recent
-                with open(file_token, 'r', encoding='utf-8') as f:
-                    content = f.read()
-
-                user, days = content.split('|')
-                env = Environment(
-                    loader=FileSystemLoader('services-static/templates'),
-                    autoescape=select_autoescape(['html', 'xml'])
-                )
-                template = env.get_template('mtls.html')
-                try:
-                    return template.render(user=user, days=days, token=token, fqdn=FQDN)
-                except Exception as e:
-                    return f'<p>Error: {html.escape(str(e))}</p>'
-        time.sleep(3)
-
-        return ''
-
-    def POST(self):
-        data = web.input(password=None)
-        token = web.input().get('token')
-        email = data.email
-        password = data.password
-        file_token = os.path.join(PATH_MTLS_TOKEN, token)
-        if os.path.exists(file_token) and len(token) == 64:
-            creation_time = datetime.fromtimestamp(os.path.getctime(file_token))
-            difference = datetime.now() - creation_time
-            if difference > timedelta(hours=72):
-                os.remove(file_token)
-            else:
-                with open(file_token, "r", encoding='utf-8') as f:
-                    content = f.read()
-                user, days = content.split("|")
-
-                # Create certificate
-                os.system(f"/usr/bin/mtls.sh '{user}' '{FQDN}' '{password}' '{days}' '{email}'")
-
-                # Return tar file
-                CERT_NAME=f"{user}-{FQDN}"
-                file_tar = f"{PATH_MTLS_CERTS}/{CERT_NAME}.tar"
-                if os.path.exists(file_tar):
-                    with open(file_tar, "rb") as f:
-                        content = f.read()
-
-                    web.header('Content-Type', 'application/x-tar')
-                    web.header('Content-Disposition', 'attachment; filename="'+CERT_NAME+'.tar"')
-                    web.header('Content-Length', str(len(content)))
-                    os.remove(file_token)
-                    os.remove(file_tar)
-                    return content
-
-        time.sleep(3)
-        web.header('Content-Type', 'text/html; charset=utf-8')
-        return ""
 
 
 class logs:
@@ -401,6 +330,8 @@ def execute(cmd, verbose=False, interactive=True):
     return _process.returncode, _output, _error
 
 
+
+
 def get_extensions():
     pms_enabled = os.environ['PMS_ENABLED']
     extensions = []
@@ -467,17 +398,17 @@ def config_haproxy():
     context = {
         'FQDN': FQDN,
         'STACK': STACK,
-        'mf_public': get_nodes('public'),
-        'mf_core': get_nodes('core'),
-        'mf_console': get_nodes('console'),
-        'mf_database': get_nodes('database'),
-        'mf_datashare_console': get_nodes('datashare_console'),
-        'mf_datastore_console': get_nodes('datastore_console'),
-        'mf_database_console': get_nodes('database_console'),
-        'mf_worker_console': get_nodes('worker_console'),
-        'mf_assistant': get_nodes('assistant'),
-        'mf_portainer_console': get_nodes('portainer'),
-        'mf_certbot': get_nodes('certbot'),
+#        'mf_public': get_nodes('public'),
+#        'mf_core': get_nodes('core'),
+#        'mf_console': get_nodes('console'),
+#        'mf_database': get_nodes('database'),
+#        'mf_datashare_console': get_nodes('datashare_console'),
+#        'mf_datastore_console': get_nodes('datastore_console'),
+#        'mf_database_console': get_nodes('database_console'),
+#        'mf_worker_console': get_nodes('worker_console'),
+#        'mf_assistant': get_nodes('assistant'),
+#        'mf_portainer_console': get_nodes('portainer'),
+#        'mf_certbot': get_nodes('certbot'),
         'certbot': HTTPSMODE == 'auto',
         'PORT_HTTPS': PORT_HTTPS,
         'USERLIST_STACK': USERLIST_STACK,
@@ -486,13 +417,15 @@ def config_haproxy():
         'MTLS': MTLS == 'True'
     }
 
-    if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
-        global_data['extensions'] = get_extensions()
+    #if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
+    global_data['extensions'] = get_extensions()
 
     if len(global_data['extensions']) == 0:
         context['extensions'] = '.deb .rpm'
     else:
         context['extensions'] = '.' + ' .'.join(global_data['extensions'])
+
+    logger.info(context['extensions'])
 
     # Sync configuration haproxy in all proxies.
     payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
