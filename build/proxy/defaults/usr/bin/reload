@@ -53,4 +53,6 @@ do
     sleep 1
 done
 
+message "haproxy reload (kill -SIGUSR2)"
 kill -SIGUSR2 $(cat ${HAPROXY_PID_FILE})
+message ""

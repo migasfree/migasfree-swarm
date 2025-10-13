@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CONTAINER_PROXY_ID=$(docker ps|grep proxy_proxy| awk '{print $1}')
+CONTAINER_PROXY_ID=$(docker ps|grep infra_proxy| awk '{print $1}')
 echo
 echo "● proxy & portainer:"
 echo

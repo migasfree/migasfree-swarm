@@ -21,7 +21,7 @@ services:
             - migasfree-swarm:/mnt/cluster
 
         networks:
-            - proxy
+            - infra_network
 
     proxy:
         image: migasfree/proxy:{{TAG}}
@@ -55,7 +55,6 @@ services:
                 condition: on-failure
                 delay: 10s
                 max_attempts: 0
-#                window: 180s
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
@@ -65,17 +64,43 @@ services:
             - migasfree-swarm:/mnt/cluster
 
         networks:
+            - infra_network
+
+    agent:
+        image: portainer/agent:2.33.2
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /var/lib/docker/volumes:/var/lib/docker/volumes
+        networks:
+            - infra_network
+        deploy:
+            mode: global
+            placement:
+                constraints: [node.platform.os == linux]
+
+    portainer:
+        image: portainer/portainer-ce:2.33.2
+        command: -H tcp://tasks.agent:9001 --tlsskipverify
+        depends_on:
             - proxy
+        volumes:
+            - /var/lib/docker/volumes/migasfree-swarm/_data/portainer:/data
+        networks:
+            - infra_network
+        deploy:
+            mode: replicated
+            replicas: 1
+            placement:
+                constraints: [node.role == manager]
 
 
 networks:
-  proxy:
-    external: true
+    infra_network:
+        external: true
 
 volumes:
     migasfree-swarm:
         external: true
-
 
 secrets:
     swarm-credential:

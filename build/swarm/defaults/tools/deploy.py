@@ -96,8 +96,7 @@ def wait_for_service(service_name, timeout=30):
         service = client.services.get(service_name)
         for task in service.tasks():
             if task["Status"]["State"] == "running":
-                print()
-                if service_name == "portainer_portainer":
+                if service_name == "infra_portainer":
                     proxy_reconfigure()
                 return
 
@@ -139,7 +138,7 @@ def create_labels():
 
 def deploy_proxy(context):
     path_template = "/tools/templates/"
-    template = "proxy.template"
+    template = "infra.template"
     deploy = os.path.join(_PATH, template)
     with open(deploy, 'w') as file_deploy:
         file_deploy.write(render(path_template, template, context))
@@ -151,8 +150,8 @@ def deploy_proxy(context):
         os.path.join(_PATH_CREDENTIALS, "swarm-credential")
     )
 
-    deploy_stack(deploy, "proxy")
-    wait_for_service("proxy_proxy", 300)
+    deploy_stack(deploy, "infra")
+    wait_for_service("infra_proxy", 300)
     print()
     if context['PORT_HTTPS'] == '443':
         print(f"👍 https://{context['FQDN']}/status")
@@ -176,7 +175,6 @@ def deploy_portainer(context):
         # template_file = "/tools/templates/portainer.template"
         file_yml = "/stack/portainer.yml"
         # CUSTOM TEMPLATE
-        # name_template = f"{context['STACK']}"
         content = render("/tools/templates", "portainer.template", context)
         with open(file_yml, "w") as f:
             f.write(content)
@@ -184,9 +182,9 @@ def deploy_portainer(context):
         # Secrets portainer
         # credentials("swarm-credential", generate_password(8))
 
-        deploy_stack(file_yml, "portainer")
-        os.remove(file_yml)
-        wait_for_service("portainer_portainer", 300)
+#        deploy_stack(file_yml, "portainer")
+#        os.remove(file_yml)
+        wait_for_service("infra_portainer", 300)
         time.sleep(3)
 
         # credentials configuration
@@ -278,7 +276,7 @@ def deploy_migasfree(context):
     create_network_internal(f"{context['STACK']}_network")
 
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
-    wait_for_service("portainer_portainer", 300)
+    wait_for_service("infra_portainer", 300)
     api = PortainerAPI("http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
@@ -381,10 +379,10 @@ create_secret(f"{CONTEXT['STACK']}_superadmin_pass", password)
 create_secret(f"{CONTEXT['STACK']}_pms_pass", generate_password(12))
 
 create_labels()
-create_network_overlay("proxy")
+create_network_overlay("infra_network")
 
 # Connect network portainer to this container (is Necessary in credential configuration)
-client.networks.get("proxy").connect(socket.gethostname())
+client.networks.get("infra_network").connect(socket.gethostname())
 
 deploy_proxy(CONTEXT)
 
@@ -402,7 +400,7 @@ if CONTEXT["HTTPSMODE"] == 'auto' and is_self_signed(f"{_PATH_CERTIFICATE}/{CONT
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", "HTTPSMODE='auto'"])
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"])
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", ""])
-    api.execute_in_service("proxy_proxy", ["/usr/bin/reload"])
+    api.execute_in_service("infra_proxy", ["/usr/bin/reload"])
 
 try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")

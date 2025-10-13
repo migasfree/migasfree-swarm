@@ -23,12 +23,10 @@ for STACK in ${PATH_STACKS}/*; do
     docker stack rm $(basename $STACK)
   fi
 done
-docker stack rm portainer
-docker stack rm proxy
+docker stack rm infra
 
 
-cleanup_stack proxy
-cleanup_stack portainer
+cleanup_stack infra
 for STACK in ${PATH_STACKS}/*; do
   if [[ -d "$STACK" ]]; then
     cleanup_stack $(basename $STACK)

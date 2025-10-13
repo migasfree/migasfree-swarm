@@ -39,7 +39,7 @@ services:
 #
 #        networks:
 #            - {{STACK}}_network
-#            - proxy
+#            - infra_network
 
 
 
@@ -72,7 +72,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     console:
         image: migasfree/console:{{TAG}}
@@ -93,7 +93,7 @@ services:
             - core
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     core:
         image: migasfree/core:{{TAG}}
@@ -128,7 +128,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     worker:
         image: migasfree/core:{{TAG}}
@@ -162,7 +162,7 @@ services:
             -  /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     beat:
         image: migasfree/core:{{TAG}}
@@ -195,7 +195,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     database:
         image: migasfree/database:{{TAG}}
@@ -240,7 +240,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     datastore:
         image: migasfree/datastore:{{TAG}}
@@ -269,7 +269,7 @@ services:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
 #    swarm:
 #        image: migasfree/swarm:{{TAG}}
@@ -288,7 +288,7 @@ services:
 #            - /var/run/docker.sock:/var/run/docker.sock
 #        networks:
 #            - {{STACK}}_network
-#            - proxy
+#            - infra_network
 #        deploy:
 #            mode: global
 
@@ -319,7 +319,7 @@ services:
             - database
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     datastore_console:
         image: migasfree/datastore_console:{{TAG}}
@@ -343,7 +343,7 @@ services:
             - datastore
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     datashare_console:
         image: migasfree/datashare_console:{{TAG}}
@@ -371,7 +371,7 @@ services:
             - source: {{STACK}}_superadmin_pass
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
     worker_console:
         image: migasfree/worker_console:{{TAG}}
@@ -391,7 +391,7 @@ services:
                 window: 180s
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
@@ -430,7 +430,7 @@ services:
             - mcp-server
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
 
     mcp-server:
@@ -463,7 +463,7 @@ services:
 
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
 
 
 {% endif %}
@@ -491,7 +491,7 @@ services:
                     - node.labels.datastore == true
         networks:
             - {{STACK}}_network
-            - proxy
+            - infra_network
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/certificates/{{STACK}}/server:/etc/certificates
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}/ca-certificates:/usr/local/share/ca-certificates
@@ -499,13 +499,9 @@ services:
 
 
 networks:
-#    network:
-#        driver: overlay
-#        attachable: true
-#        name: {{STACK}}_network
     {{STACK}}_network:
         external: true
-    proxy:
+    infra_network:
         external: true
 
 

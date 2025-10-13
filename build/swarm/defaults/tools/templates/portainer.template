@@ -8,7 +8,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/docker/volumes:/var/lib/docker/volumes
     networks:
-      - proxy
+      - infra_network
     deploy:
       mode: global
       placement:
@@ -20,7 +20,7 @@ services:
     volumes:
       - /var/lib/docker/volumes/migasfree-swarm/_data/portainer:/data
     networks:
-      - proxy
+      - infra_network
     deploy:
       mode: replicated
       replicas: 1
@@ -28,7 +28,7 @@ services:
         constraints: [node.role == manager]
 
 networks:
-  proxy:
+  infra_network:
     external: true
 
 volumes:
