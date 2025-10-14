@@ -39,15 +39,6 @@ def is_self_signed(certificate_path):
     return 'CN=Insecure Certificate Authority' in str(cert.issuer)
 
 
-def resolver_dns(domain):
-    while True:
-        try:
-            return socket.gethostbyname(domain)
-        except Exception:
-            time.sleep(2)
-            print(f"Error resolving domain name: {domain}")
-
-
 def swarm_init():
     info = client.info()
 
@@ -86,21 +77,38 @@ def generate_password(length):
     return password
 
 
-def wait_for_service(service_name, timeout=30):
-    start_time = time.time()
-    print(f"waiting {service_name} ", end="", flush=True)
-    while True:
-        if time.time() - start_time > timeout:
-            raise TimeoutError(f"Timed out waiting for service '{service_name}' to start")
-        print(".", end="", flush=True)
-        service = client.services.get(service_name)
-        for task in service.tasks():
-            if task["Status"]["State"] == "running":
-                if service_name == "infra_portainer":
-                    proxy_reconfigure()
-                return
+def wait_url_available(url, timeout=10):
+    try:
+        response = requests.get(url, timeout=timeout)
+        if response.status_code < 400:
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
 
-        time.sleep(2)
+
+def wait_for_dns(hostname, timeout=60, interval=3):
+    """
+    Waits until hostname can be resolved or until timeout is reached.
+    :param hostname: Name to resolve.
+    :param timeout: Maximum time in seconds to wait.
+    :param interval: Interval in seconds between attempts.
+    :return: True if resolved, False if timeout.
+    """
+    start_time = time.time()
+    print("Waiting for DNS ...")
+    while True:
+        try:
+            socket.getaddrinfo(hostname, None)
+            return True
+        except socket.gaierror:
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                print(f"Timeout waiting to resolve {hostname}")
+                return False
+            print(f"    retrying in {interval}s...")
+            time.sleep(interval)
 
 
 def download_resource(url, output_path):
@@ -136,7 +144,7 @@ def create_labels():
         node.update(node_spec)
 
 
-def deploy_proxy(context):
+def deploy_infra(context):
     path_template = "/tools/templates/"
     template = "infra.template"
     deploy = os.path.join(_PATH, template)
@@ -151,82 +159,52 @@ def deploy_proxy(context):
     )
 
     deploy_stack(deploy, "infra")
-    wait_for_service("infra_proxy", 300)
-    print()
-    if context['PORT_HTTPS'] == '443':
-        print(f"👍 https://{context['FQDN']}/status")
-    else:
-        print(f"👍 https://{context['FQDN']}:{context['PORT_HTTPS']}/status")
-    print()
+
     os.remove(deploy)
 
 
-def proxy_reconfigure():
-    try:
-        requests.post("http://proxy:8001/services/reconfigure")
-    except:
-        pass
+def config_portainer(context):
+
+    wait_for_dns("portainer")
+    wait_url_available("http://portainer:9000/api/status")
+
+    # credentials configuration
+    (user, password) = credentials("swarm-credential")
 
 
-def deploy_portainer(context):
-    # Deploy Portainer if it doesn't exist
-    if "portainer" not in [stack.name for stack in client.services.list()]:
-        # Render portainer.template
-        # template_file = "/tools/templates/portainer.template"
-        file_yml = "/stack/portainer.yml"
-        # CUSTOM TEMPLATE
-        content = render("/tools/templates", "portainer.template", context)
-        with open(file_yml, "w") as f:
-            f.write(content)
+    response = requests.post(
+        "http://portainer:9000/api/users/admin/init",
+        json={"Username": user, "Password": password},
+        verify=False
+    )
+    if response and response.status_code != 200:
+        print("RESPONSE INIT", response)
+        print("RESPONSE INIT", response.text)
 
-        # Secrets portainer
-        # credentials("swarm-credential", generate_password(8))
+    response = requests.get('http://portainer:9000/#!/wizard', verify=False)
+    if response and response.status_code != 200:
+        print("RESPONSE WIZARD", response)
 
-#        deploy_stack(file_yml, "portainer")
-#        os.remove(file_yml)
-        wait_for_service("infra_portainer", 300)
-        time.sleep(3)
+    if os.path.exists(f"{_PATH_CREDENTIALS}/portainer-token"):
+        token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
+    else:
+        token = create_token("deploy", user, password)
+        open(f"{_PATH_CREDENTIALS}/portainer-token", "w").write(token)
 
-        # credentials configuration
-        (user, password) = credentials("swarm-credential")
+    if token == "":
+        os.remove(f"{_PATH_CREDENTIALS}/portainer-token")
+        print("Error: The credentials file 'credentials/portainer-token' could not be generated.")
+        exit()
 
-        # print("IP PORTAINER", resolver_dns('portainer'))
-        # resolver_dns('portainer')
+    # Customize logo
+    api = PortainerAPI("http://portainer:9000/api", token)
+    api.settings()
 
-        response = requests.post(
-            "http://portainer:9000/api/users/admin/init",
-            json={"Username": user, "Password": password},
-            verify=False
-        )
-        if response and response.status_code != 200:
-            print("RESPONSE INIT", response)
-            print("RESPONSE INIT", response.text)
+    # Create Environment
+    api.set_enpoint_id("primary")
 
-        response = requests.get('http://portainer:9000/#!/wizard', verify=False)
-        if response and response.status_code != 200:
-            print("RESPONSE WIZARD", response)
-
-        if os.path.exists(f"{_PATH_CREDENTIALS}/portainer-token"):
-            token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
-        else:
-            token = create_token("deploy", user, password)
-            open(f"{_PATH_CREDENTIALS}/portainer-token", "w").write(token)
-
-        if token == "":
-            os.remove(f"{_PATH_CREDENTIALS}/portainer-token")
-            print("Error: The credentials file 'credentials/portainer-token' could not be generated.")
-            exit()
-
-        # Customize logo
-        api = PortainerAPI("http://portainer:9000/api", token)
-        api.settings()
-
-        # Create Environment
-        # api.create_environment("migasfree cluster (swarm)")
-        api.set_enpoint_id("primary")
-
-        # Update Public IP
-        api.set_public_ip(context['FQDN'])
+    # Update Public IP
+    api.set_public_ip(context['FQDN'])
 
 
 def credentials(credential_name, user="admin"):
@@ -271,12 +249,11 @@ def create_network_internal(network_name):
 
 def deploy_migasfree(context):
 
-    print(f"Deploying the '{context['STACK']}' stack. Please wait.")
 
     create_network_internal(f"{context['STACK']}_network")
 
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
-    wait_for_service("infra_portainer", 300)
+
     api = PortainerAPI("http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
@@ -384,16 +361,14 @@ create_network_overlay("infra_network")
 # Connect network portainer to this container (is Necessary in credential configuration)
 client.networks.get("infra_network").connect(socket.gethostname())
 
-deploy_proxy(CONTEXT)
+deploy_infra(CONTEXT)
 
-deploy_portainer(CONTEXT)
-proxy_reconfigure()
+config_portainer(CONTEXT)
 
 deploy_migasfree(CONTEXT)
 
 if CONTEXT["HTTPSMODE"] == 'auto' and is_self_signed(f"{_PATH_CERTIFICATE}/{CONTEXT['STACK']}.pem"):
     print("Changing to HTTPSMODE auto")
-    wait_for_service(f"{CONTEXT['STACK']}_certbot")
     token = open(f"{_PATH_CREDENTIALS}/portainer-token", "r").read()
     api = PortainerAPI("http://portainer:9000/api", token)
     api.set_enpoint_id("primary")
@@ -406,3 +381,26 @@ try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")
 except Exception:
     pass
+
+
+logo = """
+
+                   █                          ██
+                                             █
+         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
+        █   █  █   █   █  █       █   █      █   █    █   █  █   █
+        █   █  █   █   █  █    ████    ██    █   █    ████   ████
+        █   █  █   █   █  █   █   █      █   █   █    █      █
+        █   █  █   █    ███    ███    ███    █   █     ███    ███
+                          █
+        we love change  ██
+
+"""
+
+wait_url_available(f"https://{CONTEXT['FQDN']}/status")
+print(logo)
+if CONTEXT['PORT_HTTPS'] == '443':
+    print(f"       👍 https://{CONTEXT['FQDN']}/status")
+else:
+    print(f"       👍 https://{CONTEXT['FQDN']}:{CONTEXT['PORT_HTTPS']}/status")
+print()
