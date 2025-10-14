@@ -1,8 +1,11 @@
 FROM python:3.13-slim
 
+ARG TAG=latest
+
 LABEL maintainer="alberto@migasfree.org"
 LABEL description="MCP server for Migasfree"
 LABEL version="1.0.0"
+
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -41,7 +44,7 @@ USER mcpuser
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -s -I http://localhost:8080/openapi.json | head -n 1 | grep -q "200 OK" || exit 1
+HEALTHCHECK --interval=120s --timeout=60s --retries=3 \
+  CMD curl -f http://localhost:8080/openapi.json  || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

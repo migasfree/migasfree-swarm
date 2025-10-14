@@ -43,7 +43,7 @@ COPY --from=core /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
 
 COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=2s --interval=10s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 RUN chown -R $_UID:$_GID /pms
 

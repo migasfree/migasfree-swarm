@@ -37,7 +37,7 @@ COPY --from=build-stage /migasfree-frontend/dist/spa /usr/share/nginx/html
 COPY defaults/usr/bin /usr/bin
 
 COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=2s --interval=5s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh

@@ -39,6 +39,6 @@ RUN chown -R user:user /config /database /srv
 
 
 COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=2s --interval=5s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

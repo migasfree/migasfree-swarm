@@ -16,6 +16,6 @@ COPY ./defaults/ /
 
 EXPOSE 80
 
-HEALTHCHECK --start-period=10s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 CMD ["/docker-entrypoint.sh"]
