@@ -50,7 +50,6 @@ services:
         depends_on:
             - ca
         deploy:
-            #replicas: 1
             mode: global
             restart_policy:
                 condition: on-failure
