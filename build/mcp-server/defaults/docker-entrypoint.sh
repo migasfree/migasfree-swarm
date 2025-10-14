@@ -1,5 +1,10 @@
 #!/bin/bash
 
+wait_for_dns "proxy"
+
+
+
+
 send_message "init mcp-server"
 
 sudo update-ca-certificates

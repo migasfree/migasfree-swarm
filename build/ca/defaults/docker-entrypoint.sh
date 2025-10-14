@@ -1,5 +1,7 @@
 #!/bin/sh
 
+wait_for_dns "proxy"
+
 send_message "Starting Certificate Authority"
 
 /usr/bin/create_local_ca.sh ${STACK}

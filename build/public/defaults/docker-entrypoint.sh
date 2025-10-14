@@ -1,3 +1,6 @@
+
+wait_for_dns "proxy"
+
 function set_TZ {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]
@@ -13,7 +16,7 @@ function wait {
     local _PORT=$2
     local _COUNTER=0
 
-    until [ $_COUNTER -gt 30 ]
+    until [ $_COUNTER -gt 60 ]
     do
         nc -z $_SERVER $_PORT 2> /dev/null
         if [ $? -eq 0 ]

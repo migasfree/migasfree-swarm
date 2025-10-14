@@ -5,6 +5,8 @@ MIGASFREE_SECRET_DIR=/var/run/secrets
 
 export PGADMIN_DEFAULT_EMAIL="$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name)@${FQDN}"
 
+wait_for_dns "proxy"
+
 function set_TZ {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]

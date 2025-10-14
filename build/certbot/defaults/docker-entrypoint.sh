@@ -1,9 +1,7 @@
 #!/bin/sh
 trap exit TERM
 
-#export MIGASFREE_CERTIFICATES_DIR=/etc/certificates
-#mkdir -p $(dirname ${MIGASFREE_CERTIFICATES_DIR})
-#ln -s /mnt/datashare/certificates ${MIGASFREE_CERTIFICATES_DIR}
+wait_for_dns "proxy"
 
 update-ca-certificates
 

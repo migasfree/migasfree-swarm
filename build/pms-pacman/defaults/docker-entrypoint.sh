@@ -7,6 +7,7 @@ QUEUES="pms-pacman"
 BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
 export CELERY_BROKER_URL=${BROKER_URL}
 
+wait_for_dns "proxy"
 
 function wait {
     local _SERVER=$1

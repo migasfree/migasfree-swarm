@@ -4,6 +4,7 @@ set -e
 
 MIGASFREE_SECRET_DIR=/var/run/secrets
 
+wait_for_dns "proxy"
 
 set_TZ() {
     # send_message "setting the time zone"
