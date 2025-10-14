@@ -167,6 +167,7 @@ def config_portainer(context):
 
     wait_for_dns("portainer")
     wait_url_available("http://portainer:9000/api/status")
+    time.sleep(2)
 
     # credentials configuration
     (user, password) = credentials("swarm-credential")
@@ -383,7 +384,10 @@ except Exception:
     pass
 
 
-logo = """
+wait_for_dns("proxy")
+wait_url_available(f"https://{CONTEXT['FQDN']}/status")
+
+logo = f"""
 
                    █                          ██
                                              █
@@ -397,7 +401,6 @@ logo = """
 
 """
 
-wait_url_available(f"https://{CONTEXT['FQDN']}/status")
 print(logo)
 if CONTEXT['PORT_HTTPS'] == '443':
     print(f"       👍 https://{CONTEXT['FQDN']}/status")
