@@ -311,14 +311,14 @@ frontend http
 backend ca
     mode http
     balance leastconn
-        server-template ca- 1 ca:80 resolvers docker check init-addr none
+        server-template ca- 1 tasks.ca:80 resolvers docker check init-addr none
 
 
 {% if certbot %}
 backend mf_certbot
     mode http
     balance leastconn
-        server-template cerbot- 1 cerbot:380 resolvers docker check init-addr none
+        server-template cerbot- 1 tasks.cerbot:380 resolvers docker check init-addr none
 {% endif %}
 
 
@@ -347,13 +347,13 @@ backend mf_console
 
 #backend s3  # MINIO
 #    mode http
-#        server-template s3_console- 1 s3_console:9001 resolvers docker check init-addr none
+#        server-template s3_console- 1 tasks.s3_console:9001 resolvers docker check init-addr none
 
 
 backend database_console  # PGADMIN
     mode http
     balance leastconn
-        server-template database_console- 1 database_console:5050 resolvers docker check init-addr none
+        server-template database_console- 1 tasks.database_console:5050 resolvers docker check init-addr none
 
 
 backend datastore_console  # REDISINSIGHT
@@ -361,19 +361,19 @@ backend datastore_console  # REDISINSIGHT
     balance leastconn
     acl auth_ok http_auth(users_stack)
     http-request auth realm datastore_console_realm if !auth_ok
-        server-template datastore_console- 1 datastore_console:5540 resolvers docker check init-addr none
+        server-template datastore_console- 1 tasks.datastore_console:5540 resolvers docker check init-addr none
 
 
 backend datashare_console  # migasfree/datashare_console (filebrowser)
     mode http
     balance leastconn
-        server-template datashare_console- 1 datashare_console:80 resolvers docker check init-addr none
+        server-template datashare_console- 1 tasks.datashare_console:80 resolvers docker check init-addr none
 
 
 backend portainer_console  # PORTAINER
     mode http
     balance leastconn
-        server-template portainer- 1 portainer:9000 resolvers docker check init-addr none
+        server-template portainer- 1 tasks.portainer:9000 resolvers docker check init-addr none
 
 
 backend worker_console  # Celery Flower
@@ -381,13 +381,13 @@ backend worker_console  # Celery Flower
     http-request auth realm worker_console_realm if !auth_ok
     mode http
     balance leastconn
-        server-template worker_console- 1 worker_console:5555 resolvers docker check init-addr none
+        server-template worker_console- 1 tasks.worker_console:5555 resolvers docker check init-addr none
 
 
 backend assistant
     mode http
     balance leastconn
-        server-template assistant- 1 assistant:8080 resolvers docker check init-addr none
+        server-template assistant- 1 tasks.assistant:8080 resolvers docker check init-addr none
 
 
 backend services
