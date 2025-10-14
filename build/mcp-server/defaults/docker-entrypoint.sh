@@ -1,9 +1,31 @@
 #!/bin/bash
 
+send_message "init mcp-server"
+
 sudo update-ca-certificates
 
 cd /app
-send_message "init mcp-server"
+
+echo "
+
+                   █                          ██
+                                             █
+         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
+        █   █  █   █   █  █       █   █      █   █    █   █  █   █
+        █   █  █   █   █  █    ████    ██    █   █    ████   ████
+        █   █  █   █   █  █   █   █      █   █   █    █      █
+        █   █  █   █    ███    ███    ███    █   █     ███    ███
+                          █
+        we love change  ██
+
+
+        $SERVICE ($TAG)
+        mcp-server
+        Container: $HOSTNAME
+        Time zome: $TZ $(date)
+        Processes: $(nproc)
+
+"
 
 send_message ""
 

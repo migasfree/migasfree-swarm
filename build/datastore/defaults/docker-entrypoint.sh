@@ -46,6 +46,26 @@ then
     exec su-exec redis "$0" "$@"
 fi
 
+echo "
+
+
+                   █                          ██
+                                             █
+         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
+        █   █  █   █   █  █       █   █      █   █    █   █  █   █
+        █   █  █   █   █  █    ████    ██    █   █    ████   ████
+        █   █  █   █   █  █   █   █      █   █   █    █      █
+        █   █  █   █    ███    ███    ███    █   █     ███    ███
+                          █
+        we love change  ██
+
+
+        $SERVICE ($TAG)
+        $(redis-server -v)
+        Container: $HOSTNAME
+        Time zome: $TZ $(date)
+        Processes: $(nproc)
+"
 
 send_message ""
 
