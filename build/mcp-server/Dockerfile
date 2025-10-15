@@ -44,7 +44,8 @@ USER mcpuser
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=120s --timeout=60s --retries=3 \
-  CMD curl -f http://localhost:8080/openapi.json  || exit 1
+COPY defaults/healthcheck.sh /healthcheck.sh
+
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
