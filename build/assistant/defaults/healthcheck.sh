@@ -1,17 +1,10 @@
 #!/bin/sh
 
-PROCESS_NAME="uvicorn main:app"
-
-exit 0
-
-if pgrep -f "$PROCESS_NAME" > /dev/null
+if curl -f http://127.0.0.1:8080
 then
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080 || echo "000")
-    if [ "$HTTP_CODE" == "200" ]; then
-        exit 0
-    else
-        exit 2
-    fi
+    send_message ""
+    exit 0
 else
+    send_message "Unavailable"
     exit 1
 fi
