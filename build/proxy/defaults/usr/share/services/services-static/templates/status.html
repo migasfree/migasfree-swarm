@@ -4,94 +4,94 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width" />
     <style>
-@font-face {
-  font-family: Pompiere;
-  src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
-}
+      @font-face {
+        font-family: Pompiere;
+        src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+      }
 
-.tooltip {
-  position: relative;
-  display: inline-block;
-  border-bottom: 1px dotted black;
-}
+      .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dotted black;
+      }
 
-.tooltip .tooltiptext {
-  visibility: hidden;
-  width: 120px;
-  background-color: #555;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 5px 0;
-  position: absolute;
-  z-index: 1;
-  bottom: 125%;
-  left: 50%;
-  margin-left: -60px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 120px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px 0;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -60px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
 
-.tooltip .tooltiptext::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #555 transparent transparent transparent;
-}
+      .tooltip .tooltiptext::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #555 transparent transparent transparent;
+      }
 
-.tooltip:hover .tooltiptext {
-  visibility: visible;
-  opacity: 1;
-}
+      .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
 
-.link {
-  fill: green;
-  fill-opacity: 0.07;
-  cursor: pointer;
-}
+      .link {
+        fill: green;
+        fill-opacity: 0.07;
+        cursor: pointer;
+      }
 
-.circle-text {
-  text-anchor: middle;
-  font-size: 3px;
-}
+      .circle-text {
+        text-anchor: middle;
+        font-size: 3px;
+      }
 
-body {
-  width: 100%;
-  margin: 0 auto;
-  font-family: Pompiere, sans-serif;
-  color: #ddd;
-}
+      body {
+        width: 100%;
+        margin: 0 auto;
+        font-family: Pompiere, sans-serif;
+        color: #ddd;
+      }
 
-.bocadillo {
-  font-size: 2.5px;
-  font-style: italic;
-  fill: #000;
-}
+      .bocadillo {
+        font-size: 2.5px;
+        font-style: italic;
+        fill: #000;
+      }
 
-#organization, #stack, #tag {
-  display: flex;
-  font-style: italic;
-  align-items: center;
-  font-size: 3px;
-  fill: #000;
-}
+      #organization, #stack, #tag {
+        display: flex;
+        font-style: italic;
+        align-items: center;
+        font-size: 3px;
+        fill: #000;
+      }
 
-#stack {
-  font-size: 2.5px;
-}
+      #stack {
+        font-size: 2.5px;
+      }
 
-#tag {
-  font-size: 2px;
-}
+      #tag {
+        font-size: 2px;
+      }
     </style>
 
     <title>Status</title>
 
-    <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
+    <script src="/services-static/js/jquery.min.js" type="text/javascript"></script>
 
     <script type="text/javascript">
       function sleep(time) {
@@ -99,11 +99,24 @@ body {
       }
 
       let time = +new Date;
-      let circles = "#proxy, #ca, #certbot #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer, assistant";
+      let circles = "#proxy, #ca, #certbot, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer, #assistant";
       let links = "#proxy_link, #ca_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link, #core_link";
-      let serv = ""
+      let serv = "";
 
       $(document).ready(function () {
+
+        $("#portainer_link").attr("href", "https://portainer-" + window.location.host);
+        $("#proxy_link").parent().attr("href", "https://" + window.location.host + "/stats");
+        $("#ca_link").parent().attr("href", "https://" + window.location.host + "/ca/docs");
+        $("#console_link").parent().attr("href", "https://" + window.location.host + "/");
+        $("#public_link").attr("onclick", "window.open('https://" + window.location.host + "/pool/', '_blank'); window.open('https://" + window.location.host + "/public/', '_blank');");
+        $("#core_link").parent().attr("href", "https://" + window.location.host + "/docs/");
+        $("#worker_console_link").parent().attr("href", "https://worker-" + window.location.host + "/tasks");
+        $("#database_console_link").parent().attr("href", "https://database-" + window.location.host);
+        $("#datastore_console_link").parent().attr("href", "https://datastore-" + window.location.host);
+        $("#datashare_console_link").parent().attr("href", "https://datashare-" + window.location.host);
+        $("#assistant_link").parent().attr("href", "https://assistant-" + window.location.host);
+
         setInterval(function () {
           let now = +new Date;
           let retraso = parseInt((now - time) / 1000);
@@ -127,12 +140,12 @@ body {
                 let _stack = data["stack"];
 
                 for (const [key, value] of Object.entries(data['services'])) {
-                  if (key.startsWith(_stack+'_pms-')) {
+                  if (key.startsWith(_stack + '_pms-')) {
                     if (data['services'][key]["missing"]) {
                       _missing = true;
                       _service = key; // last service found in data
                     }
-                    if (data['services'][key]["message"] != "" ) {
+                    if (data['services'][key]["message"] != "") {
                       _message = true;
                       _service = key; // last service found in data
                     }
@@ -144,14 +157,14 @@ body {
                 }
 
                 if (_missing) {
-                  $("#pms").attr('fill', 'red');
+                  $("#pms").attr('style', 'fill: red !important');
                   $("#pms").show(500);
                 } else if (_message) {
-                  $("#pms").attr('fill', 'orange');
+                  $("#pms").attr('style', 'fill: orange !important');
                   $("#pms").hide(500);
                   $("#pms").show(500);
                 } else {
-                  $("#pms").attr('fill', '#a9dfbf'); // GREEN
+                  $("#pms").attr('style', 'fill: #a9dfbf !important'); // GREEN
                   $("#pms").show(500);
                 }
 
@@ -166,8 +179,7 @@ body {
 
               function missing_console(id) {
                 let services = data["services"];
-                let _missing = false;
-                _missing = services[`${_stack}_${id}`]["missing"];
+                let _missing = services[`${_stack}_${id}`]["missing"];
                 if (_missing) {
                   $(`#${id}_link`).hide(500);
                 } else {
@@ -177,28 +189,24 @@ body {
 
               function missing(id) {
                 let services = data["services"];
-                let _missing = false;
-                let _message = "";
-                let _nodes = 0;
-                let _stack = data["stack"];
-                _missing = services[`${_stack}_${id}`]["missing"];
-                _message = services[`${_stack}_${id}`]["message"];
-                _nodes = services[`${_stack}_${id}`]["nodes"];
+                let _missing = services[`${_stack}_${id}`]["missing"];
+                let _message = services[`${_stack}_${id}`]["message"];
+                let _nodes = services[`${_stack}_${id}`]["nodes"];
 
                 if (data["disables"].includes(id)) {
-                  $(`#${id}`).attr('fill', '#dddddd');
+                  $(`#${id}`).attr('style', 'fill: lightgray !important');
                   $(`#${id}`).show(500);
                 } else {
                   if (_missing) {
-                    $(`#${id}`).attr('fill', 'red');
+                    $(`#${id}`).attr('style', 'fill: red !important');
                     $(`#${id}`).show(500);
-                    services[`${_stack}_${id}`]["message"]='missing';
+                    services[`${_stack}_${id}`]["message"] = 'missing';
                   } else if (_message != "") {
-                    $(`#${id}`).attr('fill', 'orange');
+                    $(`#${id}`).attr('style', 'fill: orange !important');
                     $(`#${id}`).hide(500);
                     $(`#${id}`).show(500);
                   } else {
-                    $(`#${id}`).attr('fill', '#a9dfbf'); // GREEN
+                    $(`#${id}`).attr('style', 'fill: #a9dfbf !important'); // GREEN
                     $(`#${id}`).show(500);
                   }
                 }
@@ -215,6 +223,7 @@ body {
               missing("proxy");
               missing("ca");
               missing("certbot");
+              missing("mcp-server");
               missing("console");
               missing("core");
               missing("beat");
@@ -248,7 +257,7 @@ body {
                 message_serv = `${_stack}_${serv}`;
               }
 
-              if (typeof(data) != "undefined") {
+              if (typeof (data) != "undefined") {
                 if (serv == "pms" && message_pms != "") {
                   message = data['services'][message_pms]['message'];
                   message_serv = message_pms;
@@ -275,7 +284,7 @@ body {
               }
 
               $("#organization").text(data['organization']);
-              $("#stack").text('stack: '+ data['stack']);
+              $("#stack").text('stack: ' + data['stack']);
               $("#tag").text('migasfree server: ' + data['tag']);
 
               if (message == "") {
@@ -288,14 +297,14 @@ body {
 
               $("#message_from").text(message_from);
 
-              if (! location.pathname.startsWith('/services/status')) {
+              if (!window.location.pathname.startsWith('/services/status')) {
                 if (data["ok"]) {
-                  $(location).attr('href', location.href);
+                  window.location.href = window.location.href;
                 }
               }
             },
           });
-        }, 1000);
+        }, 2000);
       });
 
       $(window).load(function () {
@@ -304,7 +313,7 @@ body {
 
         $("#database-svg").attr('href', '/services-static/img/database.svg');
 
-        $(circles).attr('fill', 'orange');
+        $(circles).attr('style', 'fill: orange !important');
         $(circles).hide(200);
         $(links).hide(200);
         $("#spoon").hide(200);
@@ -316,28 +325,28 @@ body {
 
         // tooltips
         $("#proxy_link title").text(
-          'proxy statistics:' + String.fromCharCode(10) + 'https://' + location.host + '/stats'
+          'proxy statistics:' + String.fromCharCode(10) + 'https://' + window.location.host + '/stats'
         );
-        $("#console_link title").text('migasfree console:' + String.fromCharCode(10) +'https://'+location.host);
-        $("#public_link title").text('public files:' + String.fromCharCode(10) +'https://'+location.host+'/pool/');
-        $("#core_link title").text('API:' + String.fromCharCode(10) +'https://'+location.host+'/docs/');
+        $("#console_link title").text('migasfree console:' + String.fromCharCode(10) + 'https://' + window.location.host);
+        $("#public_link title").text('public files:' + String.fromCharCode(10) + 'https://' + window.location.host + '/pool/');
+        $("#core_link title").text('API:' + String.fromCharCode(10) + 'https://' + window.location.host + '/docs/');
         $("#portainer_link title").text(
-          'portainer console:' + String.fromCharCode(10) + 'https://portainer-' + location.host
+          'portainer console:' + String.fromCharCode(10) + 'https://portainer-' + window.location.host
         );
         $("#database_console_link title").text(
-          'database console:' + String.fromCharCode(10) + 'https://database-' + location.host
+          'database console:' + String.fromCharCode(10) + 'https://database-' + window.location.host
         );
         $("#datastore_console_link title").text(
-          'datastore console:' + String.fromCharCode(10) + 'https://datastore-' + location.host
+          'datastore console:' + String.fromCharCode(10) + 'https://datastore-' + window.location.host
         );
         $("#datashare_console_link title").text(
-          'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + location.host
+          'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + window.location.host
         );
         $("#worker_console_link title").text(
-          'worker console:' + String.fromCharCode(10) + 'https://worker-' + location.host + '/tasks'
+          'worker console:' + String.fromCharCode(10) + 'https://worker-' + window.location.host + '/tasks'
         );
         $("#assistant_link title").text(
-          'assistant:' + String.fromCharCode(10) + 'https://assistant-' + location.host
+          'assistant:' + String.fromCharCode(10) + 'https://assistant-' + window.location.host
         );
       });
     </script>
@@ -358,7 +367,7 @@ body {
         </style>
       </defs>
 
-      <-- force download file spoon-disconnect.svg-->
+      <!-- force download file spoon-disconnect.svg -->
       <image id="spoon-disconnected" href="/" x="0" y="0" height="0" width="0" />
 
       <!-- info -->
@@ -382,8 +391,8 @@ body {
       <g transform="translate(29, 83)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" />
-        <a href="https://portainer-{{ location.host }}" target="_blank">
-          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7">
+        <a id="portainer_link" href="#" target="_blank">
+          <circle id="portainer_link_circle" class="link" cx="7" cy="-7" r="7">
             <title>portainer console</title>
           </circle>
         </a>
@@ -394,7 +403,7 @@ body {
       <g transform="translate(29, 103)" style="border: 1px solid red;">
         <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" />
-        <a href="https://{{ location.host }}/stats" target="_blank">
+        <a id="proxy_link_parent" href="#" target="_blank">
           <circle id="proxy_link" class="link" cx="7" cy="-7" r="7">
             <title>proxy statistics</title>
           </circle>
@@ -406,7 +415,7 @@ body {
       <g transform="translate(29, 123)">
         <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
         <circle id="ca" class="node" r="1.5" />
-        <a href="https://{{ location.host }}/ca/docs" target="_blank">
+        <a id="ca_link_parent" href="#" target="_blank">
           <circle id="ca_link" class="link" cx="7" cy="-7" r="7">
             <title>Certificate Authority API</title>
           </circle>
@@ -419,8 +428,8 @@ body {
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
-        <a href="https://{{ location.host }}" target="_blank">
-          <circle id="console_link" class="link" cx="7" cy="-7" r="7">
+        <a id="console_link" href="#" target="_blank">
+          <circle id="console_link_circle" class="link" cx="7" cy="-7" r="7">
             <title>migasfree console</title>
           </circle>
         </a>
@@ -432,11 +441,7 @@ body {
         <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
-        <circle id="public_link" class="link" cx="7" cy="-7" r="7"
-          onclick="window.open('https://' + location.host + '/pool/', '_blank'); window.open('https://' + location.host + '/public/', '_blank');"
-        >
-          <title>public files</title>
-        </circle>
+        <circle id="public_link" class="link" cx="7" cy="-7" r="7"></circle>
         <text x="4" y="2">public</text>
       </g>
 
@@ -461,7 +466,7 @@ body {
         <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
         <circle id="core" class="node" r="1.5" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
-        <a href="https://{{ location.host }}/docs/" target="_blank">
+        <a id="core_link_parent" href="#" target="_blank">
           <circle id="core_link" class="link" cx="7" cy="-7" r="7">
             <title>migasfree API</title>
           </circle>
@@ -474,7 +479,7 @@ body {
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
-        <a href="https://worker-{{ location.host }}/tasks" target="_blank">
+        <a id="worker_console_link_parent" href="#" target="_blank">
           <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7">
             <title>worker console</title>
           </circle>
@@ -486,7 +491,7 @@ body {
       <g transform="translate(96, 83)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" />
-        <a href="https://database-{{ location.host }}" target="_blank">
+        <a id="database_console_link_parent" href="#" target="_blank">
           <circle id="database_console_link" class="link" cx="7" cy="-7" r="7">
             <title>database console</title>
           </circle>
@@ -498,7 +503,7 @@ body {
       <g transform="translate(96, 103)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" />
-        <a href="https://datastore-{{ location.host }}" target="_blank">
+        <a id="datastore_console_link_parent" href="#" target="_blank">
           <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7">
             <title>datastore console</title>
           </circle>
@@ -510,7 +515,7 @@ body {
       <g transform="translate(96, 123)">
         <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" />
-        <a href="https://datashare-{{ location.host }}" target="_blank">
+        <a id="datashare_console_link_parent" href="#" target="_blank">
           <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7">
             <title>datashare console</title>
           </circle>
@@ -529,7 +534,7 @@ body {
       <g transform="translate(116, 103)">
         <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" />
-        <a href="https://assistant-{{ location.host }}" target="_blank">
+        <a id="assistant_link_parent" href="#" target="_blank">
           <circle id="assistant_link" class="link" cx="7" cy="-7" r="7">
             <title>assistant</title>
           </circle>
@@ -537,16 +542,11 @@ body {
         <text x="3" y="2">assistant</text>
       </g>
 
-      <!-- mcp node -->
+      <!-- mcp-server node -->
       <g transform="translate(116, 123)">
         <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
-        <circle id="mcp" class="node" r="1.5" />
-        <a href="https://mcp-{{ location.host }}" target="_blank">
-          <circle id="mcp_link" class="link" cx="7" cy="-7" r="7">
-            <title>mcp server</title>
-          </circle>
-        </a>
-        <text x="5" y="2">mcp</text>
+        <circle id="mcp-server" class="node" r="1.5" />
+        <text x="3" y="2">mcp server</text>
       </g>
     </svg>
   </body>
