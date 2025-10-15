@@ -151,6 +151,7 @@ class message:
                 'portainer',
                 'certbot',
                 'ca',
+                'mcp-server',
             ]
 
             if 'services' not in global_data:
@@ -197,6 +198,7 @@ class message:
             disables.append("certbot")
         if os.environ['GOOGLE_API_KEY'] == "":
             disables.append("assistant")
+            disables.append("mcp-server")
 
         return json.dumps(
             {
