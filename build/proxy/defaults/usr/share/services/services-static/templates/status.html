@@ -193,6 +193,10 @@
                 let _message = services[`${_stack}_${id}`]["message"];
                 let _nodes = services[`${_stack}_${id}`]["nodes"];
 
+                if (_message) {
+                  _missing = false;
+                }
+
                 if (data["disables"].includes(id)) {
                   $(`#${id}`).attr('style', 'fill: lightgray !important');
                   $(`#${id}`).show(500);
