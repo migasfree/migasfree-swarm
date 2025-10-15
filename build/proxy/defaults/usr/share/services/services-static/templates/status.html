@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width" />
@@ -69,8 +69,7 @@ body {
 .bocadillo {
   font-size: 2.5px;
   font-style: italic;
-  color: #000;
-  margin: 0;
+  fill: #000;
 }
 
 #organization, #stack, #tag {
@@ -78,7 +77,7 @@ body {
   font-style: italic;
   align-items: center;
   font-size: 3px;
-  color: #000;
+  fill: #000;
 }
 
 #stack {
@@ -239,7 +238,6 @@ body {
               missing_console("worker_console");
               missing_console("assistant");
 
-
               let message_pms = missing_pms();
               let message_from = "";
               let message_serv = `${_stack}_${serv}`;
@@ -266,7 +264,6 @@ body {
                 sprite = parseInt((now / 1000) % 2);
                 $("#spoon").attr("href", `/services-static/img/spoon-ok-${sprite}.svg`);
                 $(".bocadillo").hide(200);
-
               } else if (message_serv in data['services'] && data['services'][message_serv]['missing']) {
                 sprite = parseInt((now / 1000) % 2);
                 $("#spoon").attr("href", `/services-static/img/spoon-starting-${sprite}.svg`);
@@ -347,119 +344,210 @@ body {
   </head>
   <body>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70">
-      <image href="/services-static/img/background.svg" x=30 y=50 height="100" width="100" />
+      <defs>
+        <style>
+          .node { fill: orange; }
+          .link { cursor: pointer; }
+          .icon { width: 10px; height: 10px; }
+          text {
+            font-family: Pompiere;
+            font-size: 3px;
+            font-style: italic;
+            fill: #868e96;
+          }
+        </style>
+      </defs>
 
       <-- force download file spoon-disconnect.svg-->
-      <image id="spoon-disconnected" href="/" x=0 y=0 height="0" width="0" />
+      <image id="spoon-disconnected" href="/" x="0" y="0" height="0" width="0" />
 
-      <a href="/services/logs" target="_blank">
-          <image id="spoon" href="/" class="link" x=155 y=120 height="10" width="10" />
-      </a>
+      <!-- info -->
+      <g transform="translate(146, 80)">
+        <text id="organization"></text>
+        <text id="stack" x="0" y="3"></text>
+        <text id="tag" x="0" y="5"></text>
+      </g>
 
-      <foreignObject x="145.5" y="107.5" width="38" height="14">
-          <p class="bocadillo" id="message_serv">  </p>
-          <p class="bocadillo" id="message"> one moment, please </p>
-      </foreignObject>
+      <!-- mi-gas zone -->
+      <g transform="translate(146, 106)">
+        <a href="/services/logs" target="_blank">
+          <image id="spoon" href="/" class="link" x="6" y="8" height="10" width="10" />
+        </a>
 
-      <foreignObject x="145.5" y="74" width="38" height="8">
-          <p id="organization"> </p>
-      </foreignObject>
+        <text class="bocadillo" id="message_serv"></text>
+        <text class="bocadillo" id="message" x="0" y="3">one moment, please</text>
+      </g>
 
-      <foreignObject x="145.5" y="79" width="38" height="6">
-          <p id="stack"> </p>
-      </foreignObject>
+      <!-- portainer node -->
+      <g transform="translate(29, 83)">
+        <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
+        <circle id="portainer" class="node" r="1.5" />
+        <a href="https://portainer-{{ location.host }}" target="_blank">
+          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7">
+            <title>portainer console</title>
+          </circle>
+        </a>
+        <text x="3" y="2">portainer</text>
+      </g>
 
-      <foreignObject x="145.5" y="82.5" width="38" height="6">
-          <p id="tag"> </p>
-      </foreignObject>
+      <!-- proxy node -->
+      <g transform="translate(29, 103)" style="border: 1px solid red;">
+        <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
+        <circle id="proxy" class="node" r="1.5" />
+        <a href="https://{{ location.host }}/stats" target="_blank">
+          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7">
+            <title>proxy statistics</title>
+          </circle>
+        </a>
+        <text x="4" y="2">proxy</text>
+      </g>
 
-      <circle id="proxy" cx="29" cy="107.5" r="1.5" fill="orange "/>
-      <circle id="proxy_link" class="link" cx="36" cy="100.5" r="7"
-        onclick="window.open('https://' + location.host + '/stats', '_blank');"
-      >
-        <title> proxy statistics </title>
-      </circle>
+      <!-- ca node -->
+      <g transform="translate(29, 123)">
+        <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
+        <circle id="ca" class="node" r="1.5" />
+        <a href="https://{{ location.host }}/ca/docs" target="_blank">
+          <circle id="ca_link" class="link" cx="7" cy="-7" r="7">
+            <title>Certificate Authority API</title>
+          </circle>
+        </a>
+        <text x="6" y="2">ca</text>
+      </g>
 
-      <circle id="ca" cx="29" cy="123" r="1.5" fill="orange "/>
-      <circle id="ca_link" class="link" cx="36" cy="117" r="7"
-        onclick="window.open('https://' + location.host + '/ca/docs', '_blank');"
-      >
-        <title> Certificate Authority API </title>
-      </circle>
+      <!-- console node -->
+      <g transform="translate(56, 83)">
+        <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
+        <circle id="console" class="node" r="1.5" />
+        <text id="nodes_console" class="circle-text" x="0" y="1"></text>
+        <a href="https://{{ location.host }}" target="_blank">
+          <circle id="console_link" class="link" cx="7" cy="-7" r="7">
+            <title>migasfree console</title>
+          </circle>
+        </a>
+        <text x="4" y="2">console</text>
+      </g>
 
-      <circle id="certbot" cx="115" cy="89.5" r="1.5" fill="orange "/>
+      <!-- public node -->
+      <g transform="translate(56, 103)">
+        <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
+        <circle id="public" class="node" r="1.5" />
+        <text id="nodes_public" class="circle-text" x="0" y="1"></text>
+        <circle id="public_link" class="link" cx="7" cy="-7" r="7"
+          onclick="window.open('https://' + location.host + '/pool/', '_blank'); window.open('https://' + location.host + '/public/', '_blank');"
+        >
+          <title>public files</title>
+        </circle>
+        <text x="4" y="2">public</text>
+      </g>
 
-      <circle id="console" cx="64" cy="89.5" r="1.5" fill="orange" />
-      <text id="nodes_console" class="circle-text" x="64" y="90.5"></text>
-      <circle id="console_link" class="link" cx="70" cy="83" r="7"
-        onclick="window.open('https://' + location.host, '_blank');"
-      >
-        <title> migasfree console </title>
-      </circle>
+      <!-- pms node -->
+      <g transform="translate(56, 123)">
+        <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
+        <circle id="pms" class="node" r="1.5" />
+        <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
+        <text x="5" y="2">pms</text>
+      </g>
 
-      <circle id="portainer" cx="29" cy="89.5" r="1.5" fill="orange" />
-      <circle id="portainer_link" class="link" cx="36" cy="83" r="7"
-        onclick="window.open('https://portainer-' + location.host, '_blank');"
-      >
-        <title> portainer console </title>
-      </circle>
+      <!-- beat node -->
+      <g transform="translate(76, 83)">
+        <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
+        <circle id="beat" class="node" r="1.5" />
+        <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
+        <text x="5" y="2">beat</text>
+      </g>
 
-      <circle id="core" cx="81" cy="107.5" r="1.5" fill="orange" />
-      <text id="nodes_core" class="circle-text" x="81" y="108.5"></text>
-      <circle id="core_link" class="link" cx="87.5" cy="100.5" r="7"
-        onclick="window.open('https://' + location.host + '/docs/', '_blank');"
-      >
-        <title> migasfree API </title>
-      </circle>
+      <!-- core node -->
+      <g transform="translate(76, 103)">
+        <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
+        <circle id="core" class="node" r="1.5" />
+        <text id="nodes_core" class="circle-text" x="0" y="1"></text>
+        <a href="https://{{ location.host }}/docs/" target="_blank">
+          <circle id="core_link" class="link" cx="7" cy="-7" r="7">
+            <title>migasfree API</title>
+          </circle>
+        </a>
+        <text x="5" y="2">core</text>
+      </g>
 
-      <circle id="beat" cx="81" cy="89.5" r="1.5" fill="orange" />
-      <text id="nodes_beat" class="circle-text" x="81" y="90.5"></text>
+      <!-- worker node -->
+      <g transform="translate(76, 123)">
+        <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
+        <circle id="worker" class="node" r="1.5" />
+        <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
+        <a href="https://worker-{{ location.host }}/tasks" target="_blank">
+          <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7">
+            <title>worker console</title>
+          </circle>
+        </a>
+        <text x="4" y="2">worker</text>
+      </g>
 
-      <circle id="worker" cx="81" cy="123" r="1.5" fill="orange" />
-      <text id="nodes_worker" class="circle-text" x="81" y="124"></text>
-      <circle id="worker_console_link" class="link" cx="87.5" cy="117" r="7"
-        onclick="window.open('https://worker-' + location.host + '/tasks', '_blank');"
-      >
-        <title> worker console </title>
-      </circle>
+      <!-- database node -->
+      <g transform="translate(96, 83)">
+        <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
+        <circle id="database" class="node" r="1.5" />
+        <a href="https://database-{{ location.host }}" target="_blank">
+          <circle id="database_console_link" class="link" cx="7" cy="-7" r="7">
+            <title>database console</title>
+          </circle>
+        </a>
+        <text x="3" y="2">database</text>
+      </g>
 
-      <circle id="assistant" cx="115" cy="107.5" r="1.5" fill="orange "/>
-      <circle id="assistant_link" class="link" cx="123" cy="100.5" r="7"
-        onclick="window.open('https://assistant-' + location.host, '_blank');"
-      >
-        <title> assistant </title>
-      </circle>
+      <!-- datastore node -->
+      <g transform="translate(96, 103)">
+        <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
+        <circle id="datastore" class="node" r="1.5" />
+        <a href="https://datastore-{{ location.host }}" target="_blank">
+          <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7">
+            <title>datastore console</title>
+          </circle>
+        </a>
+        <text x="3" y="2">datastore</text>
+      </g>
 
-      <circle id="public" cx="64" cy="107.5" r="1.5" fill="orange" />
-      <text id="nodes_public" class="circle-text" x="64" y="108.5"></text>
-      <circle id="public_link" class="link" cx="70" cy="100.5" r="7"
-        onclick="window.open('https://' + location.host + '/pool/', '_blank'); window.open('https://' + location.host + '/public/', '_blank');"
-      >
-        <title> public files </title>
-      </circle>
+      <!-- datashare node -->
+      <g transform="translate(96, 123)">
+        <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
+        <circle id="datashare_console" class="node" r="1.5" />
+        <a href="https://datashare-{{ location.host }}" target="_blank">
+          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7">
+            <title>datashare console</title>
+          </circle>
+        </a>
+        <text x="3" y="2">datashare</text>
+      </g>
 
-      <circle id="pms" cx="64" cy="123" r="1.5" fill="orange" />
-      <text id="nodes_pms" class="circle-text" x="64" y="124"></text>
-      <circle id="database" cx="98" cy="89.5" r="1.5" fill="orange" />
-      <circle id="database_console_link" class="link" cx="105" cy="83" r="7"
-        onclick="window.open('https://database-' + location.host, '_blank');"
-      >
-        <title> database console </title>
-      </circle>
+      <!-- certbot node -->
+      <g transform="translate(116, 83)">
+        <image class="icon" href="/services-static/img/certbot.svg" x="2" y="-12" />
+        <circle id="certbot" class="node" r="1.5" />
+        <text x="4" y="2">certbot</text>
+      </g>
 
-      <circle id="datastore" cx="98" cy="107.5" r="1.5" fill="orange" />
-      <circle id="datastore_console_link" class="link" cx="105" cy="100.5" r="7"
-        onclick="window.open('https://datastore-' + location.host, '_blank');"
-      >
-        <title> datastore console </title>
-      </circle>
+      <!-- assistant node -->
+      <g transform="translate(116, 103)">
+        <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
+        <circle id="assistant" class="node" r="1.5" />
+        <a href="https://assistant-{{ location.host }}" target="_blank">
+          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7">
+            <title>assistant</title>
+          </circle>
+        </a>
+        <text x="3" y="2">assistant</text>
+      </g>
 
-      <circle id="datashare_console" cx="98" cy="123" r="1.5" fill="orange" />
-      <circle id="datashare_console_link" class="link" cx="105" cy="117" r="7"
-        onclick="window.open('https://datashare-' + location.host, '_blank');"
-      >
-        <title> datashare console </title>
-      </circle>
+      <!-- mcp node -->
+      <g transform="translate(116, 123)">
+        <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
+        <circle id="mcp" class="node" r="1.5" />
+        <a href="https://mcp-{{ location.host }}" target="_blank">
+          <circle id="mcp_link" class="link" cx="7" cy="-7" r="7">
+            <title>mcp server</title>
+          </circle>
+        </a>
+        <text x="5" y="2">mcp</text>
+      </g>
     </svg>
   </body>
 </html>
