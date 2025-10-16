@@ -9,61 +9,50 @@
         src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
       }
 
-      .tooltip {
-        position: relative;
-        display: inline-block;
-        border-bottom: 1px dotted black;
+      * {
+        box-sizing: border-box;
       }
 
-      .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 120px;
-        background-color: #555;
-        color: #fff;
-        text-align: center;
-        border-radius: 6px;
-        padding: 5px 0;
-        position: absolute;
-        z-index: 1;
-        bottom: 125%;
-        left: 50%;
-        margin-left: -60px;
-        opacity: 0;
-        transition: opacity 0.3s;
+      body {
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        font-family: Pompiere, sans-serif;
+        color: #ddd;
+        overflow: hidden;
       }
 
-      .tooltip .tooltiptext::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        margin-left: -5px;
-        border-width: 5px;
-        border-style: solid;
-        border-color: #555 transparent transparent transparent;
+      svg {
+        width: 100%;
+        height: 100%;
       }
 
-      .tooltip:hover .tooltiptext {
-        visibility: visible;
-        opacity: 1;
+      .node {
+        fill: lightgray;
+        transition: fill 0.3s ease;
       }
 
       .link {
         fill: green;
         fill-opacity: 0.07;
         cursor: pointer;
+        transition: fill-opacity 0.2s ease;
+      }
+
+      .link:hover {
+        fill-opacity: 0.15;
+      }
+
+      .icon {
+        width: 10px;
+        height: 10px;
       }
 
       .circle-text {
         text-anchor: middle;
         font-size: 3px;
-      }
-
-      body {
-        width: 100%;
-        margin: 0 auto;
-        font-family: Pompiere, sans-serif;
-        color: #ddd;
+        fill: #333;
       }
 
       .bocadillo {
@@ -72,12 +61,13 @@
         fill: #000;
       }
 
-      #organization, #stack, #tag {
-        display: flex;
+      .info-text {
         font-style: italic;
-        align-items: center;
+        fill: #868e96;
+      }
+
+      #organization {
         font-size: 3px;
-        fill: #000;
       }
 
       #stack {
@@ -87,473 +77,494 @@
       #tag {
         font-size: 2px;
       }
+
+      text {
+        font-family: Pompiere;
+        font-size: 3px;
+        font-style: italic;
+        fill: #868e96;
+      }
     </style>
 
     <title>Status</title>
-
-    <script src="/services-static/js/jquery.min.js" type="text/javascript"></script>
-
-    <script type="text/javascript">
-      function sleep(time) {
-        return new Promise((resolve) => setTimeout(resolve, time));
-      }
-
-      let time = +new Date;
-      let circles = "#proxy, #ca, #certbot, #console, #core, #beat, #worker, #public, #pms, #database, #datastore, #datashare_console, #portainer, #assistant, #mcp-server";
-      let links = "#proxy_link, #ca_link, #console_link, #public_link, #portainer_link, #database_console_link, #datastore_console_link, #datashare_console_link, #worker_console_link, #assistant_link, #core_link";
-      let serv = "";
-
-      $(document).ready(function () {
-
-        $("#portainer_link").attr("href", "https://portainer-" + window.location.host);
-        $("#proxy_link").parent().attr("href", "https://" + window.location.host + "/stats");
-        $("#ca_link").parent().attr("href", "https://" + window.location.host + "/ca/docs");
-        $("#console_link").parent().attr("href", "https://" + window.location.host + "/");
-        $("#public_link").attr("onclick", "window.open('https://" + window.location.host + "/pool/', '_blank'); window.open('https://" + window.location.host + "/public/', '_blank');");
-        $("#core_link").parent().attr("href", "https://" + window.location.host + "/docs/");
-        $("#worker_console_link").parent().attr("href", "https://worker-" + window.location.host + "/tasks");
-        $("#database_console_link").parent().attr("href", "https://database-" + window.location.host);
-        $("#datastore_console_link").parent().attr("href", "https://datastore-" + window.location.host);
-        $("#datashare_console_link").parent().attr("href", "https://datashare-" + window.location.host);
-        $("#assistant_link").parent().attr("href", "https://assistant-" + window.location.host);
-
-        setInterval(function () {
-          let now = +new Date;
-          let retraso = parseInt((now - time) / 2000);
-
-          if (retraso > 2.5) {
-            $("#message").text('disconnected');
-            $("#message_serv").text('');
-            $("#spoon").attr("href", "/services-static/img/spoon-disconnect.svg");
-            $(circles).hide(200);
-            $(links).hide(200);
-          }
-
-          $.ajax({
-            url: '/services/message',
-            success: function (data) {
-              function missing_pms() {
-                let _missing = false;
-                let _message = false;
-                let _service = "";
-                let _nodes = 0;
-                let _stack = data["stack"];
-
-                for (const [key, value] of Object.entries(data['services'])) {
-                  if (key.startsWith(_stack + '_pms-')) {
-                    if (data['services'][key]["missing"]) {
-                      _missing = true;
-                      _service = key; // last service found in data
-                    }
-                    if (data['services'][key]["message"] != "") {
-                      _message = true;
-                      _service = key; // last service found in data
-                    }
-                    _nodes += data['services'][key]["nodes"]
-                  }
-                }
-                if (_message) {
-                  _missing = false;
-                }
-
-                if (_missing) {
-                  $("#pms").attr('style', 'fill: red !important');
-                  $("#pms").show(500);
-                } else if (_message) {
-                  $("#pms").attr('style', 'fill: orange !important');
-                  $("#pms").hide(500);
-                  $("#pms").show(500);
-                } else {
-                  $("#pms").attr('style', 'fill: #a9dfbf !important'); // GREEN
-                  $("#pms").show(500);
-                }
-
-                if (_nodes < 2) {
-                  $("#nodes_pms").text("");
-                } else {
-                  $("#nodes_pms").text(_nodes);
-                }
-
-                return _service;
-              }
-
-              function missing_console(id) {
-                let services = data["services"];
-                let _missing = services[`${_stack}_${id}`]["missing"];
-                if (_missing) {
-                  $(`#${id}_link`).hide(500);
-                } else {
-                  $(`#${id}_link`).show(500);
-                }
-              }
-
-              function missing(id) {
-                let services = data["services"];
-                let _missing = services[`${_stack}_${id}`]["missing"];
-                let _message = services[`${_stack}_${id}`]["message"];
-                let _nodes = services[`${_stack}_${id}`]["nodes"];
-
-                if (_message) {
-                  _missing = false;
-                }
-
-                if (data["disables"].includes(id)) {
-                  $(`#${id}`).attr('style', 'fill: lightgray !important');
-                  $(`#${id}`).show(500);
-                } else {
-                  if (_missing) {
-                    $(`#${id}`).attr('style', 'fill: red !important');
-                    $(`#${id}`).show(500);
-                    services[`${_stack}_${id}`]["message"] = 'missing';
-                  } else if (_message != "") {
-                    $(`#${id}`).attr('style', 'fill: orange !important');
-                    $(`#${id}`).hide(500);
-                    $(`#${id}`).show(500);
-                  } else {
-                    $(`#${id}`).attr('style', 'fill: #a9dfbf !important'); // GREEN
-                    $(`#${id}`).show(500);
-                  }
-                }
-
-                if (_nodes < 2) {
-                  $(`#nodes_${id}`).text("");
-                } else {
-                  $(`#nodes_${id}`).text(_nodes);
-                }
-              }
-
-              time = +new Date;
-              let _stack = data["stack"];
-              missing("proxy");
-              missing("ca");
-              missing("certbot");
-              missing("mcp-server");
-              missing("console");
-              missing("core");
-              missing("beat");
-              missing("worker");
-              missing("public");
-              missing("database");
-              missing("datastore");
-              missing("portainer");
-              missing("datashare_console");
-              missing("assistant");
-
-              missing_console("console");
-              missing_console("portainer");
-              missing_console("proxy");
-              missing_console("ca");
-              missing_console("public");
-              missing_console("core");
-              missing_console("database_console");
-              missing_console("datastore_console");
-              missing_console("datashare_console");
-              missing_console("worker_console");
-              missing_console("assistant");
-
-              let message_pms = missing_pms();
-              let message_from = "";
-              let message_serv = `${_stack}_${serv}`;
-
-              if (serv == "") {
-                message_serv = data['last_message'];
-              } else if (serv == "datashare_console") {
-                message_serv = `${_stack}_${serv}`;
-              }
-
-              if (typeof (data) != "undefined") {
-                if (serv == "pms" && message_pms != "") {
-                  message = data['services'][message_pms]['message'];
-                  message_serv = message_pms;
-                  message_from = `${data['services'][message_pms]['container']}@${data['services'][message_pms]['node']}`;
-                } else {
-                  message = data['services'][message_serv]['message'];
-                  message_from = `${data['services'][message_serv]['container']}@${data['services'][message_serv]['node']}`;
-                }
-              }
-
-              let sprite;
-              if (data['ok']) {
-                sprite = parseInt((now / 1000) % 2);
-                $("#spoon").attr("href", `/services-static/img/spoon-ok-${sprite}.svg`);
-                $(".bocadillo").hide(200);
-              } else if (message_serv in data['services'] && data['services'][message_serv]['missing']) {
-                sprite = parseInt((now / 1000) % 2);
-                $("#spoon").attr("href", `/services-static/img/spoon-starting-${sprite}.svg`);
-                $(".bocadillo").show(200);
-              } else {
-                sprite = parseInt((now / 1000) % 3);
-                $("#spoon").attr("href", `/services-static/img/spoon-checking-${sprite}.svg`);
-                $(".bocadillo").show(200);
-              }
-
-              $("#organization").text(data['organization']);
-              $("#stack").text('stack: ' + data['stack']);
-              $("#tag").text('migasfree server: ' + data['tag']);
-
-              if (message == "") {
-                $("#message").text('ready');
-              } else {
-                $("#message").text(message);
-              }
-
-              $("#message_serv").text(message_serv.split('_').slice(1).join('_'));
-
-              $("#message_from").text(message_from);
-
-              if (!window.location.pathname.startsWith('/services/status')) {
-                if (data["ok"]) {
-                  window.location.href = window.location.href;
-                }
-              }
-            },
-          });
-        }, 2000);
-      });
-
-      $(window).load(function () {
-        // force download image
-        $("#spoon-disconnected").attr('href', '/services-static/img/spoon-disconnect.svg');
-
-        $("#database-svg").attr('href', '/services-static/img/database.svg');
-
-        $(circles).attr('style', 'fill: lightgray !important');
-        $(circles).hide(200);
-        $(links).hide(200);
-        $("#spoon").hide(200);
-        $("#spoon").attr('href', '/services-static/img/spoon-welcome.svg');
-        $("#spoon").show(100);
-
-        const welcome = ["salut!", "Hi!", "¡hola!", "¡hola, co!", "kaixo!", "ola!", "Hallo!"];
-        $("#message").text(welcome[Math.floor(Math.random() * 7)]);
-
-        // tooltips
-        $("#proxy_link title").text(
-          'proxy statistics:' + String.fromCharCode(10) + 'https://' + window.location.host + '/stats'
-        );
-        $("#console_link title").text('migasfree console:' + String.fromCharCode(10) + 'https://' + window.location.host);
-        $("#public_link title").text('public files:' + String.fromCharCode(10) + 'https://' + window.location.host + '/pool/');
-        $("#core_link title").text('API:' + String.fromCharCode(10) + 'https://' + window.location.host + '/docs/');
-        $("#portainer_link title").text(
-          'portainer console:' + String.fromCharCode(10) + 'https://portainer-' + window.location.host
-        );
-        $("#database_console_link title").text(
-          'database console:' + String.fromCharCode(10) + 'https://database-' + window.location.host
-        );
-        $("#datastore_console_link title").text(
-          'datastore console:' + String.fromCharCode(10) + 'https://datastore-' + window.location.host
-        );
-        $("#datashare_console_link title").text(
-          'datashare console:' + String.fromCharCode(10) + 'https://datashare-' + window.location.host
-        );
-        $("#worker_console_link title").text(
-          'worker console:' + String.fromCharCode(10) + 'https://worker-' + window.location.host + '/tasks'
-        );
-        $("#assistant_link title").text(
-          'assistant:' + String.fromCharCode(10) + 'https://assistant-' + window.location.host
-        );
-      });
-    </script>
   </head>
   <body>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70" id="main-svg">
       <defs>
-        <style>
-          .node { fill: lightgray; }
-          .link { cursor: pointer; }
-          .icon { width: 10px; height: 10px; }
-          text {
-            font-family: Pompiere;
-            font-size: 3px;
-            font-style: italic;
-            fill: #868e96;
-          }
-        </style>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="0.3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
 
-      <!-- force download file spoon-disconnect.svg -->
-      <image id="spoon-disconnected" href="/" x="0" y="0" height="0" width="0" />
+      <!-- Preload images -->
+      <image id="preload-disconnect" href="/services-static/img/spoon-disconnect.svg" x="0" y="0" height="0" width="0" />
 
-      <!-- info -->
+      <!-- Info section -->
       <g transform="translate(146, 80)">
-        <text id="organization"></text>
-        <text id="stack" x="0" y="3"></text>
-        <text id="tag" x="0" y="5"></text>
+        <text id="organization" class="info-text"></text>
+        <text id="stack" class="info-text" x="0" y="3"></text>
+        <text id="tag" class="info-text" x="0" y="5"></text>
       </g>
 
-      <!-- mi-gas zone -->
+      <!-- Status message -->
       <g transform="translate(146, 106)">
         <a href="/services/logs" target="_blank">
           <image id="spoon" href="/" class="link" x="6" y="8" height="10" width="10" />
         </a>
-
         <text class="bocadillo" id="message_serv"></text>
         <text class="bocadillo" id="message" x="0" y="3">one moment, please</text>
       </g>
 
-      <!-- portainer node -->
-      <g transform="translate(29, 83)">
+      <!-- Services nodes -->
+      <g id="portainer-node" transform="translate(29, 83)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" />
-        <a id="portainer_link" href="#" target="_blank">
-          <circle id="portainer_link_circle" class="link" cx="7" cy="-7" r="7">
-            <title>portainer console</title>
-          </circle>
+        <a id="portainer_link" target="_blank">
+          <circle class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
         </a>
         <text x="3" y="2">portainer</text>
       </g>
 
-      <!-- proxy node -->
-      <g transform="translate(29, 103)" style="border: 1px solid red;">
+      <g id="proxy-node" transform="translate(29, 103)">
         <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" />
-        <a id="proxy_link_parent" href="#" target="_blank">
-          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7">
-            <title>proxy statistics</title>
-          </circle>
+        <a id="proxy_link_parent" target="_blank">
+          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7"><title>Proxy Statistics</title></circle>
         </a>
         <text x="4" y="2">proxy</text>
       </g>
 
-      <!-- ca node -->
-      <g transform="translate(29, 123)">
+      <g id="ca-node" transform="translate(29, 123)">
         <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
         <circle id="ca" class="node" r="1.5" />
-        <a id="ca_link_parent" href="#" target="_blank">
-          <circle id="ca_link" class="link" cx="7" cy="-7" r="7">
-            <title>Certificate Authority API</title>
-          </circle>
+        <a id="ca_link_parent" target="_blank">
+          <circle id="ca_link" class="link" cx="7" cy="-7" r="7"><title>Certificate Authority API</title></circle>
         </a>
         <text x="6" y="2">ca</text>
       </g>
 
-      <!-- console node -->
-      <g transform="translate(56, 83)">
+      <g id="console-node" transform="translate(56, 83)">
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
-        <a id="console_link" href="/" target="_blank">
-          <circle id="console_link_circle" class="link" cx="7" cy="-7" r="7">
-            <title>migasfree console</title>
-          </circle>
+        <a id="console_link" target="_blank">
+          <circle class="link" cx="7" cy="-7" r="7"><title>Migasfree Console</title></circle>
         </a>
         <text x="4" y="2">console</text>
       </g>
 
-      <!-- public node -->
-      <g transform="translate(56, 103)">
+      <g id="public-node" transform="translate(56, 103)">
         <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
-        <circle id="public_link" class="link" cx="7" cy="-7" r="7">
-          <title>public</title>
-        </circle>
+        <circle id="public_link" class="link" cx="7" cy="-7" r="7"><title>Public Files</title></circle>
         <text x="4" y="2">public</text>
       </g>
 
-      <!-- pms node -->
-      <g transform="translate(56, 123)">
+      <g id="pms-node" transform="translate(56, 123)">
         <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
         <circle id="pms" class="node" r="1.5" />
         <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">pms</text>
       </g>
 
-      <!-- beat node -->
-      <g transform="translate(76, 83)">
+      <g id="beat-node" transform="translate(76, 83)">
         <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
         <circle id="beat" class="node" r="1.5" />
         <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">beat</text>
       </g>
 
-      <!-- core node -->
-      <g transform="translate(76, 103)">
+      <g id="core-node" transform="translate(76, 103)">
         <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
         <circle id="core" class="node" r="1.5" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
-        <a id="core_link_parent" href="#" target="_blank">
-          <circle id="core_link" class="link" cx="7" cy="-7" r="7">
-            <title>migasfree API</title>
-          </circle>
+        <a id="core_link_parent" target="_blank">
+          <circle id="core_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree API</title></circle>
         </a>
         <text x="5" y="2">core</text>
       </g>
 
-      <!-- worker node -->
-      <g transform="translate(76, 123)">
+      <g id="worker-node" transform="translate(76, 123)">
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
-        <a id="worker_console_link_parent" href="#" target="_blank">
-          <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7">
-            <title>worker console</title>
-          </circle>
+        <a id="worker_console_link_parent" target="_blank">
+          <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7"><title>Worker Console</title></circle>
         </a>
         <text x="4" y="2">worker</text>
       </g>
 
-      <!-- database node -->
-      <g transform="translate(96, 83)">
+      <g id="database-node" transform="translate(96, 83)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" />
-        <a id="database_console_link_parent" href="#" target="_blank">
-          <circle id="database_console_link" class="link" cx="7" cy="-7" r="7">
-            <title>database console</title>
-          </circle>
+        <a id="database_console_link_parent" target="_blank">
+          <circle id="database_console_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
         </a>
         <text x="3" y="2">database</text>
       </g>
 
-      <!-- datastore node -->
-      <g transform="translate(96, 103)">
+      <g id="datastore-node" transform="translate(96, 103)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" />
-        <a id="datastore_console_link_parent" href="#" target="_blank">
-          <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7">
-            <title>datastore console</title>
-          </circle>
+        <a id="datastore_console_link_parent" target="_blank">
+          <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
         </a>
         <text x="3" y="2">datastore</text>
       </g>
 
-      <!-- datashare node -->
-      <g transform="translate(96, 123)">
+      <g id="datashare-node" transform="translate(96, 123)">
         <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" />
-        <a id="datashare_console_link_parent" href="#" target="_blank">
-          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7">
-            <title>datashare console</title>
-          </circle>
+        <a id="datashare_console_link_parent" target="_blank">
+          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7"><title>Datashare Console</title></circle>
         </a>
         <text x="3" y="2">datashare</text>
       </g>
 
-      <!-- certbot node -->
-      <g transform="translate(116, 83)">
+      <g id="certbot-node" transform="translate(116, 83)">
         <image class="icon" href="/services-static/img/certbot.svg" x="2" y="-12" />
         <circle id="certbot" class="node" r="1.5" />
         <text x="4" y="2">certbot</text>
       </g>
 
-      <!-- assistant node -->
-      <g transform="translate(116, 103)">
+      <g id="assistant-node" transform="translate(116, 103)">
         <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" />
-        <a id="assistant_link_parent" href="#" target="_blank">
-          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7">
-            <title>assistant</title>
-          </circle>
+        <a id="assistant_link_parent" target="_blank">
+          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7"><title>Assistant</title></circle>
         </a>
         <text x="3" y="2">assistant</text>
       </g>
 
-      <!-- mcp-server node -->
-      <g transform="translate(116, 123)">
+      <g id="mcp-server-node" transform="translate(116, 123)">
         <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
         <circle id="mcp-server" class="node" r="1.5" />
         <text x="3" y="2">mcp server</text>
       </g>
     </svg>
+
+    <script>
+      (function() {
+        'use strict';
+
+        // Configuration
+        const CONFIG = {
+          sseEndpoint: '/services/stream',
+          reconnectDelay: 5000,
+          disconnectThreshold: 5000,
+          welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
+          services: ['proxy', 'ca', 'certbot', 'console', 'core', 'beat', 'worker', 'public',
+                     'database', 'datastore', 'portainer', 'datashare_console', 'assistant', 'mcp-server'],
+          consoleServices: ['console', 'portainer', 'proxy', 'ca', 'public', 'core',
+                           'database_console', 'datastore_console', 'datashare_console',
+                           'worker_console', 'assistant']
+        };
+
+        // State
+        const state = {
+          eventSource: null,
+          lastUpdate: Date.now(),
+          currentData: null,
+          currentServ: ''
+        };
+
+        // DOM Cache
+        const dom = {
+          nodes: {},
+          links: {},
+          nodeTexts: {},
+          spoon: null,
+          bocadillos: null,
+          message: null,
+          messageServ: null,
+          organization: null,
+          stack: null,
+          tag: null
+        };
+
+        // Initialize DOM cache
+        function cacheDOMElements() {
+          dom.spoon = document.getElementById('spoon');
+          dom.message = document.getElementById('message');
+          dom.messageServ = document.getElementById('message_serv');
+          dom.organization = document.getElementById('organization');
+          dom.stack = document.getElementById('stack');
+          dom.tag = document.getElementById('tag');
+          dom.bocadillos = document.querySelectorAll('.bocadillo');
+
+          CONFIG.services.forEach(service => {
+            dom.nodes[service] = document.getElementById(service);
+            dom.nodeTexts[service] = document.getElementById(`nodes_${service}`);
+          });
+
+          CONFIG.consoleServices.forEach(service => {
+            const link = document.getElementById(`${service}_link`);
+            if (link) dom.links[service] = link.parentElement || link;
+          });
+
+          // Special case for public link
+          const publicLink = document.getElementById('public_link');
+          if (publicLink) dom.links.public = publicLink;
+        }
+
+        // Setup links
+        function setupLinks() {
+          const host = window.location.host;
+          const links = {
+            portainer_link: `https://portainer-${host}`,
+            proxy_link_parent: `https://${host}/stats`,
+            ca_link_parent: `https://${host}/ca/docs`,
+            console_link: `https://${host}/`,
+            core_link_parent: `https://${host}/docs/`,
+            worker_console_link_parent: `https://worker-${host}/tasks`,
+            database_console_link_parent: `https://database-${host}`,
+            datastore_console_link_parent: `https://datastore-${host}`,
+            datashare_console_link_parent: `https://datashare-${host}`,
+            assistant_link_parent: `https://assistant-${host}`
+          };
+
+          Object.entries(links).forEach(([id, href]) => {
+            const el = document.getElementById(id);
+            if (el) el.setAttribute('href', href);
+          });
+
+          // Public link special handling
+          const publicLink = document.getElementById('public_link');
+          if (publicLink) {
+            publicLink.style.cursor = 'pointer';
+            publicLink.addEventListener('click', () => {
+              window.open(`https://${host}/pool/`, '_blank');
+              window.open(`https://${host}/public/`, '_blank');
+            });
+          }
+        }
+
+        // Update service node
+        function updateServiceNode(id, data) {
+          const serviceKey = `${data.stack}_${id}`;
+          const service = data.services?.[serviceKey];
+          if (!service || !dom.nodes[id]) return;
+
+          const node = dom.nodes[id];
+          const isDisabled = data.disables?.includes(id);
+          const isMissing = service.missing && !service.message;
+          const hasMessage = !!service.message;
+          const nodes = service.nodes || 0;
+
+          let color = '#a9dfbf'; // green
+          if (isDisabled) color = 'lightgray';
+          else if (isMissing) color = 'red';
+          else if (hasMessage) color = 'orange';
+
+          node.style.fill = color;
+          node.style.display = 'block';
+
+          if (dom.nodeTexts[id]) {
+            dom.nodeTexts[id].textContent = nodes >= 2 ? nodes : '';
+          }
+        }
+
+        // Update PMS nodes
+        function updatePMSNode(data) {
+          const stack = data.stack || '';
+          let missing = false, hasMessage = false, totalNodes = 0;
+
+          Object.entries(data.services || {}).forEach(([key, service]) => {
+            if (key.startsWith(`${stack}_pms-`)) {
+              if (service.missing) missing = true;
+              if (service.message) hasMessage = true;
+              totalNodes += service.nodes || 0;
+            }
+          });
+
+          const node = dom.nodes.pms;
+          if (!node) return;
+
+          let color = '#a9dfbf';
+          if (hasMessage) { missing = false; color = 'orange'; }
+          else if (missing) color = 'red';
+
+          node.style.fill = color;
+          node.style.display = 'block';
+
+          if (dom.nodeTexts.pms) {
+            dom.nodeTexts.pms.textContent = totalNodes >= 2 ? totalNodes : '';
+          }
+        }
+
+        // Update console link visibility
+        function updateConsoleLink(id, data) {
+          const serviceKey = `${data.stack}_${id}`;
+          const service = data.services?.[serviceKey];
+          const link = dom.links[id];
+
+          if (link && service) {
+            link.style.display = service.missing ? 'none' : 'block';
+          }
+        }
+
+        // Update spoon animation
+        function updateSpoon(isOk, isMissing) {
+          const now = Date.now();
+          let sprite, prefix;
+
+          if (isOk) {
+            sprite = Math.floor((now / 1000) % 2);
+            prefix = 'spoon-ok';
+            dom.bocadillos.forEach(el => el.style.display = 'none');
+          } else if (isMissing) {
+            sprite = Math.floor((now / 1000) % 2);
+            prefix = 'spoon-starting';
+            dom.bocadillos.forEach(el => el.style.display = 'block');
+          } else {
+            sprite = Math.floor((now / 1000) % 3);
+            prefix = 'spoon-checking';
+            dom.bocadillos.forEach(el => el.style.display = 'block');
+          }
+
+          dom.spoon.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
+        }
+
+        // Main UI update
+        function updateUI(data) {
+          if (!data) return;
+
+          state.currentData = data;
+          state.lastUpdate = Date.now();
+
+          // Update all service nodes
+          CONFIG.services.forEach(id => updateServiceNode(id, data));
+          updatePMSNode(data);
+
+          // Update console links
+          CONFIG.consoleServices.forEach(id => updateConsoleLink(id, data));
+
+          // Update info
+          dom.organization.textContent = data.organization || '';
+          dom.stack.textContent = `stack: ${data.stack || ''}`;
+          dom.tag.textContent = `migasfree server: ${data.tag || ''}`;
+
+          // Update message
+          const messageServ = data.last_message || '';
+          const service = data.services?.[messageServ];
+          const message = service?.message || '';
+          const isMissing = service?.missing || false;
+
+          dom.message.textContent = message || 'ready';
+          dom.messageServ.textContent = messageServ.split('_').slice(1).join('_');
+
+          // Update spoon
+          updateSpoon(data.ok, isMissing);
+
+          // Redirect if ok
+          if (data.ok && !window.location.pathname.startsWith('/services/status')) {
+            window.location.href = window.location.href;
+          }
+        }
+
+        // SSE Connection
+        function initSSE() {
+          if (state.eventSource) {
+            state.eventSource.close();
+          }
+
+          state.eventSource = new EventSource(CONFIG.sseEndpoint);
+
+          state.eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              updateUI(data);
+            } catch (error) {
+              console.error('SSE parse error:', error);
+            }
+          };
+
+          state.eventSource.onerror = () => {
+            console.warn('SSE connection lost, reconnecting...');
+            state.eventSource.close();
+            showDisconnected();
+            setTimeout(initSSE, CONFIG.reconnectDelay);
+          };
+
+          state.eventSource.onopen = () => {
+            console.log('SSE connected');
+          };
+        }
+
+        // Show disconnected state
+        function showDisconnected() {
+          dom.message.textContent = 'disconnected';
+          dom.messageServ.textContent = '';
+          dom.spoon.setAttribute('href', '/services-static/img/spoon-disconnect.svg');
+
+          Object.values(dom.nodes).forEach(node => {
+            if (node) node.style.display = 'none';
+          });
+
+          Object.values(dom.links).forEach(link => {
+            if (link) link.style.display = 'none';
+          });
+        }
+
+        // Check connection status
+        function checkConnection() {
+          const elapsed = Date.now() - state.lastUpdate;
+          if (elapsed > CONFIG.disconnectThreshold) {
+            showDisconnected();
+          }
+        }
+
+        // Show welcome screen
+        function showWelcome() {
+          const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
+          dom.message.textContent = randomMsg;
+          dom.spoon.style.display = 'none';
+          dom.spoon.setAttribute('href', '/services-static/img/spoon-welcome.svg');
+
+          setTimeout(() => {
+            dom.spoon.style.display = 'block';
+          }, 100);
+
+          Object.values(dom.nodes).forEach(node => {
+            if (node) {
+              node.style.fill = 'lightgray';
+              node.style.display = 'none';
+            }
+          });
+
+          Object.values(dom.links).forEach(link => {
+            if (link) link.style.display = 'none';
+          });
+        }
+
+        // Initialize
+        function init() {
+          cacheDOMElements();
+          setupLinks();
+          showWelcome();
+          initSSE();
+          setInterval(checkConnection, 2000);
+        }
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+          if (state.eventSource) {
+            state.eventSource.close();
+          }
+        });
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+      })();
+    </script>
   </body>
 </html>
