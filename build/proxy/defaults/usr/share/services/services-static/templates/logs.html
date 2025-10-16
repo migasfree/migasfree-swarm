@@ -1,104 +1,346 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Messages Log</title>
   <style>
     @font-face {
       font-family: Pompiere;
       src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
     }
-    h1 {
-      text-align: center;
+
+    * {
+      box-sizing: border-box;
     }
+
     body {
       width: 100%;
-      margin: 0 auto;
+      margin: 0;
+      padding: 20px;
       font-family: Pompiere, sans-serif;
       color: #222;
+      background: #f5f5f5;
     }
-    table {
-      margin-left: auto;
-      margin-right: auto;
-      border-collapse: collapse;
-      border: 1px solid black;
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
     }
-    th, td {
-      border: 1px solid black;
-      padding: 5px;
-    }
-    img {
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
+
     .center {
       text-align: center;
     }
-  </style>
-  <script src="/services-static/js/jquery-1.11.1.min.js" type="text/javascript"></script>
-  <script type="text/javascript">
-    const columns = {{ columns | tojson }};
 
-    function buildTable(data) {
-      if (!data || data.length === 0) {
-        return '<p class="center">No messages available.</p>';
+    #log-container {
+      max-width: 1200px;
+      margin: 0 auto 20px;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.9em;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+
+    .loading, .error, .empty {
+      padding: 40px;
+      text-align: center;
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+
+    #spoon-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    #spoon {
+      width: 64px;
+      height: 64px;
+      transition: opacity 0.3s ease;
+    }
+
+    .fade {
+      opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
       }
-      let html = '<table><thead><tr>';
-      columns.forEach(col => { html += `<th>${col}</th>`; });
-      html += '</tr></thead><tbody>';
-      data.forEach(row => {
-        html += '<tr>';
-        columns.forEach(col => {
-          let valor = row[col] !== undefined && row[col] !== null ? row[col] : '';
-          if (col === "text" && valor === '') valor = '🚀';
-          html += `<td>${valor}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      return html;
+
+      th, td {
+        padding: 6px;
+        font-size: 0.9em;
+      }
+
+      #spoon {
+        width: 48px;
+        height: 48px;
+      }
     }
 
-    window.onload = function()  {
-        var base64_spoon = null;
-        fetch('/services-static/img/spoon-disconnect.svg')
-        .then(response => response.text())
-        .then(svgText => {
-            const base64Encoded = btoa(unescape(encodeURIComponent(svgText)));
-            base64_spoon = `data:image/svg+xml;base64,${base64Encoded}`;
-        }).catch(err => {
-            console.error("spoon-disconnect.svg not download", err);
-        });
-
-
-        function updateLogs() {
-            $.ajax({
-            url: '/services/logs/json',
-            method: 'GET',
-            dataType: 'json',
-            success: function(data) {
-                $('#log-container').html(buildTable(data));
-                $("#spoon").attr("src", "/services-static/img/spoon-checking-1.svg");
-            },
-            error: function() {
-                $('#log-container').html('<p class="center">disconnected</p>');
-                $("#spoon").attr("src", base64_spoon);
-            }
-            });
-        }
-
-      updateLogs();
-      setInterval(updateLogs, 2000);
+    /* Loading animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
-  </script>
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
 </head>
 <body>
   <h1>Messages Log</h1>
   <div id="log-container" class="center">
-    <p>Loading messages...</p>
+    <p class="loading">Loading messages...</p>
   </div>
-  <img id="spoon" src="/" height="64" width="64" />
+  <div id="spoon-container">
+    <img id="spoon" src="/services-static/img/spoon-checking-1.svg" alt="Status" />
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // Configuration
+      const CONFIG = {
+        columns: {{ columns | tojson }},
+        logsEndpoint: '/services/logs/json',
+        updateInterval: 2000,
+        spoonImages: {
+          checking: '/services-static/img/spoon-checking-1.svg',
+          disconnect: '/services-static/img/spoon-disconnect.svg'
+        }
+      };
+
+      // State
+      const state = {
+        base64Spoon: null,
+        updateTimer: null,
+        isConnected: true
+      };
+
+      // DOM Cache
+      const dom = {
+        container: null,
+        spoon: null
+      };
+
+      /**
+       * Cache DOM elements
+       */
+      function cacheDOMElements() {
+        dom.container = document.getElementById('log-container');
+        dom.spoon = document.getElementById('spoon');
+      }
+
+      /**
+       * Preload disconnect spoon image as base64
+       */
+      async function preloadSpoonImage() {
+        try {
+          const response = await fetch(CONFIG.spoonImages.disconnect);
+          const svgText = await response.text();
+          const base64Encoded = btoa(unescape(encodeURIComponent(svgText)));
+          state.base64Spoon = `data:image/svg+xml;base64,${base64Encoded}`;
+        } catch (error) {
+          console.error('Failed to preload spoon-disconnect.svg:', error);
+        }
+      }
+
+      /**
+       * Build HTML table from data
+       */
+      function buildTable(data) {
+        if (!data || data.length === 0) {
+          return '<p class="empty">No messages available.</p>';
+        }
+
+        const thead = CONFIG.columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+        const tbody = data.map(row => {
+          const cells = CONFIG.columns.map(col => {
+            let value = row[col];
+
+            // Handle empty values
+            if (value === undefined || value === null || value === '') {
+              value = col === 'text' ? '🚀' : '';
+            }
+
+            return `<td>${escapeHtml(String(value))}</td>`;
+          }).join('');
+
+          return `<tr>${cells}</tr>`;
+        }).join('');
+
+        return `
+          <table>
+            <thead><tr>${thead}</tr></thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        `;
+      }
+
+      /**
+       * Escape HTML to prevent XSS
+       */
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      /**
+       * Update spoon image
+       */
+      function updateSpoonImage(isConnected) {
+        if (!dom.spoon) return;
+
+        if (isConnected) {
+          dom.spoon.src = CONFIG.spoonImages.checking;
+          dom.spoon.classList.remove('fade');
+        } else {
+          dom.spoon.src = state.base64Spoon || CONFIG.spoonImages.disconnect;
+          dom.spoon.classList.add('fade');
+        }
+      }
+
+      /**
+       * Fetch and display logs
+       */
+      async function updateLogs() {
+        try {
+          const response = await fetch(CONFIG.logsEndpoint, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (dom.container) {
+            dom.container.innerHTML = buildTable(data);
+          }
+
+          state.isConnected = true;
+          updateSpoonImage(true);
+
+        } catch (error) {
+          console.error('Failed to fetch logs:', error);
+
+          if (dom.container) {
+            dom.container.innerHTML = '<p class="error">Disconnected - Unable to fetch logs</p>';
+          }
+
+          state.isConnected = false;
+          updateSpoonImage(false);
+        }
+      }
+
+      /**
+       * Start periodic updates
+       */
+      function startUpdates() {
+        // Initial update
+        updateLogs();
+
+        // Periodic updates
+        state.updateTimer = setInterval(updateLogs, CONFIG.updateInterval);
+      }
+
+      /**
+       * Stop periodic updates
+       */
+      function stopUpdates() {
+        if (state.updateTimer) {
+          clearInterval(state.updateTimer);
+          state.updateTimer = null;
+        }
+      }
+
+      /**
+       * Initialize application
+       */
+      async function init() {
+        cacheDOMElements();
+        await preloadSpoonImage();
+        startUpdates();
+      }
+
+      /**
+       * Cleanup on page unload
+       */
+      function cleanup() {
+        stopUpdates();
+      }
+
+      // Event listeners
+      window.addEventListener('beforeunload', cleanup);
+
+      // Handle visibility change (pause updates when tab is hidden)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopUpdates();
+        } else {
+          startUpdates();
+        }
+      });
+
+      // Start when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
 </body>
 </html>
