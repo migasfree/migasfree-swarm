@@ -11,6 +11,7 @@ import re
 from datetime import datetime
 from collections import deque
 from typing import List, Dict, Any
+from contextlib import asynccontextmanager
 
 import httpx
 import dns.resolver
@@ -59,8 +60,26 @@ global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions':
 USERLIST_CLUSTER = ''
 USERLIST_STACK = ''
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info('Starting application...')
+    render_error_pages()
+    USERLIST_CLUSTER = userlist_cluster()
+    USERLIST_STACK = userlist_stack()
+    config_haproxy()
+    logger.info('Application started successfully')
+
+    yield
+
+    # Shutdown
+    logger.info('Shutting down application...')
+    # Cleanup code here if needed
+
+
 # FastAPI app
-app = FastAPI(title='Services API')
+app = FastAPI(title='Services API', lifespan=lifespan)
 
 # Static files and templates
 app.mount('/services-static', StaticFiles(directory='services-static'), name='static')
@@ -532,19 +551,6 @@ async def not_found_handler(request: Request, exc: HTTPException):
 async def service_unavailable_handler(request: Request, exc: HTTPException):
     """Custom 503 handler"""
     return templates.TemplateResponse('status.html', {'request': request, **global_data}, status_code=503)
-
-
-@app.on_event('startup')
-async def startup_event():
-    """Initialize on startup"""
-    global USERLIST_CLUSTER, USERLIST_STACK
-
-    render_error_pages()
-    USERLIST_CLUSTER = userlist_cluster()
-    USERLIST_STACK = userlist_stack()
-    config_haproxy()
-
-    logger.info('Application started')
 
 
 if __name__ == '__main__':
