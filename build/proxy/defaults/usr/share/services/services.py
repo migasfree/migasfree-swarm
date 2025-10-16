@@ -108,7 +108,7 @@ def execute(cmd: str, verbose: bool = False, interactive: bool = True):
                     chunk = _process.stdout.read()
                     if chunk and chunk != '\n':
                         print(chunk)
-                    _output_buffer = '%s%s' % (_output_buffer, chunk)
+                    _output_buffer = f'{_output_buffer}{chunk}'
 
     _output, _error = _process.communicate()
     if not interactive and _output_buffer:
@@ -143,6 +143,7 @@ def get_nodes(service: str) -> List[str]:
         for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
             if node:
                 nodes.append(node)
+
     return nodes
 
 
@@ -153,7 +154,7 @@ def check_server(host: str, port: int) -> bool:
     except Exception:
         return False
 
-    for family, socktype, proto, canonname, sockaddr in args:
+    for family, socktype, proto, _, sockaddr in args:
         s = socket.socket(family, socktype, proto)
         try:
             s.connect(sockaddr)
@@ -225,12 +226,12 @@ def reload_haproxy():
 def render_error_pages():
     """Render custom error pages"""
     context = {'FQDN': os.environ['FQDN']}
-    _PATH = '/etc/haproxy/errors-custom'
-    _PATH_TEMPLATE = '/etc/haproxy/errors-custom/templates'
-    for f_template in os.listdir(_PATH_TEMPLATE):
-        _file = os.path.join(_PATH, os.path.basename(f_template))
+    _path = '/etc/haproxy/errors-custom'
+    _path_template = '/etc/haproxy/errors-custom/templates'
+    for f_template in os.listdir(_path_template):
+        _file = os.path.join(_path, os.path.basename(f_template))
         if _file.endswith('.http'):
-            with open(os.path.join(_PATH_TEMPLATE, f_template), 'r', encoding='utf-8') as f:
+            with open(os.path.join(_path_template, f_template), 'r', encoding='utf-8') as f:
                 content = f.read()
             with open(_file, 'w', encoding='utf-8') as f:
                 f.write(Template(content).render(context))
@@ -240,19 +241,23 @@ def render_error_pages():
 def userlist_stack() -> str:
     """Generate userlist for stack"""
     with open(f'/run/secrets/{STACK}_superadmin_name', 'r', encoding='utf-8') as f:
-        USERNAME = f.read()
+        username = f.read()
     with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
-        PASSWORD = f.read()
-    _code, _out, _err = execute(f'mkpasswd -m sha-512 {PASSWORD}', interactive=False)
-    return f'    user {USERNAME} password {_out.decode("utf-8")}'
+        password = f.read()
+
+    _code, _out, _err = execute(f'mkpasswd -m sha-512 {password}', interactive=False)
+
+    return f'    user {username} password {_out.decode("utf-8")}'
 
 
 def userlist_cluster() -> str:
     """Generate userlist for cluster"""
     with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
-        USERNAME, PASSWORD = f.read().split(':')
-    _code, _out, _err = execute(f'mkpasswd -m sha-512 {PASSWORD}', interactive=False)
-    return f'    user {USERNAME} password {_out.decode("utf-8")}'
+        username, password = f.read().split(':')
+
+    _code, _out, _err = execute(f'mkpasswd -m sha-512 {password}', interactive=False)
+
+    return f'    user {username} password {_out.decode("utf-8")}'
 
 
 # Routes
@@ -395,7 +400,7 @@ async def post_message(request: Request):
             for ip in ips:
                 await client.post(f'http://{str(ip)}:8001/services/update_message', json=data)
     except Exception as e:
-        logger.error(f'Error posting message: {e}')
+        logger.error('Error posting message: %s', str(e))
 
     return JSONResponse(content={'status': 'ok'})
 
@@ -405,6 +410,7 @@ async def update_message(request: Request):
     """Update message from other proxy"""
     data = await request.json()
     make_global_data(data)
+
     return JSONResponse(content={'status': 'ok'})
 
 
@@ -420,6 +426,7 @@ async def reconfigure():
 
     make_global_data(data)
     config_haproxy()
+
     return JSONResponse(content={'status': 'ok'})
 
 
@@ -440,8 +447,8 @@ async def nginx_extensions():
 
     if len(global_data['extensions']) > 0:
         return Template(template).render({'extensions': global_data['extensions']})
-    else:
-        return ''
+
+    return ''
 
 
 @app.post('/services/update_haproxy')
@@ -466,6 +473,7 @@ async def update_haproxy(request: Request):
         'container': os.environ['HOSTNAME'],
     }
     make_global_data(_data)
+
     return JSONResponse(content={'status': 'ok'})
 
 
@@ -475,23 +483,38 @@ async def message_stream(request: Request):
     """Server-Sent Events endpoint for real-time updates"""
 
     async def event_generator():
-        last_state = None
+        last_state_hash = None
         while True:
             if await request.is_disconnected():
                 break
 
-            # Get current state
+            # Get current state (without timestamp for comparison)
             current_state = {
                 'last_message': global_data.get('last_message', ''),
-                'services': global_data['services'],
+                'services': global_data['services'].copy(),
                 'ok': global_data['ok'],
-                'timestamp': datetime.now().isoformat(),
+                'organization': get_organization(),
+                'stack': STACK,
+                'tag': TAG,
+                'disables': [],
             }
 
+            # Add disables
+            if HTTPSMODE == 'manual':
+                current_state['disables'].append('certbot')
+            if os.environ.get('GOOGLE_API_KEY', '') == '':
+                current_state['disables'].extend(['assistant', 'mcp-server'])
+
+            # Create hash of state for comparison (excluding timestamp)
+            state_hash = json.dumps(current_state, sort_keys=True)
+
             # Only send if state changed
-            if current_state != last_state:
+            if state_hash != last_state_hash:
+                # Add timestamp only when sending
+                current_state['timestamp'] = datetime.now().isoformat()
+
                 yield {'event': 'message', 'data': json.dumps(current_state)}
-                last_state = current_state
+                last_state_hash = state_hash
 
             await asyncio.sleep(1)
 
@@ -527,4 +550,4 @@ async def startup_event():
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host='0.0.0.0', port=8001, log_level='info')
+    uvicorn.run(app, host='0.0.0.0', port=8001, log_level='debug')
