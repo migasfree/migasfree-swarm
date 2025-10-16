@@ -1,8 +1,8 @@
 #!/bin/sh
 
-wait_for_dns "proxy"
+# wait_for_dns "proxy"
 
-send_message "Starting Certificate Authority"
+# send_message "Starting Certificate Authority"
 
 /usr/bin/create_local_ca.sh ${STACK}
 
@@ -31,6 +31,6 @@ echo "
 /usr/sbin/crond &
 /usr/bin/renew_crl
 
-send_message ""
+# send_message ""
 
 uvicorn main:app --host "0.0.0.0" --port 80 --log-level info
