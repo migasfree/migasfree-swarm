@@ -2,38 +2,37 @@
 
 import os
 import json
-import time
 import socket
 import subprocess
 import fcntl
 import select
-import requests
-import web
-import dns.resolver
-import html
+import asyncio
 import re
-
-from datetime import datetime, timedelta
-from web.httpserver import StaticMiddleware
-from jinja2 import Template
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from datetime import datetime
 from collections import deque
+from typing import List, Dict, Any
 
+import httpx
+import dns.resolver
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from jinja2 import Template
+from sse_starlette.sse import EventSourceResponse
 
 import logging
 from logging.handlers import RotatingFileHandler
-logger = logging.getLogger('MiLogger')
+
+# Logging configuration
+logger = logging.getLogger('services')
 logger.setLevel(logging.DEBUG)
-handler = RotatingFileHandler(
-    '/var/log/services.log',    # Nombre archivo log
-    maxBytes=1024*1024, # Tamaño máximo en bytes (ej. 1MB)
-    backupCount=5       # Número de archivos de respaldo a conservar
-)
+handler = RotatingFileHandler('/var/log/services.log', maxBytes=1024 * 1024, backupCount=5)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-
+# Configuration
 FILECONFIG = '/etc/haproxy/haproxy.cfg'
 FILECONFIG_TEMPLATE = '/etc/haproxy/haproxy.template'
 with open(FILECONFIG_TEMPLATE, encoding='utf-8') as f:
@@ -54,261 +53,39 @@ PATH_MTLS_CERTS = f'{PATH_MTLS}/certs'
 PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
 PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
 
+# Global data
+global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
+
+USERLIST_CLUSTER = ''
+USERLIST_STACK = ''
+
+# FastAPI app
+app = FastAPI(title='Services API')
+
+# Static files and templates
+app.mount('/services-static', StaticFiles(directory='services-static'), name='static')
+templates = Jinja2Templates(directory='services-static/templates')
 
 
-# Global Variable
-# ===============
-global_data = {
-    'services': {},
-    'message': '',
-    'need_reload': True,
-    'extensions': [],
-    'ok': False,
-    'now': datetime.now()
-}
+def get_organization() -> str:
+    """Extract organization from settings file"""
+    try:
+        with open(f'{PATH_CONF}/settings.py', 'r') as file:
+            content = file.read()
 
-
-def get_organization():
-    with open(f'{PATH_CONF}/settings.py', 'r') as file:
-        content = file.read()
-
-    variable_name = 'MIGASFREE_ORGANIZATION'
-    pattern = rf'{variable_name}\s*=\s*(.+)'
-    result = re.search(pattern, content)
-    if result:
-        return result.group(1)[1:-1]
+        variable_name = 'MIGASFREE_ORGANIZATION'
+        pattern = rf'{variable_name}\s*=\s*(.+)'
+        result = re.search(pattern, content)
+        if result:
+            return result.group(1)[1:-1]
+    except Exception as e:
+        logger.error(f'Error reading organization: {e}')
 
     return ''
 
 
-class icon:
-    def GET(self):
-        raise web.seeother(f'https://{os.environ["FQDN"]}/services-static/img/logo.svg')
-
-
-class status:
-    def GET(self):
-        # param = web.input()
-        return status_page(global_data)
-
-
-class manifest:
-    def GET(self):
-        context = {}
-        web.header('Content-Type', 'text/cache-manifest')
-        template = """CACHE MANIFEST
-/services/status
-/services-static/*
-/services/logs
-        """
-        return Template(template).render(context)
-
-
-class logs:
-    def GET(self):
-        web.header('Content-Type', 'text/html; charset=utf-8')
-        columns = ["time", "text", "service", "node", "container"]
-        env = Environment(
-            loader=FileSystemLoader('services-static/templates'),
-            autoescape=select_autoescape(['html', 'xml'])
-        )
-        template = env.get_template('logs.html')
-        try:
-            # Sends columns but no records, because they will be loaded via AJAX
-            return template.render(columns=columns)
-        except Exception as e:
-            return f"<p>Error: {html.escape(str(e))}</p>"
-
-
-class logs_json:
-    def GET(self):
-        web.header('Content-Type', 'application/json')
-        return json.dumps(list(MESSAGES_LOG))
-
-
-class message:
-    def GET(self):
-        web.header('Content-Type', 'application/json')
-        if int((datetime.now() - global_data['now']).total_seconds()) >= 1:
-            global_data['now'] = datetime.now()
-
-            pms = os.environ['PMS_ENABLED'].split(',')
-            services = [
-                'console',
-                'core',
-                'beat',
-                'worker',
-                'public',
-                *pms,
-                'database',
-                'datastore',
-                'database_console',
-                'datastore_console',
-                'datashare_console',
-                'worker_console',
-                'assistant',
-                'proxy',
-                'portainer',
-                'certbot',
-                'ca',
-                'mcp-server',
-            ]
-
-            if 'services' not in global_data:
-                global_data['services'] = {}
-
-            if 'last_message' not in global_data:
-                global_data['last_message'] = ''
-
-            missing = False
-            message = False
-
-            for _service in services:
-                if f'{STACK}_{_service}' not in global_data['services']:
-                    global_data['services'][f'{STACK}_{_service}'] = {
-                        'message': '',
-                        'node': '',
-                        'container': '',
-                        'missing': True,
-                    }
-
-                # missing
-                nodes = len(get_nodes(_service))
-                global_data['services'][f'{STACK}_{_service}']['missing'] = nodes < 1
-                global_data['services'][f'{STACK}_{_service}']['nodes'] = nodes
-
-                if global_data['services'][f'{STACK}_{_service}']['missing']:
-                    global_data['need_reload'] = True
-                    missing = True
-
-                if global_data['services'][f'{STACK}_{_service}']['message']:
-                    message = True
-
-                global_data['ok'] = False
-                if not message:
-                    if missing:
-                        global_data['need_reload'] = True
-                    else:
-                        if global_data['need_reload']:
-                            global_data['need_reload'] = False
-                        global_data['ok'] = True
-
-        disables = []
-        if os.environ['HTTPSMODE'] == "manual":
-            disables.append("certbot")
-        if os.environ['GOOGLE_API_KEY'] == "":
-            disables.append("assistant")
-            disables.append("mcp-server")
-
-        return json.dumps(
-            {
-                'last_message': global_data['last_message'],
-                'services': global_data['services'],
-                'ok': global_data['ok'],
-                'organization': get_organization(),
-                'stack': STACK,
-                'tag': TAG,
-                'disables': disables,
-            }
-        )
-
-    def POST(self):
-        try:
-            data = json.loads(web.data())
-        except Exception:
-            print('ERROR', web.data())
-            data = {}
-        data["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        MESSAGES_LOG.append(data)
-        ips = dns.resolver.resolve('tasks.proxy', 'A')
-        for ip in ips:
-            requests.post(f'http://{str(ip)}:8001/services/update_message', json=data)
-
-
-class update_message:
-    def POST(self):
-        data = json.loads(web.data())
-        make_global_data(data)
-
-
-class reconfigure:
-    def POST(self):
-        data = {
-            'text': 'reconfigure',
-            'service': os.environ['SERVICE'],
-            'node': os.environ['NODE'],
-            'container': os.environ['HOSTNAME'],
-        }
-
-        make_global_data(data)
-        config_haproxy()
-
-
-def make_global_data(data):
-    global_data['ok'] = False
-
-    if 'service' in data:
-        if data['service'] not in global_data['services']:
-            global_data['services'][data['service']] = {'message': '', 'node': '', 'container': '', 'missing': True}
-
-        if 'text' in data:
-            global_data['services'][data['service']]['message'] = data['text']
-            global_data['last_message'] = data['service']
-        if 'node' in data:
-            global_data['services'][data['service']]['node'] = data['node']
-        if 'container' in data:
-            global_data['services'][data['service']]['container'] = data['container']
-
-
-def status_page(context):
-    web.header('Content-Type', 'text/html; charset=utf-8')
-    env = Environment(
-        loader=FileSystemLoader('services-static/templates'),
-        autoescape=select_autoescape(['html', 'xml'])
-    )
-    template = env.get_template('status.html')
-    try:
-        return template.render(context)
-    except Exception as e:
-        return f"<p>Error: {html.escape(str(e))}</p>"
-
-
-def notfound():
-    raise NotFound()
-
-
-class ServiceUnavailable(web.HTTPError):
-    def __init__(self):
-        status = '503 Service Unavailable'
-        headers = {'Content-Type': 'text/html'}
-        data = status_page(global_data)
-        web.HTTPError.__init__(self, status, headers, data)
-
-
-class NotFound(web.HTTPError):
-    def __init__(self):
-        status = '404 Not Found'
-        headers = {'Content-Type': 'text/html'}
-        data = status_page(global_data)
-        web.HTTPError.__init__(self, status, headers, data)
-
-
-class Forbidden(web.HTTPError):
-    def __init__(self):
-        status = '403 Forbidden'
-        headers = {'Content-Type': 'text/html'}
-        data = status_page(global_data)
-        web.HTTPError.__init__(self, status, headers, data)
-
-
-def execute(cmd, verbose=False, interactive=True):
-    """
-    (int, string, string) execute(
-        string cmd,
-        bool verbose=False,
-        bool interactive=True
-    )
-    """
+def execute(cmd: str, verbose: bool = False, interactive: bool = True):
+    """Execute shell command"""
     _output_buffer = ''
     if verbose:
         print(cmd)
@@ -340,9 +117,8 @@ def execute(cmd, verbose=False, interactive=True):
     return _process.returncode, _output, _error
 
 
-
-
-def get_extensions():
+def get_extensions() -> List[str]:
+    """Get PMS extensions"""
     pms_enabled = os.environ['PMS_ENABLED']
     extensions = []
     _code, _out, _err = execute('curl -X GET core:8080/api/v1/public/pms/', interactive=False)
@@ -350,7 +126,7 @@ def get_extensions():
         try:
             all_pms = json.loads(_out.decode('utf-8'))
         except Exception:
-            return ''.join(set(extensions))
+            return list(set(extensions))
         for pms in all_pms:
             if f'pms-{pms}' in pms_enabled:
                 for extension in all_pms[pms]['extensions']:
@@ -359,101 +135,19 @@ def get_extensions():
     return list(set(extensions))
 
 
-class nginx_extensions:
-    def GET(self):
-        web.header('Content-Type', 'text/plain')
-        template = """
-            # External Deployments. Auto-generated from proxy (in services.py -> config_nginx)
-            # ========================================================================
-        {% for extension in extensions %}
-            location ~* /src/?(.*){{extension}}$ {
-                alias /var/migasfree/public/$1{{extension}};
-                error_page 404 = @backend;
-            }
-        {% endfor %}
-            # ========================================================================
-        """
-
-        if len(global_data['extensions']) > 0:
-            return Template(template).render({'extensions': global_data['extensions']})
-        else:
-            return ''
-
-
-class update_haproxy:
-    def POST(self):
-        try:
-            data = json.loads(web.data())
-        except Exception:
-            print('ERROR', web.data())
-            data = {}
-
-        if 'haproxy.cfg' in data:
-            with open(FILECONFIG, 'w', encoding='utf-8') as f:
-                f.write(data['haproxy.cfg'])
-                f.write('\n')
-            reload_haproxy()
-
-        time.sleep(1)
-        _data = {
-            'text': '',
-            'service': os.environ['SERVICE'],
-            'node': os.environ['NODE'],
-            'container': os.environ['HOSTNAME'],
-        }
-        make_global_data(_data)
-
-
-def config_haproxy():
-    context = {
-        'FQDN': FQDN,
-        'STACK': STACK,
-        'certbot': HTTPSMODE == 'auto',
-        'PORT_HTTPS': PORT_HTTPS,
-        'USERLIST_STACK': USERLIST_STACK,
-        'USERLIST_CLUSTER': USERLIST_CLUSTER,
-        'NETWORK_MNG': NETWORK_MNG,
-        'MTLS': MTLS == 'True'
-    }
-
-    #if len(global_data['extensions']) == 0 and len(context['mf_core']) > 0:
-    global_data['extensions'] = get_extensions()
-
-    if len(global_data['extensions']) == 0:
-        context['extensions'] = '.deb .rpm'
-    else:
-        context['extensions'] = '.' + ' .'.join(global_data['extensions'])
-
-    logger.info(context['extensions'])
-
-    # Sync configuration haproxy in all proxies.
-    payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
-    if not os.path.exists(FILECONFIG):
-        with open(FILECONFIG, 'w') as f:
-            f.write(payload['haproxy.cfg'])
-            f.write('\n')
-    else:
-        ips = dns.resolver.resolve('tasks.proxy', 'A')
-        for ip in ips:
-            requests.post(f'http://{str(ip)}:8001/services/update_haproxy', json=payload)
-
-
-def reload_haproxy():
-    _code, _out, _err = execute('/usr/bin/reload', interactive=False)
-
-
-def get_nodes(service):
+def get_nodes(service: str) -> List[str]:
+    """Get service nodes"""
     nodes = []
     _code, _out, _err = execute(f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'", interactive=False)
     if _code == 0:
         for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
             if node:
                 nodes.append(node)
-
     return nodes
 
 
-def ckeck_server(host: str, port: int):
+def check_server(host: str, port: int) -> bool:
+    """Check if server is reachable"""
     try:
         args = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
     except Exception:
@@ -470,12 +164,66 @@ def ckeck_server(host: str, port: int):
             return True
 
 
-class servicesStaticMiddleware(StaticMiddleware):
-    def __init__(self, app, prefix='/services-static/'):
-        StaticMiddleware.__init__(self, app, prefix)
+def make_global_data(data: Dict[str, Any]):
+    """Update global data with service information"""
+    global_data['ok'] = False
+
+    if 'service' in data:
+        if data['service'] not in global_data['services']:
+            global_data['services'][data['service']] = {'message': '', 'node': '', 'container': '', 'missing': True}
+
+        if 'text' in data:
+            global_data['services'][data['service']]['message'] = data['text']
+            global_data['last_message'] = data['service']
+        if 'node' in data:
+            global_data['services'][data['service']]['node'] = data['node']
+        if 'container' in data:
+            global_data['services'][data['service']]['container'] = data['container']
+
+
+def config_haproxy():
+    """Configure HAProxy"""
+    context = {
+        'FQDN': FQDN,
+        'STACK': STACK,
+        'certbot': HTTPSMODE == 'auto',
+        'PORT_HTTPS': PORT_HTTPS,
+        'USERLIST_STACK': USERLIST_STACK,
+        'USERLIST_CLUSTER': USERLIST_CLUSTER,
+        'NETWORK_MNG': NETWORK_MNG,
+        'MTLS': MTLS == 'True',
+    }
+
+    global_data['extensions'] = get_extensions()
+
+    if len(global_data['extensions']) == 0:
+        context['extensions'] = '.deb .rpm'
+    else:
+        context['extensions'] = '.' + ' .'.join(global_data['extensions'])
+
+    logger.info(context['extensions'])
+
+    payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
+    if not os.path.exists(FILECONFIG):
+        with open(FILECONFIG, 'w') as f:
+            f.write(payload['haproxy.cfg'])
+            f.write('\n')
+    else:
+        try:
+            ips = dns.resolver.resolve('tasks.proxy', 'A')
+            for ip in ips:
+                httpx.post(f'http://{str(ip)}:8001/services/update_haproxy', json=payload)
+        except Exception as e:
+            logger.error(f'Error updating haproxy: {e}')
+
+
+def reload_haproxy():
+    """Reload HAProxy"""
+    _code, _out, _err = execute('/usr/bin/reload', interactive=False)
 
 
 def render_error_pages():
+    """Render custom error pages"""
     context = {'FQDN': os.environ['FQDN']}
     _PATH = '/etc/haproxy/errors-custom'
     _PATH_TEMPLATE = '/etc/haproxy/errors-custom/templates'
@@ -489,7 +237,8 @@ def render_error_pages():
                 f.write('\n')
 
 
-def userlist_stack():
+def userlist_stack() -> str:
+    """Generate userlist for stack"""
     with open(f'/run/secrets/{STACK}_superadmin_name', 'r', encoding='utf-8') as f:
         USERNAME = f.read()
     with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
@@ -498,45 +247,284 @@ def userlist_stack():
     return f'    user {USERNAME} password {_out.decode("utf-8")}'
 
 
-def userlist_cluster():
-    # swarm-credential
+def userlist_cluster() -> str:
+    """Generate userlist for cluster"""
     with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
         USERNAME, PASSWORD = f.read().split(':')
     _code, _out, _err = execute(f'mkpasswd -m sha-512 {PASSWORD}', interactive=False)
     return f'    user {USERNAME} password {_out.decode("utf-8")}'
 
 
-if __name__ == '__main__':
-    urls = (
-        '/favicon.ico', 'icon',
-        '/services/status/?', 'status',
-        '/services/manifest', 'manifest',
-        '/services/message', 'message',
-        '/services/reconfigure', 'reconfigure',
-        '/services/update_haproxy', 'update_haproxy',
-        '/services/update_message', 'update_message',
-        '/services/nginx_extensions', 'nginx_extensions',
-        '/services/logs', 'logs',
-        '/services/logs/json', 'logs_json',
-        '/services/mtls', 'mtls',
-        '/services/crl', 'crl',
+# Routes
+@app.get('/favicon.ico')
+async def favicon():
+    """Redirect to logo"""
+    return RedirectResponse(url=f'https://{FQDN}/services-static/img/logo.svg')
+
+
+@app.get('/services/status/', response_class=HTMLResponse)
+async def status_page(request: Request):
+    """Status page"""
+    return templates.TemplateResponse('status.html', {'request': request, **global_data})
+
+
+@app.get('/services/manifest', response_class=PlainTextResponse)
+async def manifest():
+    """Cache manifest"""
+    template = """CACHE MANIFEST
+/services/status
+/services-static/*
+/services/logs
+    """
+    return Template(template).render({})
+
+
+@app.get('/services/logs', response_class=HTMLResponse)
+async def logs(request: Request):
+    """Logs page"""
+    columns = ['time', 'text', 'service', 'node', 'container']
+    return templates.TemplateResponse('logs.html', {'request': request, 'columns': columns})
+
+
+@app.get('/services/logs/json')
+async def logs_json():
+    """Get logs as JSON"""
+    return JSONResponse(content=list(MESSAGES_LOG))
+
+
+@app.get('/services/message')
+async def get_message():
+    """Get current message status"""
+    if int((datetime.now() - global_data['now']).total_seconds()) >= 1:
+        global_data['now'] = datetime.now()
+
+        pms = os.environ['PMS_ENABLED'].split(',')
+        services = [
+            'console',
+            'core',
+            'beat',
+            'worker',
+            'public',
+            *pms,
+            'database',
+            'datastore',
+            'database_console',
+            'datastore_console',
+            'datashare_console',
+            'worker_console',
+            'assistant',
+            'proxy',
+            'portainer',
+            'certbot',
+            'ca',
+            'mcp-server',
+        ]
+
+        if 'services' not in global_data:
+            global_data['services'] = {}
+
+        if 'last_message' not in global_data:
+            global_data['last_message'] = ''
+
+        missing = False
+        message = False
+
+        for _service in services:
+            if f'{STACK}_{_service}' not in global_data['services']:
+                global_data['services'][f'{STACK}_{_service}'] = {
+                    'message': '',
+                    'node': '',
+                    'container': '',
+                    'missing': True,
+                }
+
+            nodes = len(get_nodes(_service))
+            global_data['services'][f'{STACK}_{_service}']['missing'] = nodes < 1
+            global_data['services'][f'{STACK}_{_service}']['nodes'] = nodes
+
+            if global_data['services'][f'{STACK}_{_service}']['missing']:
+                global_data['need_reload'] = True
+                missing = True
+
+            if global_data['services'][f'{STACK}_{_service}']['message']:
+                message = True
+
+            global_data['ok'] = False
+            if not message:
+                if missing:
+                    global_data['need_reload'] = True
+                else:
+                    if global_data['need_reload']:
+                        global_data['need_reload'] = False
+                    global_data['ok'] = True
+
+    disables = []
+    if os.environ['HTTPSMODE'] == 'manual':
+        disables.append('certbot')
+    if os.environ['GOOGLE_API_KEY'] == '':
+        disables.append('assistant')
+        disables.append('mcp-server')
+
+    return JSONResponse(
+        content={
+            'last_message': global_data.get('last_message', ''),
+            'services': global_data['services'],
+            'ok': global_data['ok'],
+            'organization': get_organization(),
+            'stack': STACK,
+            'tag': TAG,
+            'disables': disables,
+        }
     )
 
-    global_data = {
-        'services': {},
-        'message': '',
-        'need_reload': True,
-        'extensions': [],
-        'ok': False,
-        'now': datetime.now(),
+
+@app.post('/services/message')
+async def post_message(request: Request):
+    """Post a new message"""
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    data['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    MESSAGES_LOG.append(data)
+
+    try:
+        ips = dns.resolver.resolve('tasks.proxy', 'A')
+        async with httpx.AsyncClient() as client:
+            for ip in ips:
+                await client.post(f'http://{str(ip)}:8001/services/update_message', json=data)
+    except Exception as e:
+        logger.error(f'Error posting message: {e}')
+
+    return JSONResponse(content={'status': 'ok'})
+
+
+@app.post('/services/update_message')
+async def update_message(request: Request):
+    """Update message from other proxy"""
+    data = await request.json()
+    make_global_data(data)
+    return JSONResponse(content={'status': 'ok'})
+
+
+@app.post('/services/reconfigure')
+async def reconfigure():
+    """Reconfigure services"""
+    data = {
+        'text': 'reconfigure',
+        'service': os.environ['SERVICE'],
+        'node': os.environ['NODE'],
+        'container': os.environ['HOSTNAME'],
     }
 
-    render_error_pages()
+    make_global_data(data)
+    config_haproxy()
+    return JSONResponse(content={'status': 'ok'})
 
+
+@app.get('/services/nginx_extensions', response_class=PlainTextResponse)
+async def nginx_extensions():
+    """Get nginx extensions configuration"""
+    template = """
+        # External Deployments. Auto-generated from proxy (in services.py -> config_nginx)
+        # ========================================================================
+    {% for extension in extensions %}
+        location ~* /src/?(.*){{extension}}$ {
+            alias /var/migasfree/public/$1{{extension}};
+            error_page 404 = @backend;
+        }
+    {% endfor %}
+        # ========================================================================
+    """
+
+    if len(global_data['extensions']) > 0:
+        return Template(template).render({'extensions': global_data['extensions']})
+    else:
+        return ''
+
+
+@app.post('/services/update_haproxy')
+async def update_haproxy(request: Request):
+    """Update HAProxy configuration"""
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(content={'status': 'error', 'message': 'Invalid JSON'})
+
+    if 'haproxy.cfg' in data:
+        with open(FILECONFIG, 'w', encoding='utf-8') as f:
+            f.write(data['haproxy.cfg'])
+            f.write('\n')
+        reload_haproxy()
+
+    await asyncio.sleep(1)
+    _data = {
+        'text': '',
+        'service': os.environ['SERVICE'],
+        'node': os.environ['NODE'],
+        'container': os.environ['HOSTNAME'],
+    }
+    make_global_data(_data)
+    return JSONResponse(content={'status': 'ok'})
+
+
+# SSE endpoint for real-time updates
+@app.get('/services/stream')
+async def message_stream(request: Request):
+    """Server-Sent Events endpoint for real-time updates"""
+
+    async def event_generator():
+        last_state = None
+        while True:
+            if await request.is_disconnected():
+                break
+
+            # Get current state
+            current_state = {
+                'last_message': global_data.get('last_message', ''),
+                'services': global_data['services'],
+                'ok': global_data['ok'],
+                'timestamp': datetime.now().isoformat(),
+            }
+
+            # Only send if state changed
+            if current_state != last_state:
+                yield {'event': 'message', 'data': json.dumps(current_state)}
+                last_state = current_state
+
+            await asyncio.sleep(1)
+
+    return EventSourceResponse(event_generator())
+
+
+# Exception handlers
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    """Custom 404 handler"""
+    return templates.TemplateResponse('status.html', {'request': request, **global_data}, status_code=404)
+
+
+@app.exception_handler(503)
+async def service_unavailable_handler(request: Request, exc: HTTPException):
+    """Custom 503 handler"""
+    return templates.TemplateResponse('status.html', {'request': request, **global_data}, status_code=503)
+
+
+@app.on_event('startup')
+async def startup_event():
+    """Initialize on startup"""
+    global USERLIST_CLUSTER, USERLIST_STACK
+
+    render_error_pages()
     USERLIST_CLUSTER = userlist_cluster()
     USERLIST_STACK = userlist_stack()
     config_haproxy()
 
-    app = web.application(urls, globals(), autoreload=False)
-    app.notfound = notfound
-    app.run(servicesStaticMiddleware)
+    logger.info('Application started')
+
+
+if __name__ == '__main__':
+    import uvicorn
+
+    uvicorn.run(app, host='0.0.0.0', port=8001, log_level='info')
