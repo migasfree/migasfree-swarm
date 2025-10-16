@@ -5,11 +5,8 @@ export MIGASFREE_SECRET_DIR=/var/run/secrets
 _SETTINGS=/var/lib/migasfree-backend/conf/settings.py
 
 QUEUES="default"
-BROKER_URL=redis://default:$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)@datastore:6379/0
-BACKEND_URL=$BROKER_URL
+BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
 export CELERY_BROKER_URL=${BROKER_URL}
-
-wait_for_dns "proxy"
 
 function wait {
     local _SERVER=$1
@@ -18,8 +15,7 @@ function wait {
 
     until [ $_COUNTER -gt 30 ]
     do
-        nc -z $_SERVER $_PORT 2> /dev/null
-        if [ $? -eq 0 ]
+        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
             echo "$_SERVER:$_PORT is running."
             return
@@ -27,7 +23,7 @@ function wait {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        _COUNTER=$(( $_COUNTER + 1 ))
+        ((_COUNTER++))
     done
     echo "Rebooting container"
     exit 1
@@ -184,39 +180,37 @@ function migasfree_init {
 # START
 # =====
 
+wait_for_dns "proxy"
+
 export MIGASFREE_CONF_DIR=/var/lib/migasfree-backend/conf
-mkdir -p $(dirname ${MIGASFREE_CONF_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/conf ${MIGASFREE_CONF_DIR}
+mkdir -p "$(dirname ${MIGASFREE_CONF_DIR})"
+ln -s "${DATASHARE_MOUNT_PATH}/conf" ${MIGASFREE_CONF_DIR}
 
 export MIGASFREE_PUBLIC_DIR=/var/lib/migasfree-backend/public
-mkdir -p $(dirname ${MIGASFREE_PUBLIC_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/public ${MIGASFREE_PUBLIC_DIR}
+mkdir -p "$(dirname ${MIGASFREE_PUBLIC_DIR})"
+ln -s "${DATASHARE_MOUNT_PATH}/public" ${MIGASFREE_PUBLIC_DIR}
 
 export MIGASFREE_KEYS_DIR=/var/lib/migasfree-backend/keys
-mkdir -p $(dirname ${MIGASFREE_KEYS_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/keys ${MIGASFREE_KEYS_DIR}
+mkdir -p "$(dirname ${MIGASFREE_KEYS_DIR})"
+ln -s "${DATASHARE_MOUNT_PATH}/keys" ${MIGASFREE_KEYS_DIR}
 
 export MIGASFREE_TMP_DIR=/var/lib/migasfree-backend/tmp
-mkdir -p $(dirname ${MIGASFREE_TMP_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/tmp ${MIGASFREE_TMP_DIR}
-
-export MIGASFREE_PLUGINS_DIR=/migasfree/core/pms/plugins
-cp -r ${DATASHARE_MOUNT_PATH}/plugins/* ${MIGASFREE_PLUGINS_DIR} || :
+mkdir -p "$(dirname ${MIGASFREE_TMP_DIR})"
+ln -s "${DATASHARE_MOUNT_PATH}/tmp" ${MIGASFREE_TMP_DIR}
 
 . /venv/bin/activate
 
 send_message "waiting datastore"
-wait $REDIS_HOST $REDIS_PORT
+wait "$REDIS_HOST" "$REDIS_PORT"
 
 send_message "waiting database"
-wait $POSTGRES_HOST $POSTGRES_PORT
+wait "$POSTGRES_HOST" "$POSTGRES_PORT"
 
 send_message "starting ${SERVICE:(${#STACK})+1}"
 set_TZ
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
-
     touch /tmp/healthcheck.lock
     get_settings
     update_ca_certificates
