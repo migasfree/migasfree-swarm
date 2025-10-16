@@ -98,7 +98,7 @@ def get_organization() -> str:
         if result:
             return result.group(1)[1:-1]
     except Exception as e:
-        logger.error(f'Error reading organization: {e}')
+        logger.error('Error reading organization: %s', str(e))
 
     return ''
 
@@ -234,7 +234,7 @@ def config_haproxy():
             for ip in ips:
                 httpx.post(f'http://{str(ip)}:8001/services/update_haproxy', json=payload)
         except Exception as e:
-            logger.error(f'Error updating haproxy: {e}')
+            logger.error('Error updating haproxy: %s', str(e))
 
 
 def reload_haproxy():
