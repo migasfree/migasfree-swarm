@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 import dns.resolver
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -292,7 +292,7 @@ async def status_page(request: Request):
     return templates.TemplateResponse('status.html', {'request': request, **global_data})
 
 
-@app.get('/services/manifest', response_class=PlainTextResponse)
+@app.get('/services/manifest')
 async def manifest():
     """Cache manifest"""
     template = """CACHE MANIFEST
@@ -300,7 +300,12 @@ async def manifest():
 /services-static/*
 /services/logs
     """
-    return Template(template).render({})
+    content = Template(template).render({})
+
+    return Response(
+        content=content,
+        media_type='text/cache-manifest'
+    )
 
 
 @app.get('/services/logs', response_class=HTMLResponse)
