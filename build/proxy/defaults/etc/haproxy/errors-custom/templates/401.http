@@ -48,7 +48,7 @@ Content-Type: text/html
             <div id="info">
                 <h1>Unauthorized</h1>
                 <img
-                    src="https://{{FQDN}}/services-static/img/spoon-no-auth.svg"
+                    src="https://{{FQDN}}/services-static/img/mascot-no-auth.svg"
                     alt=""
                     title="proxy"
                 />

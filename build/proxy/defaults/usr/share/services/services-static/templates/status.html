@@ -55,7 +55,7 @@
         fill: #333;
       }
 
-      .bocadillo {
+      .status-text {
         font-size: 2.5px;
         font-style: italic;
         fill: #000;
@@ -63,7 +63,7 @@
 
       .info-text {
         font-style: italic;
-        fill: #868e96;
+        fill: #000;
       }
 
       #organization {
@@ -101,7 +101,7 @@
       </defs>
 
       <!-- Preload images -->
-      <image id="preload-disconnect" href="/services-static/img/spoon-disconnect.svg" x="0" y="0" height="0" width="0" />
+      <image id="preload-disconnect" href="/services-static/img/mascot-disconnect.svg" x="0" y="0" height="0" width="0" />
 
       <!-- Info section -->
       <g transform="translate(146, 80)">
@@ -113,16 +113,16 @@
       <!-- Status message -->
       <g transform="translate(146, 106)">
         <a href="/services/logs" target="_blank">
-          <image id="spoon" href="/" class="link" x="6" y="8" height="10" width="10" />
+          <image id="mascot" href="/" class="link" x="6" y="8" height="10" width="10" />
         </a>
-        <text class="bocadillo" id="message_serv"></text>
-        <text class="bocadillo" id="message" x="0" y="3">one moment, please</text>
+        <text class="status-text" id="message_serv"></text>
+        <text class="status-text" id="message" x="0" y="3">one moment, please</text>
       </g>
 
       <!-- Services nodes -->
       <g id="portainer-node" transform="translate(29, 83)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
-        <circle id="portainer" class="node" r="1.5" />
+        <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
         <a id="portainer_link" target="_blank">
           <circle class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
         </a>
@@ -131,7 +131,7 @@
 
       <g id="proxy-node" transform="translate(29, 103)">
         <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
-        <circle id="proxy" class="node" r="1.5" />
+        <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
         <a id="proxy_link_parent" target="_blank">
           <circle id="proxy_link" class="link" cx="7" cy="-7" r="7"><title>Proxy Statistics</title></circle>
         </a>
@@ -140,7 +140,7 @@
 
       <g id="ca-node" transform="translate(29, 123)">
         <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
-        <circle id="ca" class="node" r="1.5" />
+        <circle id="ca" class="node" r="1.5" filter="url(#glow)" />
         <a id="ca_link_parent" target="_blank">
           <circle id="ca_link" class="link" cx="7" cy="-7" r="7"><title>Certificate Authority API</title></circle>
         </a>
@@ -149,7 +149,7 @@
 
       <g id="console-node" transform="translate(56, 83)">
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
-        <circle id="console" class="node" r="1.5" />
+        <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
         <a id="console_link" target="_blank">
           <circle class="link" cx="7" cy="-7" r="7"><title>Migasfree Console</title></circle>
@@ -159,7 +159,7 @@
 
       <g id="public-node" transform="translate(56, 103)">
         <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
-        <circle id="public" class="node" r="1.5" />
+        <circle id="public" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
         <circle id="public_link" class="link" cx="7" cy="-7" r="7"><title>Public Files</title></circle>
         <text x="4" y="2">public</text>
@@ -167,21 +167,21 @@
 
       <g id="pms-node" transform="translate(56, 123)">
         <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
-        <circle id="pms" class="node" r="1.5" />
+        <circle id="pms" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">pms</text>
       </g>
 
       <g id="beat-node" transform="translate(76, 83)">
         <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
-        <circle id="beat" class="node" r="1.5" />
+        <circle id="beat" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">beat</text>
       </g>
 
       <g id="core-node" transform="translate(76, 103)">
         <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
-        <circle id="core" class="node" r="1.5" />
+        <circle id="core" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
         <a id="core_link_parent" target="_blank">
           <circle id="core_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree API</title></circle>
@@ -191,7 +191,7 @@
 
       <g id="worker-node" transform="translate(76, 123)">
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
-        <circle id="worker" class="node" r="1.5" />
+        <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
         <a id="worker_console_link_parent" target="_blank">
           <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7"><title>Worker Console</title></circle>
@@ -201,7 +201,7 @@
 
       <g id="database-node" transform="translate(96, 83)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
-        <circle id="database" class="node" r="1.5" />
+        <circle id="database" class="node" r="1.5" filter="url(#glow)" />
         <a id="database_console_link_parent" target="_blank">
           <circle id="database_console_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
         </a>
@@ -210,7 +210,7 @@
 
       <g id="datastore-node" transform="translate(96, 103)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
-        <circle id="datastore" class="node" r="1.5" />
+        <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
         <a id="datastore_console_link_parent" target="_blank">
           <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
         </a>
@@ -219,7 +219,7 @@
 
       <g id="datashare-node" transform="translate(96, 123)">
         <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
-        <circle id="datashare_console" class="node" r="1.5" />
+        <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
         <a id="datashare_console_link_parent" target="_blank">
           <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7"><title>Datashare Console</title></circle>
         </a>
@@ -234,7 +234,7 @@
 
       <g id="assistant-node" transform="translate(116, 103)">
         <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
-        <circle id="assistant" class="node" r="1.5" />
+        <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
         <a id="assistant_link_parent" target="_blank">
           <circle id="assistant_link" class="link" cx="7" cy="-7" r="7"><title>Assistant</title></circle>
         </a>
@@ -243,7 +243,7 @@
 
       <g id="mcp-server-node" transform="translate(116, 123)">
         <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
-        <circle id="mcp-server" class="node" r="1.5" />
+        <circle id="mcp-server" class="node" r="1.5" filter="url(#glow)" />
         <text x="3" y="2">mcp server</text>
       </g>
     </svg>
@@ -278,8 +278,8 @@
           nodes: {},
           links: {},
           nodeTexts: {},
-          spoon: null,
-          bocadillos: null,
+          mascot: null,
+          statusTexts: null,
           message: null,
           messageServ: null,
           organization: null,
@@ -289,13 +289,13 @@
 
         // Initialize DOM cache
         function cacheDOMElements() {
-          dom.spoon = document.getElementById('spoon');
+          dom.mascot = document.getElementById('mascot');
           dom.message = document.getElementById('message');
           dom.messageServ = document.getElementById('message_serv');
           dom.organization = document.getElementById('organization');
           dom.stack = document.getElementById('stack');
           dom.tag = document.getElementById('tag');
-          dom.bocadillos = document.querySelectorAll('.bocadillo');
+          dom.statusTexts = document.querySelectorAll('.status-text');
 
           CONFIG.services.forEach(service => {
             dom.nodes[service] = document.getElementById(service);
@@ -408,26 +408,26 @@
           }
         }
 
-        // Update spoon animation
-        function updateSpoon(isOk, isMissing) {
+        // Update mascot animation
+        function updateMascot(isOk, isMissing) {
           const now = Date.now();
           let sprite, prefix;
 
           if (isOk) {
             sprite = Math.floor((now / 1000) % 2);
-            prefix = 'spoon-ok';
-            dom.bocadillos.forEach(el => el.style.display = 'none');
+            prefix = 'mascot-ok';
+            dom.statusTexts.forEach(el => el.style.display = 'none');
           } else if (isMissing) {
             sprite = Math.floor((now / 1000) % 2);
-            prefix = 'spoon-starting';
-            dom.bocadillos.forEach(el => el.style.display = 'block');
+            prefix = 'mascot-starting';
+            dom.statusTexts.forEach(el => el.style.display = 'block');
           } else {
             sprite = Math.floor((now / 1000) % 3);
-            prefix = 'spoon-checking';
-            dom.bocadillos.forEach(el => el.style.display = 'block');
+            prefix = 'mascot-checking';
+            dom.statusTexts.forEach(el => el.style.display = 'block');
           }
 
-          dom.spoon.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
+          dom.mascot.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
         }
 
         // Main UI update
@@ -458,8 +458,7 @@
           dom.message.textContent = message || 'ready';
           dom.messageServ.textContent = messageServ.split('_').slice(1).join('_');
 
-          // Update spoon
-          updateSpoon(data.ok, isMissing);
+          updateMascot(data.ok, isMissing);
 
           // Redirect if ok
           if (data.ok && !window.location.pathname.startsWith('/services/status')) {
@@ -500,7 +499,7 @@
         function showDisconnected() {
           dom.message.textContent = 'disconnected';
           dom.messageServ.textContent = '';
-          dom.spoon.setAttribute('href', '/services-static/img/spoon-disconnect.svg');
+          dom.mascot.setAttribute('href', '/services-static/img/mascot-disconnect.svg');
 
           Object.values(dom.nodes).forEach(node => {
             if (node) node.style.display = 'none';
@@ -523,11 +522,11 @@
         function showWelcome() {
           const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
           dom.message.textContent = randomMsg;
-          dom.spoon.style.display = 'none';
-          dom.spoon.setAttribute('href', '/services-static/img/spoon-welcome.svg');
+          dom.mascot.style.display = 'none';
+          dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
 
           setTimeout(() => {
-            dom.spoon.style.display = 'block';
+            dom.mascot.style.display = 'block';
           }, 100);
 
           Object.values(dom.nodes).forEach(node => {

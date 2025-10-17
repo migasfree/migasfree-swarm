@@ -88,14 +88,14 @@
       color: #dc3545;
     }
 
-    #spoon-container {
+    #mascot-container {
       display: flex;
       justify-content: center;
       align-items: center;
       margin-top: 20px;
     }
 
-    #spoon {
+    #mascot {
       width: 64px;
       height: 64px;
       transition: opacity 0.3s ease;
@@ -115,7 +115,7 @@
         font-size: 0.9em;
       }
 
-      #spoon {
+      #mascot {
         width: 48px;
         height: 48px;
       }
@@ -137,8 +137,8 @@
   <div id="log-container" class="center">
     <p class="loading">Loading messages...</p>
   </div>
-  <div id="spoon-container">
-    <img id="spoon" src="/services-static/img/spoon-checking-1.svg" alt="Status" />
+  <div id="mascot-container">
+    <img id="mascot" src="/services-static/img/mascot-checking-1.svg" alt="Status" />
   </div>
 
   <script>
@@ -150,15 +150,15 @@
         columns: {{ columns | tojson }},
         logsEndpoint: '/services/logs/json',
         updateInterval: 2000,
-        spoonImages: {
-          checking: '/services-static/img/spoon-checking-1.svg',
-          disconnect: '/services-static/img/spoon-disconnect.svg'
+        mascotImages: {
+          checking: '/services-static/img/mascot-checking-1.svg',
+          disconnect: '/services-static/img/mascot-disconnect.svg'
         }
       };
 
       // State
       const state = {
-        base64Spoon: null,
+        base64Mascot: null,
         updateTimer: null,
         isConnected: true
       };
@@ -166,7 +166,7 @@
       // DOM Cache
       const dom = {
         container: null,
-        spoon: null
+        mascot: null
       };
 
       /**
@@ -174,20 +174,20 @@
        */
       function cacheDOMElements() {
         dom.container = document.getElementById('log-container');
-        dom.spoon = document.getElementById('spoon');
+        dom.mascot = document.getElementById('mascot');
       }
 
       /**
-       * Preload disconnect spoon image as base64
+       * Preload disconnect mascot image as base64
        */
-      async function preloadSpoonImage() {
+      async function preloadMascotImage() {
         try {
-          const response = await fetch(CONFIG.spoonImages.disconnect);
+          const response = await fetch(CONFIG.mascotImages.disconnect);
           const svgText = await response.text();
           const base64Encoded = btoa(unescape(encodeURIComponent(svgText)));
-          state.base64Spoon = `data:image/svg+xml;base64,${base64Encoded}`;
+          state.base64Mascot = `data:image/svg+xml;base64,${base64Encoded}`;
         } catch (error) {
-          console.error('Failed to preload spoon-disconnect.svg:', error);
+          console.error('Failed to preload mascot-disconnect.svg:', error);
         }
       }
 
@@ -234,17 +234,17 @@
       }
 
       /**
-       * Update spoon image
+       * Update mascot image
        */
-      function updateSpoonImage(isConnected) {
-        if (!dom.spoon) return;
+      function updateMascotImage(isConnected) {
+        if (!dom.mascot) return;
 
         if (isConnected) {
-          dom.spoon.src = CONFIG.spoonImages.checking;
-          dom.spoon.classList.remove('fade');
+          dom.mascot.src = CONFIG.mascotImages.checking;
+          dom.mascot.classList.remove('fade');
         } else {
-          dom.spoon.src = state.base64Spoon || CONFIG.spoonImages.disconnect;
-          dom.spoon.classList.add('fade');
+          dom.mascot.src = state.base64Mascot || CONFIG.mascotImages.disconnect;
+          dom.mascot.classList.add('fade');
         }
       }
 
@@ -271,7 +271,7 @@
           }
 
           state.isConnected = true;
-          updateSpoonImage(true);
+          updateMascotImage(true);
 
         } catch (error) {
           console.error('Failed to fetch logs:', error);
@@ -281,7 +281,7 @@
           }
 
           state.isConnected = false;
-          updateSpoonImage(false);
+          updateMascotImage(false);
         }
       }
 
@@ -311,7 +311,7 @@
        */
       async function init() {
         cacheDOMElements();
-        await preloadSpoonImage();
+        await preloadMascotImage();
         startUpdates();
       }
 
