@@ -157,12 +157,15 @@ def get_extensions() -> List[str]:
 def get_nodes(service: str) -> List[str]:
     """Get service nodes"""
     nodes = []
-    _code, _out, _err = execute(f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'", interactive=False)
+    cmd = f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'"
+    _code, _out, _err = execute(cmd, interactive=False)
+    logger.debug(cmd, _out, _err)
     if _code == 0:
         for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
             if node:
                 nodes.append(node)
 
+    logger.debug('nodes', nodes)
     return nodes
 
 
