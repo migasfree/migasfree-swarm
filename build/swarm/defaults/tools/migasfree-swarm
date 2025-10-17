@@ -1,11 +1,21 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 _IMAGE="migasfree/swarm:@@TAG@@"
 _COMMAND="$1"
 
 VOLUME=migasfree-swarm
 VOLUME_TMP=${VOLUME}-temporal
 PATH_STACKS=/var/lib/docker/volumes/${VOLUME}/_data/datashares
+
+is_manager() {
+    [[ "$DOCKER_INFO" == *"Is Manager: true"* ]]
+}
+
+has_nfs_client() {
+    command -v mount.nfs >/dev/null 2>&1 || [ -x "/sbin/mount.nfs" ]
+}
 
 wait_for_volume() {
     local in_use
@@ -32,11 +42,12 @@ wait_for_volume() {
 
 
 function get_swarm_role() {
-    if ! docker info | grep -q "Swarm: active"
+    DOCKER_INFO=$(docker info 2>/dev/null || true)
+    if ! grep -q "Swarm: active" <<<"$DOCKER_INFO"
     then
         echo ""
     else
-        if docker info | grep -q "Is Manager: true"
+        if is_manager
         then
             echo "MANAGER"
         else
@@ -47,7 +58,7 @@ function get_swarm_role() {
 
 
 check_nfs_client_installed() {
-    if ! [ -x "$(command -v mount.nfs)" ] && ! [ -x "/sbin/mount.nfs" ]
+    if ! has_nfs_client
     then
         echo "NFS client is not installed. Please install it using your package manager:"
         echo "  - Debian/Ubuntu: apt install nfs-common"
@@ -202,7 +213,7 @@ function create_volume_cluster {
 ROLE="$(get_swarm_role)"
 if [ "${ROLE}" = "" ] || [ "${ROLE}" = "MANAGER" ]
 then
-    if ! [ -f ./env.py ]
+    if ! [ -f "${SCRIPT_DIR}/env.py" ]
     then
       docker run --name migasfree-swarm \
           --detach=false --rm -ti \
@@ -210,12 +221,12 @@ then
           -v /var/run/docker.sock:/var/run/docker.sock \
           "$_IMAGE" "config"
     fi
-    . ./env.py
+    . "${SCRIPT_DIR}/env.py"
     local2nfs
-    create_volume_cluster ${VOLUME}
+    create_volume_cluster "${VOLUME}"
 fi
 
-if docker volume ls | grep -q $VOLUME
+if docker volume ls | grep -q "$VOLUME"
 then
   if [ -t 1 ] && [ -t 0 ]
   then
