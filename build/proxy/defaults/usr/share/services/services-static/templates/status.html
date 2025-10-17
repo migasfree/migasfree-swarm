@@ -123,8 +123,8 @@
       <g id="portainer-node" transform="translate(29, 83)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
-        <a id="portainer_link" target="_blank">
-          <circle class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
+        <a id="portainer_link_parent" target="_blank">
+          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
         </a>
         <text x="3" y="2">portainer</text>
       </g>
@@ -151,8 +151,8 @@
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
-        <a id="console_link" target="_blank">
-          <circle class="link" cx="7" cy="-7" r="7"><title>Migasfree Console</title></circle>
+        <a id="console_link_parent" target="_blank">
+          <circle id="console_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree Console</title></circle>
         </a>
         <text x="4" y="2">console</text>
       </g>
@@ -409,7 +409,7 @@
         }
 
         // Update mascot animation
-        function updateMascot(isOk, isMissing) {
+        function updateMascot(isOk, isMissing, hasMessage) {
           const now = Date.now();
           let sprite, prefix;
 
@@ -421,9 +421,14 @@
             sprite = Math.floor((now / 1000) % 2);
             prefix = 'mascot-starting';
             dom.statusTexts.forEach(el => el.style.display = 'block');
-          } else {
+          } else if (hasMessage) {
             sprite = Math.floor((now / 1000) % 3);
             prefix = 'mascot-checking';
+            dom.statusTexts.forEach(el => el.style.display = 'block');
+          } else {
+            // Default state when everything is starting
+            sprite = 0;
+            prefix = 'mascot-welcome';
             dom.statusTexts.forEach(el => el.style.display = 'block');
           }
 
@@ -449,18 +454,30 @@
           dom.stack.textContent = `stack: ${data.stack || ''}`;
           dom.tag.textContent = `migasfree server: ${data.tag || ''}`;
 
-          // Update message
-          const messageServ = data.last_message || '';
+          // Determine which service to show message from
+          let messageServ = data.last_message || '';
+
+          // If no last_message or empty serv, find first service with message/missing
+          if (!messageServ) {
+            for (const [key, service] of Object.entries(data.services || {})) {
+              if (service.message || service.missing) {
+                messageServ = key;
+                break;
+              }
+            }
+          }
+
           const service = data.services?.[messageServ];
           const message = service?.message || '';
           const isMissing = service?.missing || false;
+          const hasAnyMessage = message !== '';
 
           dom.message.textContent = message || 'ready';
-          dom.messageServ.textContent = messageServ.split('_').slice(1).join('_');
+          dom.messageServ.textContent = messageServ ? messageServ.split('_').slice(1).join('_') : '';
 
-          updateMascot(data.ok, isMissing);
+          updateMascot(data.ok, isMissing && !hasAnyMessage, hasAnyMessage);
 
-          // Redirect if ok
+          // Redirect if ok and not on status page
           if (data.ok && !window.location.pathname.startsWith('/services/status')) {
             window.location.href = window.location.href;
           }
