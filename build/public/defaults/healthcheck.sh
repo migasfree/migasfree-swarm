@@ -11,6 +11,6 @@ then
     exit 0
 else
     rm /var/tmp/healthy || :
-    send_message "Service Unavailable"
+    send_message "Unavailable"
     exit 1
 fi
