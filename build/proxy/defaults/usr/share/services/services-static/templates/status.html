@@ -104,7 +104,7 @@
       <image id="preload-disconnect" href="/services-static/img/mascot-disconnect.svg" x="0" y="0" height="0" width="0" />
 
       <!-- Info section -->
-      <g transform="translate(146, 80)">
+      <g id="info-section" transform="translate(146, 80)">
         <text id="organization" class="info-text"></text>
         <text id="stack" class="info-text" x="0" y="3"></text>
         <text id="tag" class="info-text" x="0" y="5"></text>
@@ -256,7 +256,7 @@
         const CONFIG = {
           sseEndpoint: '/services/stream',
           reconnectDelay: 5000,
-          disconnectThreshold: 5000,
+          waitingThreshold: 5000,
           welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
           services: ['proxy', 'ca', 'certbot', 'console', 'core', 'beat', 'worker', 'public',
                      'database', 'datastore', 'portainer', 'datashare_console', 'assistant', 'mcp-server'],
@@ -269,8 +269,11 @@
         const state = {
           eventSource: null,
           lastUpdate: Date.now(),
+          lastGoodData: null,
           currentData: null,
-          currentServ: ''
+          currentServ: '',
+          waiting: true,
+          wasDisconnected: false
         };
 
         // DOM Cache
@@ -316,10 +319,10 @@
         function setupLinks() {
           const host = window.location.host;
           const links = {
-            portainer_link: `https://portainer-${host}`,
+            portainer_link_parent: `https://portainer-${host}`,
             proxy_link_parent: `https://${host}/stats`,
             ca_link_parent: `https://${host}/ca/docs`,
-            console_link: `https://${host}/`,
+            console_link_parent: `https://${host}/`,
             core_link_parent: `https://${host}/docs/`,
             worker_console_link_parent: `https://worker-${host}/tasks`,
             database_console_link_parent: `https://database-${host}`,
@@ -346,20 +349,29 @@
 
         // Update service node
         function updateServiceNode(id, data) {
+          console.log('*****************************************')
           const serviceKey = `${data.stack}_${id}`;
+          console.log('serviceKey', serviceKey)  // DEBUG
           const service = data.services?.[serviceKey];
+          console.log('service', service)  // DEBUG
           if (!service || !dom.nodes[id]) return;
 
           const node = dom.nodes[id];
+          console.log('node', node)  // DEBUG
           const isDisabled = data.disables?.includes(id);
+          console.log('isDisabled', isDisabled)  // DEBUG
           const isMissing = service.missing && !service.message;
+          console.log('isMissing', isMissing)  // DEBUG
           const hasMessage = !!service.message;
+          console.log('hasMessage', hasMessage)  // DEBUG
           const nodes = service.nodes || 0;
+          console.log('nodes', nodes)  // DEBUG
 
           let color = '#a9dfbf'; // green
           if (isDisabled) color = 'lightgray';
           else if (isMissing) color = 'red';
           else if (hasMessage) color = 'orange';
+          console.log('color', color)  // DEBUG
 
           node.style.fill = color;
           node.style.display = 'block';
@@ -428,7 +440,7 @@
           } else {
             // Default state when everything is starting
             sprite = 0;
-            prefix = 'mascot-welcome';
+            prefix = 'mascot-ok';
             dom.statusTexts.forEach(el => el.style.display = 'block');
           }
 
@@ -483,18 +495,27 @@
           }
         }
 
+        function restoreUIFromLastGood() {
+          if (state.lastGoodData) {
+            updateUI(state.lastGoodData);
+          }
+        }
+
         // SSE Connection
         function initSSE() {
           if (state.eventSource) {
             state.eventSource.close();
           }
 
+          state.waiting = true;
           state.eventSource = new EventSource(CONFIG.sseEndpoint);
 
           state.eventSource.onmessage = (event) => {
             try {
+              state.waiting = false;
               const data = JSON.parse(event.data);
               updateUI(data);
+              state.wasDisconnected = false;
             } catch (error) {
               console.error('SSE parse error:', error);
             }
@@ -504,15 +525,25 @@
             console.warn('SSE connection lost, reconnecting...');
             state.eventSource.close();
             showDisconnected();
+            state.wasDisconnected = true;
             setTimeout(initSSE, CONFIG.reconnectDelay);
           };
 
           state.eventSource.onopen = () => {
             console.log('SSE connected');
+            if (state.wasDisconnected) {
+              restoreUIFromLastGood();
+              state.wasDisconnected = false;
+            }
           };
         }
 
-        // Show disconnected state
+        function showWaiting() {
+          dom.message.textContent = 'waiting...';
+          dom.messageServ.textContent = '';
+          dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
+        }
+
         function showDisconnected() {
           dom.message.textContent = 'disconnected';
           dom.messageServ.textContent = '';
@@ -527,15 +558,21 @@
           });
         }
 
-        // Check connection status
         function checkConnection() {
-          const elapsed = Date.now() - state.lastUpdate;
-          if (elapsed > CONFIG.disconnectThreshold) {
+          if (!state.eventSource || state.eventSource.readyState !== 1) {
             showDisconnected();
+            return;
+          }
+          const elapsed = Date.now() - state.lastUpdate;
+          if (elapsed > CONFIG.waitingThreshold) {
+            if (!state.waiting) {
+              state.waiting = true;
+              showWaiting();
+            }
+            return;
           }
         }
 
-        // Show welcome screen
         function showWelcome() {
           const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
           dom.message.textContent = randomMsg;
