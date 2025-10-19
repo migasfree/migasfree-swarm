@@ -81,9 +81,9 @@ echo "
 
 "
 
-# TODO: Reconfigure extensions for haproxy.cfg
+# Reload extensions for haproxy.cfg
 # ======================================
-#curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
+/usr/bin/update_extensions.sh
 
 # Get external deployments extensions from proxy
 # =================================================

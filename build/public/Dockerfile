@@ -12,7 +12,7 @@ COPY VERSION /VERSION
 
 # change uid and gid for nginx user
 RUN apk upgrade --no-cache && \
-    apk --no-cache add bind-tools curl shadow tzdata && \
+    apk --no-cache add bind-tools curl shadow tzdata socat && \
     usermod -u 890 nginx && \
     groupmod -g 890 nginx && \
     apk del shadow

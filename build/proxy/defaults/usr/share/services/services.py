@@ -212,14 +212,6 @@ def config_haproxy():
         'MTLS': MTLS == 'True',
     }
 
-    global_data['extensions'] = get_extensions()
-
-    if len(global_data['extensions']) == 0:
-        context['extensions'] = '.deb .rpm'
-    else:
-        context['extensions'] = '.' + ' .'.join(global_data['extensions'])
-
-    logger.info(context['extensions'])
 
     payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
     with open(FILECONFIG, 'w') as f:
@@ -423,6 +415,10 @@ async def update_message(request: Request):
     return JSONResponse(content={'status': 'ok'})
 
 
+@app.get('/services/extensions', response_class=PlainTextResponse)
+async def extensions():
+    return " ".join(get_extensions())
+
 
 @app.get('/services/nginx_extensions', response_class=PlainTextResponse)
 async def nginx_extensions():
@@ -439,8 +435,9 @@ async def nginx_extensions():
         # ========================================================================
     """
 
-    if len(global_data['extensions']) > 0:
-        return Template(template).render({'extensions': global_data['extensions']})
+    extensions = get_extensions()
+    if len(get_extensions()) > 0:
+        return Template(template).render({'extensions': extensions})
 
     return ''
 
