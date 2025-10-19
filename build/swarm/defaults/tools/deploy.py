@@ -97,7 +97,7 @@ def wait_for_dns(hostname, timeout=60, interval=3):
     :return: True if resolved, False if timeout.
     """
     start_time = time.time()
-    print("Waiting for DNS ...")
+    print(f"Waiting to resolve {hostname} ...")
     while True:
         try:
             socket.getaddrinfo(hostname, None)
@@ -167,7 +167,7 @@ def config_portainer(context):
 
     wait_for_dns("portainer")
     wait_url_available("http://portainer:9000/api/status")
-    time.sleep(2)
+    time.sleep(1)
 
     # credentials configuration
     (user, password) = credentials("swarm-credential")
@@ -359,6 +359,7 @@ create_secret(f"{CONTEXT['STACK']}_pms_pass", generate_password(12))
 create_labels()
 create_network_overlay("infra_network")
 
+
 # Connect network portainer to this container (is Necessary in credential configuration)
 client.networks.get("infra_network").connect(socket.gethostname())
 
@@ -376,7 +377,6 @@ if CONTEXT["HTTPSMODE"] == 'auto' and is_self_signed(f"{_PATH_CERTIFICATE}/{CONT
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", "HTTPSMODE='auto'"])
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"])
     api.execute_in_service(f"{CONTEXT['STACK']}_certbot", ["/usr/bin/send_message", ""])
-    api.execute_in_service("infra_proxy", ["/usr/bin/reload"])
 
 try:
     shutil.rmtree(f"/mnt/cluster/datashares/{CONTEXT['STACK']}/__pycache__")

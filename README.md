@@ -350,10 +350,10 @@ If you have a wildcard or SAN certificate that covers these domains, for example
     cat mycertificate.pem myintermediate.pem mykey.key > /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}/server/${FQDN}.pem
 
     # Ensure correct file permissions
-    chmod 600 /var/lib/docker/volumes/migasfree-swarm/_data/certificates//server/${FQDN}.pem
+    chmod 600 /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}/server/${FQDN}.pem
 
-    # Reconfigure the proxy to apply changes
-    docker exec $(docker ps | grep infra_proxy | awk '{print $1}') reconfigure
+    # Redeploy
+    ./migasfree-swarm redeploy_all
 
   ```
 
