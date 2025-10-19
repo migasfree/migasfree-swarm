@@ -42,7 +42,7 @@ def solicitar_parametros():
     return stack, common_name, validity_days
 
 if __name__ == "__main__":
-    base_url = "http://ca/ca"
+    base_url = "http://ca:8080/ca"
     stack, common_name, validity_days = solicitar_parametros()
 
     client = docker.from_env()

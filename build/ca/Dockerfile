@@ -14,7 +14,7 @@ RUN apk update && \
 
 COPY ./defaults/ /
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
