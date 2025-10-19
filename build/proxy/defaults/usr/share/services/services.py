@@ -57,17 +57,12 @@ PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
 # Global data
 global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
 
-USERLIST_CLUSTER = ''
-USERLIST_STACK = ''
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     logger.info('Starting application...')
     render_error_pages()
-    USERLIST_CLUSTER = userlist_cluster()
-    USERLIST_STACK = userlist_stack()
     config_haproxy()
     logger.info('Application started successfully')
 
@@ -211,8 +206,8 @@ def config_haproxy():
         'STACK': STACK,
         'certbot': HTTPSMODE == 'auto',
         'PORT_HTTPS': PORT_HTTPS,
-        'USERLIST_STACK': USERLIST_STACK,
-        'USERLIST_CLUSTER': USERLIST_CLUSTER,
+        'USERLIST_STACK': userlist_stack(),
+        'USERLIST_CLUSTER': userlist_cluster(),
         'NETWORK_MNG': NETWORK_MNG,
         'MTLS': MTLS == 'True',
     }
@@ -227,22 +222,9 @@ def config_haproxy():
     logger.info(context['extensions'])
 
     payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
-    if not os.path.exists(FILECONFIG):
-        with open(FILECONFIG, 'w') as f:
-            f.write(payload['haproxy.cfg'])
-            f.write('\n')
-    else:
-        try:
-            ips = dns.resolver.resolve('tasks.proxy', 'A')
-            for ip in ips:
-                httpx.post(f'http://{str(ip)}:8001/services/update_haproxy', json=payload)
-        except Exception as e:
-            logger.error('Error updating haproxy: %s', str(e))
-
-
-def reload_haproxy():
-    """Reload HAProxy"""
-    _code, _out, _err = execute('/usr/bin/reload', interactive=False)
+    with open(FILECONFIG, 'w') as f:
+        f.write(payload['haproxy.cfg'])
+        f.write('\n')
 
 
 def render_error_pages():
@@ -441,21 +423,6 @@ async def update_message(request: Request):
     return JSONResponse(content={'status': 'ok'})
 
 
-@app.post('/services/reconfigure')
-async def reconfigure():
-    """Reconfigure services"""
-    data = {
-        'text': 'reconfigure',
-        'service': os.environ['SERVICE'],
-        'node': os.environ['NODE'],
-        'container': os.environ['HOSTNAME'],
-    }
-
-    make_global_data(data)
-    config_haproxy()
-
-    return JSONResponse(content={'status': 'ok'})
-
 
 @app.get('/services/nginx_extensions', response_class=PlainTextResponse)
 async def nginx_extensions():
@@ -477,31 +444,6 @@ async def nginx_extensions():
 
     return ''
 
-
-@app.post('/services/update_haproxy')
-async def update_haproxy(request: Request):
-    """Update HAProxy configuration"""
-    try:
-        data = await request.json()
-    except Exception:
-        return JSONResponse(content={'status': 'error', 'message': 'Invalid JSON'})
-
-    if 'haproxy.cfg' in data:
-        with open(FILECONFIG, 'w', encoding='utf-8') as f:
-            f.write(data['haproxy.cfg'])
-            f.write('\n')
-        reload_haproxy()
-
-    await asyncio.sleep(1)
-    _data = {
-        'text': '',
-        'service': os.environ['SERVICE'],
-        'node': os.environ['NODE'],
-        'container': os.environ['HOSTNAME'],
-    }
-    make_global_data(_data)
-
-    return JSONResponse(content={'status': 'ok'})
 
 
 # SSE endpoint for real-time updates
