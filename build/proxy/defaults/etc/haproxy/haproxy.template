@@ -180,7 +180,7 @@ frontend http
     # external sources
     # ================
     acl url_src path_beg /src/
-    acl url_packages path_end {{ extensions }}
+    acl url_packages path_end -f virt@extensiones.txt
 
     {% if PORT_HTTPS == 443 %}
         acl is_fqdn hdr(host) -i {{FQDN}}
@@ -311,7 +311,7 @@ frontend http
 backend ca
     mode http
     balance leastconn
-        server-template ca- 1 tasks.ca:80 resolvers docker check init-addr none
+        server-template ca- 1 tasks.ca:8080 resolvers docker check init-addr none
 
 
 {% if certbot %}
