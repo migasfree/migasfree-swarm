@@ -180,8 +180,6 @@ function migasfree_init {
 # START
 # =====
 
-wait_for_dns "proxy"
-
 export MIGASFREE_CONF_DIR=/var/lib/migasfree-backend/conf
 mkdir -p "$(dirname ${MIGASFREE_CONF_DIR})"
 ln -s "${DATASHARE_MOUNT_PATH}/conf" ${MIGASFREE_CONF_DIR}
@@ -211,11 +209,9 @@ set_TZ
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
-    touch /tmp/healthcheck.lock
     get_settings
     update_ca_certificates
     migasfree_init
-    rm  /tmp/healthcheck.lock
 
     _PROCESS=$(pip freeze | grep daphne)
 else

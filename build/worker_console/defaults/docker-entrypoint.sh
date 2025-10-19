@@ -4,8 +4,6 @@ export MIGASFREE_SECRET_DIR=/var/run/secrets
 BROKER_URL=redis://default:$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)@datastore:6379/0
 BACKEND_URL=$BROKER_URL
 
-wait_for_dns "proxy"
-
 function set_TZ {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]

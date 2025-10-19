@@ -1,8 +1,6 @@
 #!/bin/sh
 trap exit TERM
 
-wait_for_dns "proxy"
-
 update-ca-certificates
 
 send_message "init certbot"

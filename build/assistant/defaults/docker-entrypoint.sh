@@ -1,7 +1,5 @@
 #!/bin/bash
 
-wait_for_dns "proxy"
-
 cd /app/backend
 
 send_message "Starting assistant"

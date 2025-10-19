@@ -2,8 +2,6 @@
 
 set -e
 
-wait_for_dns "proxy"
-
 function capture_message {
     local _LAST="database system is ready to accept connections"
 

@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# wait_for_dns "proxy"
-
 # send_message "Starting Certificate Authority"
 
 /usr/bin/create_local_ca.sh ${STACK}
@@ -33,4 +31,4 @@ echo "
 
 # send_message ""
 
-uvicorn main:app --host "0.0.0.0" --port 80 --log-level info
+uvicorn main:app --host "0.0.0.0" --port 8080 --log-level info

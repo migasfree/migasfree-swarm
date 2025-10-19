@@ -3,8 +3,6 @@ set -e
 
 export MIGASFREE_SECRET_DIR=/var/run/secrets
 
-wait_for_dns "proxy"
-
 function set_TZ {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]

@@ -1,5 +1,4 @@
 
-wait_for_dns "proxy"
 
 function set_TZ {
     # send_message "setting the time zone"
@@ -82,9 +81,9 @@ echo "
 
 "
 
-# Reconfigure extensions for haproxy.cfg
+# TODO: Reconfigure extensions for haproxy.cfg
 # ======================================
-curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
+#curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
 
 # Get external deployments extensions from proxy
 # =================================================

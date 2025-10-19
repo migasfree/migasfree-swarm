@@ -1,6 +1,33 @@
 #!/bin/bash
 set -e
 
+function wait {
+    local _SERVER=$1
+    local _PORT=$2
+    local _COUNTER=0
+
+    until [ $_COUNTER -gt 30 ]
+    do
+        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
+        then
+            echo "$_SERVER:$_PORT is running."
+            return
+        else
+            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
+            sleep 1
+        fi
+        ((_COUNTER++))
+    done
+    echo "Rebooting container"
+    exit 1
+}
+
+
+if ! [ -f /mnt/cluster/certificates/inv/ca/ca.crt ]
+then
+    wait "ca" "8080"
+fi
+
 . /venv/bin/activate
 
 
