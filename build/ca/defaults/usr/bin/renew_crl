@@ -28,8 +28,6 @@ for STACK in $STACKS; do
 done
 
 for ip in $(getent hosts proxy | awk '{ print $1 }'); do
-    echo -e "commit ssl crl-file ${CRL_FILE}" | socat stdio tcp4-connect:"$ip":8404
+    echo -e "set ssl crl-file ${CRL_FILE} <<\n$(cat ${CRL_FILE})\n" | socat stdio tcp4-connect:"$ip":9999
+    echo -e "commit ssl crl-file ${CRL_FILE}" | socat stdio tcp4-connect:"$ip":9999
 done
-
-# reconfigure haproxy
-curl -X POST http://proxy:8001/services/reconfigure &> /dev/null
