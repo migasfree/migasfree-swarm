@@ -11,23 +11,20 @@ function renew {
     openssl ca -config ${CA_CONF} -gencrl -out "${CRL_FILE}"
 }
 
-function crl_combined {
-    local STACK="$1"
-    local CRL_FILE_COMBINED="${PATH_CA}/${STACK}/crl.pem"
-    rm ${CRL_FILE_COMBINED} || :
-    cat "${PATH_CA}/${STACK}/admin/crl/crl.pem" \
-        "${PATH_CA}/${STACK}/computer/crl/crl.pem" > ${CRL_FILE_COMBINED}
-}
 
 STACKS=$(find "${PATH_DATASHARE}" -mindepth 1 -maxdepth 1 -type d)
 for STACK in $STACKS; do
     STACK=$(basename ${STACK})
+    CRL_FILE_COMBINED="${PATH_CA}/${STACK}/crl.pem"
+    rm ${CRL_FILE_COMBINED} || :
     renew "${STACK}" "admin"
     renew "${STACK}" "computer"
-    crl_combined "${STACK}"
-done
+    cat "${PATH_CA}/${STACK}/admin/crl/crl.pem" \
+        "${PATH_CA}/${STACK}/computer/crl/crl.pem" > ${CRL_FILE_COMBINED}
 
-for ip in $(getent hosts tasks.proxy | awk '{ print $1 }'); do
-    echo -e "set ssl crl-file ${CRL_FILE} <<\n$(cat ${CRL_FILE})\n" | socat stdio tcp4-connect:"$ip":9999
-    echo -e "commit ssl crl-file ${CRL_FILE}" | socat stdio tcp4-connect:"$ip":9999
+    for ip in $(getent hosts tasks.proxy | awk '{ print $1 }'); do
+        echo -e "set ssl crl-file ${CRL_FILE_COMBINED} <<\n$(cat ${CRL_FILE_COMBINED})\n" | socat stdio tcp4-connect:"$ip":9999
+        echo -e "commit ssl crl-file ${CRL_FILE_COMBINED}" | socat stdio tcp4-connect:"$ip":9999
+    done
+
 done
