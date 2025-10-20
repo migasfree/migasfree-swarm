@@ -55,6 +55,9 @@ services:
                 condition: on-failure
                 delay: 10s
                 max_attempts: 0
+            placement:
+                constraints:
+                    - node.role == manager
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
@@ -62,6 +65,7 @@ services:
 
         volumes:
             - migasfree-swarm:/mnt/cluster
+            - /var/run/docker.sock:/var/run/docker.sock:ro
 
         networks:
             - infra_network
