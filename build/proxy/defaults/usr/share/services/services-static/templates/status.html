@@ -350,28 +350,35 @@
         // Update service node
         function updateServiceNode(id, data) {
           console.log('*****************************************')
-          const serviceKey = `${data.stack}_${id}`;
+          let serviceKey = `${data.stack}_${id}`;
           console.log('serviceKey', serviceKey)  // DEBUG
-          const service = data.services?.[serviceKey];
+          let service = data.services?.[serviceKey];
+
+          if (!service) {
+            serviceKey = `infra_${id}`;
+            console.log('serviceKey (infra)', serviceKey); // DEBUG
+            service = data.services?.[serviceKey];
+          }
+
           console.log('service', service)  // DEBUG
-          if (!service || !dom.nodes[id]) return;
+          if (!service && !dom.nodes[id]) return;
 
           const node = dom.nodes[id];
-          console.log('node', node)  // DEBUG
+          console.log('node', node);  // DEBUG
           const isDisabled = data.disables?.includes(id);
-          console.log('isDisabled', isDisabled)  // DEBUG
-          const isMissing = service.missing && !service.message;
-          console.log('isMissing', isMissing)  // DEBUG
-          const hasMessage = !!service.message;
-          console.log('hasMessage', hasMessage)  // DEBUG
-          const nodes = service.nodes || 0;
-          console.log('nodes', nodes)  // DEBUG
+          console.log('isDisabled', isDisabled);  // DEBUG
+          const isMissing = service?.missing && !service?.message;
+          console.log('isMissing', isMissing);  // DEBUG
+          const hasMessage = !!service?.message;
+          console.log('hasMessage', hasMessage);  // DEBUG
+          const nodes = service?.nodes || 0;
+          console.log('nodes', nodes);  // DEBUG
 
           let color = '#a9dfbf'; // green
           if (isDisabled) color = 'lightgray';
           else if (isMissing) color = 'red';
           else if (nodes === 0) color = 'orange';
-          console.log('color', color)  // DEBUG
+          console.log('color', color);  // DEBUG
 
           node.style.fill = color;
           node.style.display = 'block';
