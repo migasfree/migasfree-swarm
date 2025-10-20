@@ -258,7 +258,7 @@
           reconnectDelay: 5000,
           waitingThreshold: 5000,
           welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
-          services: ['proxy', 'ca', 'certbot', 'console', 'core', 'beat', 'worker', 'public',
+          services: ['proxy', 'ca', 'certbot', 'console', 'core', 'beat', 'worker', 'public', 'pms',
                      'database', 'datastore', 'portainer', 'datashare_console', 'assistant', 'mcp-server'],
           consoleServices: ['console', 'portainer', 'proxy', 'ca', 'public', 'core',
                            'database_console', 'datastore_console', 'datashare_console',
@@ -383,10 +383,12 @@
 
         // Update PMS nodes
         function updatePMSNode(data) {
+          console.log('data', data);  // DEBUG
           const stack = data.stack || '';
           let missing = false, hasMessage = false, totalNodes = 0;
 
           Object.entries(data.services || {}).forEach(([key, service]) => {
+            console.log(key, service);  // DEBUG
             if (key.startsWith(`${stack}_pms-`)) {
               if (service.missing) missing = true;
               if (service.message) hasMessage = true;
@@ -395,6 +397,7 @@
           });
 
           const node = dom.nodes.pms;
+          // const node = document.getElementById('pms')
           if (!node) return;
 
           let color = '#a9dfbf';
