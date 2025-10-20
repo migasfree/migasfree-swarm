@@ -370,7 +370,7 @@
           let color = '#a9dfbf'; // green
           if (isDisabled) color = 'lightgray';
           else if (isMissing) color = 'red';
-          else if (hasMessage) color = 'orange';
+          else if (nodes === 0) color = 'orange';
           console.log('color', color)  // DEBUG
 
           node.style.fill = color;
@@ -398,7 +398,7 @@
           if (!node) return;
 
           let color = '#a9dfbf';
-          if (hasMessage) { missing = false; color = 'orange'; }
+          if (totalNodes === 0) { missing = false; color = 'orange'; }
           else if (missing) color = 'red';
 
           node.style.fill = color;
