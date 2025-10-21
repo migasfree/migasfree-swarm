@@ -5,19 +5,15 @@ import sys
 import json
 import socket
 import subprocess
-import fcntl
-import select
 import asyncio
 import re
 import threading
 import logging
 from datetime import datetime
 from collections import deque
-from typing import List, Dict, Any
+from typing import List
 from contextlib import asynccontextmanager
 
-# import httpx
-# import dns.resolver
 import docker
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
@@ -55,12 +51,17 @@ PATH_MTLS_CERTS = f'{PATH_MTLS}/certs'
 PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
 PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
 
-# Global data
-global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
-
 # Docker monitor
 docker_monitor = None
 monitor_lock = threading.Lock()
+
+# SSE clients queue for broadcasting
+sse_clients = []
+sse_lock = threading.Lock()
+
+# Service states cache (for templates and legacy endpoints)
+service_states_cache = {}
+cache_lock = threading.Lock()
 
 
 class DockerSwarmMonitor:
@@ -178,10 +179,25 @@ class DockerSwarmMonitor:
             logger.warning(f'Error getting status for {service_name}: {e}')
             return None
 
-    def update_global_data(self, service_name, status_info, action='update'):
-        with monitor_lock:
-            if service_name not in global_data['services']:
-                global_data['services'][service_name] = {
+    def broadcast_to_sse_clients(self, service_name, status_info):
+        """Broadcast service update to all connected SSE clients"""
+        if not status_info:
+            return
+
+        event_data = {'service': service_name, 'status': status_info, 'timestamp': datetime.now().isoformat()}
+
+        with sse_lock:
+            for queue in sse_clients:
+                try:
+                    queue.put_nowait(event_data)
+                except Exception as e:
+                    logger.warning(f'Error broadcasting to SSE client: {e}')
+
+    def update_service_cache(self, service_name, status_info):
+        """Update service states cache for templates"""
+        with cache_lock:
+            if service_name not in service_states_cache:
+                service_states_cache[service_name] = {
                     'message': '',
                     'node': '',
                     'container': '',
@@ -190,13 +206,13 @@ class DockerSwarmMonitor:
                 }
 
             if status_info:
-                global_data['services'][service_name]['nodes'] = status_info['running']
-                global_data['services'][service_name]['missing'] = status_info['status'] in ['down', 'starting']
+                service_states_cache[service_name]['nodes'] = status_info['running']
+                service_states_cache[service_name]['missing'] = status_info['status'] in ['down', 'starting']
 
                 if 'nodes' in status_info and status_info['nodes']:
-                    global_data['services'][service_name]['node'] = ', '.join(status_info['nodes'])
+                    service_states_cache[service_name]['node'] = ', '.join(status_info['nodes'])
                 if 'containers' in status_info and status_info['containers']:
-                    global_data['services'][service_name]['container'] = ', '.join(status_info['containers'])
+                    service_states_cache[service_name]['container'] = ', '.join(status_info['containers'])
 
                 emoji_map = {'healthy': '✅', 'degraded': '⚠️', 'starting': '🔄', 'down': '❌', 'unknown': '❓'}
                 emoji = emoji_map.get(status_info['status'], '❓')
@@ -207,11 +223,11 @@ class DockerSwarmMonitor:
                 if status_info['failed'] > 0:
                     message += f' (failed: {status_info["failed"]})'
 
-                global_data['services'][service_name]['message'] = message
+                service_states_cache[service_name]['message'] = message
             else:
                 # Removed service
-                global_data['services'][service_name]['missing'] = True
-                global_data['services'][service_name]['nodes'] = 0
+                service_states_cache[service_name]['missing'] = True
+                service_states_cache[service_name]['nodes'] = 0
 
     def check_all_services(self):
         while self.running and self.client:
@@ -222,7 +238,7 @@ class DockerSwarmMonitor:
                     service_name = service.name
 
                     # Only monitor current stack services
-                    if not service_name.startswith(f'{STACK}_') or not service_name.startswith('infra_'):
+                    if not service_name.startswith(f'{STACK}_') and not service_name.startswith('infra_'):
                         continue
 
                     current_status = self.get_service_status(service_name)
@@ -235,7 +251,9 @@ class DockerSwarmMonitor:
 
                         if prev_status is None:
                             self.service_states[service_name] = current_status
-                            self.update_global_data(service_name, current_status, 'initial')
+                            self.update_service_cache(service_name, current_status)
+                            # Broadcast initial state
+                            self.broadcast_to_sse_clients(service_name, current_status)
                         elif (
                             prev_status['status'] != current_status['status']
                             or prev_status['running'] != current_status['running']
@@ -247,7 +265,10 @@ class DockerSwarmMonitor:
                             )
 
                             self.service_states[service_name] = current_status
-                            self.update_global_data(service_name, current_status, 'status_change')
+                            self.update_service_cache(service_name, current_status)
+
+                            # Broadcast status change
+                            self.broadcast_to_sse_clients(service_name, current_status)
 
                             nodes_str = (
                                 ', '.join(current_status.get('nodes', [])) if current_status.get('nodes') else 'unknown'
@@ -291,22 +312,21 @@ class DockerSwarmMonitor:
                 service_name = attrs.get('name', 'unknown')
 
                 # Only monitor current stack services
-                if not service_name.startswith(f'{STACK}_') or not service_name.startswith('infra_'):
+                if not service_name.startswith(f'{STACK}_') and not service_name.startswith('infra_'):
                     continue
-
-                # asyncio.run(asyncio.sleep(0.5))
 
                 status_info = self.get_service_status(service_name)
 
                 with self.lock:
-                    # prev_status = self.service_states.get(service_name)
-
                     if status_info:
                         self.service_states[service_name] = status_info
                     elif service_name in self.service_states:
                         del self.service_states[service_name]
 
-                    self.update_global_data(service_name, status_info, action)
+                    self.update_service_cache(service_name, status_info)
+
+                    # Broadcast event
+                    self.broadcast_to_sse_clients(service_name, status_info)
 
                 logger.info(f'Service event: {action} - {service_name}')
 
@@ -326,17 +346,17 @@ class DockerSwarmMonitor:
             services = self.client.services.list()
             with self.lock:
                 for service in services:
-                    if not service.name.startswith(f'{STACK}_') or not service.name.startswith('infra_'):
+                    if not service.name.startswith(f'{STACK}_') and not service.name.startswith('infra_'):
                         continue
 
                     status = self.get_service_status(service.name)
                     if status:
                         self.service_states[service.name] = status
-                        self.update_global_data(service.name, status, 'initial')
+                        self.update_service_cache(service.name, status)
         except Exception as e:
             logger.error(f'Error loading initial state: {e}')
 
-        # Iniciar threads
+        # Start threads
         self.checker_thread = threading.Thread(target=self.check_all_services, daemon=True)
         self.checker_thread.start()
 
@@ -402,73 +422,26 @@ def get_organization() -> str:
     return ''
 
 
-def execute(cmd: str, verbose: bool = False, interactive: bool = True):
-    """Execute shell command"""
-    _output_buffer = ''
-    if verbose:
-        print(cmd)
-
-    if interactive:
-        _process = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-    else:
-        _process = subprocess.Popen(
-            cmd, shell=True, executable='/bin/bash', stderr=subprocess.PIPE, stdout=subprocess.PIPE
-        )
-        if verbose:
-            fcntl.fcntl(
-                _process.stdout.fileno(),
-                fcntl.F_SETFL,
-                fcntl.fcntl(_process.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK,
-            )
-            while _process.poll() is None:
-                readx = select.select([_process.stdout.fileno()], [], [])[0]
-                if readx:
-                    chunk = _process.stdout.read()
-                    if chunk and chunk != '\n':
-                        print(chunk)
-                    _output_buffer = f'{_output_buffer}{chunk}'
-
-    _output, _error = _process.communicate()
-    if not interactive and _output_buffer:
-        _output = _output_buffer
-
-    return _process.returncode, _output, _error
-
-
 def get_extensions() -> List[str]:
     """Get PMS extensions"""
     pms_enabled = os.environ['PMS_ENABLED']
     extensions = []
-    _code, _out, _err = execute('curl -X GET core:8080/api/v1/public/pms/', interactive=False)
-    if _code == 0:
-        try:
-            all_pms = json.loads(_out.decode('utf-8'))
-        except Exception:
-            return list(set(extensions))
-        for pms in all_pms:
-            if f'pms-{pms}' in pms_enabled:
-                for extension in all_pms[pms]['extensions']:
-                    extensions.append(extension)
+
+    try:
+        result = subprocess.run(
+            ['curl', '-X', 'GET', 'core:8080/api/v1/public/pms/'], capture_output=True, text=True, timeout=10
+        )
+
+        if result.returncode == 0:
+            all_pms = json.loads(result.stdout)
+            for pms in all_pms:
+                if f'pms-{pms}' in pms_enabled:
+                    for extension in all_pms[pms]['extensions']:
+                        extensions.append(extension)
+    except Exception as e:
+        logger.error(f'Error getting extensions: {e}')
 
     return list(set(extensions))
-
-
-def get_nodes(service: str) -> List[str]:
-    """Get service nodes - legacy fallback"""
-    """
-    nodes = []
-    cmd = f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'"
-    _code, _out, _err = execute(cmd, interactive=False)
-    logger.debug(f'dig command: {cmd}, output: {_out}, error: {_err}')
-    if _code == 0:
-        for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
-            if node:
-                nodes.append(node)
-
-    logger.debug(f'nodes for {service}: {nodes}')
-    return nodes
-    """
-    pass
 
 
 def check_server(host: str, port: int) -> bool:
@@ -487,23 +460,6 @@ def check_server(host: str, port: int) -> bool:
         else:
             s.close()
             return True
-
-
-def make_global_data(data: Dict[str, Any]):
-    """Update global data with service information"""
-    global_data['ok'] = False
-
-    if 'service' in data:
-        if data['service'] not in global_data['services']:
-            global_data['services'][data['service']] = {'message': '', 'node': '', 'container': '', 'missing': True}
-
-        if 'text' in data:
-            global_data['services'][data['service']]['message'] = data['text']
-            global_data['last_message'] = data['service']
-        if 'node' in data:
-            global_data['services'][data['service']]['node'] = data['node']
-        if 'container' in data:
-            global_data['services'][data['service']]['container'] = data['container']
 
 
 def config_haproxy():
@@ -547,9 +503,9 @@ def userlist_stack() -> str:
     with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
         password = f.read()
 
-    _code, _out, _err = execute(f'mkpasswd -m sha-512 {password}', interactive=False)
+    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True)
 
-    return f'    user {username} password {_out.decode("utf-8")}'
+    return f'    user {username} password {result.stdout}'
 
 
 def userlist_cluster() -> str:
@@ -557,9 +513,9 @@ def userlist_cluster() -> str:
     with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
         username, password = f.read().split(':')
 
-    _code, _out, _err = execute(f'mkpasswd -m sha-512 {password}', interactive=False)
+    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True)
 
-    return f'    user {username} password {_out.decode("utf-8")}'
+    return f'    user {username} password {result.stdout}'
 
 
 # Routes
@@ -572,7 +528,9 @@ async def favicon():
 @app.get('/services/status/', response_class=HTMLResponse)
 async def status_page(request: Request):
     """Status page"""
-    return templates.TemplateResponse('status.html', {'request': request, **global_data})
+    with cache_lock:
+        context = {'services': service_states_cache.copy(), 'request': request}
+    return templates.TemplateResponse('status.html', context)
 
 
 @app.get('/services/manifest')
@@ -601,89 +559,22 @@ async def logs_json():
     return JSONResponse(content=list(MESSAGES_LOG))
 
 
-@app.get('/services/message')
-async def get_message():
-    """Get current message status"""
-    # Docker's monitor automatic updates global_data
-
-    if int((datetime.now() - global_data['now']).total_seconds()) >= 1:
-        global_data['now'] = datetime.now()
-
-        pms = os.environ['PMS_ENABLED'].split(',')
-        services = [
-            'console',
-            'core',
-            'beat',
-            'worker',
-            'public',
-            *pms,
-            'database',
-            'datastore',
-            'database_console',
-            'datastore_console',
-            'datashare_console',
-            'worker_console',
-            'assistant',
-            'proxy',
-            'portainer',
-            'certbot',
-            'ca',
-            'mcp-server',
-        ]
-
-        if 'services' not in global_data:
-            global_data['services'] = {}
-
-        if 'last_message' not in global_data:
-            global_data['last_message'] = ''
-
-        missing = False
-        message = False
-
-        for _service in services:
-            service_name = f'{STACK}_{_service}'
-
-            if service_name not in global_data['services']:
-                global_data['services'][service_name] = {
-                    'message': '',
-                    'node': '',
-                    'container': '',
-                    'missing': True,
-                    'nodes': 0,
-                }
-
-            if global_data['services'][service_name]['missing']:
-                global_data['need_reload'] = True
-                missing = True
-
-            if global_data['services'][service_name]['message']:
-                message = True
-
-        global_data['ok'] = False
-        if not message:
-            if missing:
-                global_data['need_reload'] = True
-            else:
-                if global_data['need_reload']:
-                    global_data['need_reload'] = False
-                global_data['ok'] = True
-
-    disables = []
+@app.get('/services/info')
+async def get_info():
+    """Get static application info (organization, stack, tag, disables)"""
+    disabled = []
     if os.environ['HTTPSMODE'] == 'manual':
-        disables.append('certbot')
-    if os.environ['GOOGLE_API_KEY'] == '':
-        disables.append('assistant')
-        disables.append('mcp-server')
+        disabled.append('certbot')
+    if os.environ.get('GOOGLE_API_KEY', '') == '':
+        disabled.append('assistant')
+        disabled.append('mcp-server')
 
     return JSONResponse(
         content={
-            'last_message': global_data.get('last_message', ''),
-            'services': global_data['services'],
-            'ok': global_data['ok'],
             'organization': get_organization(),
             'stack': STACK,
             'tag': TAG,
-            'disables': disables,
+            'disabled': disabled,
         }
     )
 
@@ -699,7 +590,6 @@ async def post_message(request: Request):
 
     data['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     MESSAGES_LOG.append(data)
-    make_global_data(data)
 
     return JSONResponse(content={'status': 'ok'})
 
@@ -731,40 +621,64 @@ async def nginx_extensions():
     return ''
 
 
-# SSE endpoint for real-time updates
+# SSE endpoint for real-time Docker container updates
 @app.get('/services/stream')
-async def message_stream(request: Request):
-    """Server-Sent Events endpoint for real-time updates"""
+async def service_stream(request: Request):
+    """Server-Sent Events endpoint for real-time Docker service updates"""
+    import queue
+
+    client_queue = queue.Queue()
+
+    # Register client
+    with sse_lock:
+        sse_clients.append(client_queue)
+
+    logger.info(f'SSE client connected. Total clients: {len(sse_clients)}')
 
     async def event_generator():
-        last_state_hash = None
-        while True:
-            if await request.is_disconnected():
-                break
+        try:
+            # Send initial state for all services
+            with cache_lock:
+                for service_name, service_data in service_states_cache.items():
+                    if 'nodes' in service_data:
+                        initial_data = {
+                            'service': service_name,
+                            'status': {
+                                'status': service_data.get('status', ''),
+                                'running': service_data.get('nodes', 0),
+                                'nodes': service_data.get('node', '').split(', ') if service_data.get('node') else [],
+                                'containers': service_data.get('container', '').split(', ')
+                                if service_data.get('container')
+                                else [],
+                            },
+                            'timestamp': datetime.now().isoformat(),
+                        }
+                        yield {'event': 'message', 'data': json.dumps(initial_data)}
 
-            current_state = {
-                # 'last_message': global_data.get('last_message', ''),
-                'services': global_data['services'].copy(),
-                # 'ok': global_data['ok'],
-                'organization': get_organization(),
-                'stack': STACK,
-                'tag': TAG,
-                'disables': [],
-            }
+            # Stream updates
+            while True:
+                if await request.is_disconnected():
+                    break
 
-            if HTTPSMODE == 'manual':
-                current_state['disables'].append('certbot')
-            if os.environ.get('GOOGLE_API_KEY', '') == '':
-                current_state['disables'].extend(['assistant', 'mcp-server'])
+                try:
+                    # Wait for new events with timeout
+                    event_data = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: client_queue.get(timeout=30)
+                    )
+                    yield {'event': 'message', 'data': json.dumps(event_data)}
+                except queue.Empty:
+                    # Send keepalive ping
+                    yield {'event': 'ping', 'data': json.dumps({'timestamp': datetime.now().isoformat()})}
+                except Exception as e:
+                    logger.error(f'Error in event generator: {e}')
+                    break
 
-            state_hash = json.dumps(current_state, sort_keys=True)
-
-            if state_hash != last_state_hash:
-                current_state['timestamp'] = datetime.now().isoformat()
-                yield {'event': 'message', 'data': json.dumps(current_state)}
-                last_state_hash = state_hash
-
-            await asyncio.sleep(1)
+        finally:
+            # Unregister client
+            with sse_lock:
+                if client_queue in sse_clients:
+                    sse_clients.remove(client_queue)
+            logger.info(f'SSE client disconnected. Remaining clients: {len(sse_clients)}')
 
     return EventSourceResponse(event_generator())
 
@@ -773,13 +687,17 @@ async def message_stream(request: Request):
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
     """Custom 404 handler"""
-    return templates.TemplateResponse('status.html', {'request': request, **global_data}, status_code=404)
+    with cache_lock:
+        context = {'services': service_states_cache.copy(), 'request': request}
+    return templates.TemplateResponse('status.html', context, status_code=404)
 
 
 @app.exception_handler(503)
 async def service_unavailable_handler(request: Request, exc: HTTPException):
     """Custom 503 handler"""
-    return templates.TemplateResponse('status.html', {'request': request, **global_data}, status_code=503)
+    with cache_lock:
+        context = {'services': service_states_cache.copy(), 'request': request}
+    return templates.TemplateResponse('status.html', context, status_code=503)
 
 
 if __name__ == '__main__':
