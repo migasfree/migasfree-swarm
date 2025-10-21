@@ -257,25 +257,40 @@
           infoEndpoint: '/services/info',
           sseEndpoint: '/services/stream',
           reconnectDelay: 5000,
-          waitingThreshold: 5000,
+          waitingThreshold: 30000,
           welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
-          services: ['proxy', 'ca', 'certbot', 'console', 'core', 'beat', 'worker', 'public', 'pms',
-                     'database', 'datastore', 'portainer', 'datashare_console', 'assistant', 'mcp-server'],
-          consoleServices: ['console', 'portainer', 'proxy', 'ca', 'public', 'core',
-                           'database_console', 'datastore_console', 'datashare_console',
-                           'worker_console', 'assistant'],
+          // Map service names from SSE to HTML element IDs
+          serviceMapping: {
+            'proxy': 'proxy',
+            'ca': 'ca',
+            'certbot': 'certbot',
+            'console': 'console',
+            'core': 'core',
+            'beat': 'beat',
+            'worker': 'worker',
+            'public': 'public',
+            'database': 'database',
+            'datastore': 'datastore',
+            'portainer': 'portainer',
+            'datashare_console': 'datashare_console',
+            'assistant': 'assistant',
+            'mcp-server': 'mcp-server'
+          },
+          consoleServices: ['console', 'portainer', 'proxy', 'ca', 'core',
+                           'database', 'datastore', 'datashare_console',
+                           'worker', 'assistant'],
           infoData: null,
         };
 
-        // State
+        // State - ahora almacenamos el estado de cada servicio individualmente
         const state = {
           eventSource: null,
           lastUpdate: Date.now(),
-          lastGoodData: null,
-          currentData: null,
-          currentServ: '',
+          serviceStates: {},  // Estado individual de cada servicio
+          pmsServices: {},    // Servicios PMS separados
           waiting: true,
-          wasDisconnected: false
+          wasDisconnected: false,
+          allHealthy: false
         };
 
         // DOM Cache
@@ -302,14 +317,18 @@
           dom.tag = document.getElementById('tag');
           dom.statusTexts = document.querySelectorAll('.status-text');
 
-          CONFIG.services.forEach(service => {
-            dom.nodes[service] = document.getElementById(service);
-            dom.nodeTexts[service] = document.getElementById(`nodes_${service}`);
+          // Cache all service nodes
+          Object.values(CONFIG.serviceMapping).forEach(elementId => {
+            dom.nodes[elementId] = document.getElementById(elementId);
+            dom.nodeTexts[elementId] = document.getElementById(`nodes_${elementId}`);
           });
 
+          // Cache console links
           CONFIG.consoleServices.forEach(service => {
+            const linkParent = document.getElementById(`${service}_link_parent`);
             const link = document.getElementById(`${service}_link`);
-            if (link) dom.links[service] = link.parentElement || link;
+            if (linkParent) dom.links[service] = linkParent;
+            else if (link) dom.links[service] = link;
           });
 
           // Special case for public link
@@ -322,7 +341,7 @@
             const response = await fetch(CONFIG.infoEndpoint);
             if (!response.ok) throw new Error('Error getting /services/info');
             const info = await response.json();
-            state.infoData = info;
+            CONFIG.infoData = info;
             dom.organization.textContent = info.organization || '';
             dom.stack.textContent = `stack: ${info.stack || ''}`;
             dom.tag.textContent = `migasfree server: ${info.tag || ''}`;
@@ -364,151 +383,206 @@
           }
         }
 
-        // Update service node
-        function updateServiceNode(id, data) {
-          console.log('*****************************************')
-          const service = data.service;
-          console.log('service', service)  // DEBUG
-          if (!service && !dom.nodes[id]) return;
+        // Extraer el nombre del servicio sin el prefijo del stack
+        function getServiceName(fullName) {
+          if (!CONFIG.infoData) return fullName;
+          const stack = CONFIG.infoData.stack;
 
-          const node = dom.nodes[id];
-          console.log('node', node);  // DEBUG
-          const isDisabled = CONFIG.infoData.disabled?.includes(id);
-          console.log('isDisabled', isDisabled);  // DEBUG
-          const isMissing = data.status.running === 0;
-          console.log('isMissing', isMissing);  // DEBUG
-          const hasMessage = !!data?.message;
-          console.log('hasMessage', hasMessage);  // DEBUG
-          const nodes = data.status.nodes || 0;
-          console.log('nodes', nodes);  // DEBUG
+          // Manejar servicios infra_
+          if (fullName.startsWith('infra_')) {
+            return fullName.replace('infra_', '');
+          }
 
-          let color = '#a9dfbf'; // green
-          if (isDisabled) color = 'lightgray';
-          else if (isMissing) color = 'red';
-          else if (nodes === 0) color = 'orange';
-          console.log('color', color);  // DEBUG
+          // Manejar servicios del stack
+          if (fullName.startsWith(`${stack}_`)) {
+            return fullName.replace(`${stack}_`, '');
+          }
+
+          return fullName;
+        }
+
+        // Mapear nombre de servicio a ID de elemento
+        function getElementId(serviceName) {
+          return CONFIG.serviceMapping[serviceName] || serviceName;
+        }
+
+        // Determinar color según status
+        function getColorFromStatus(status) {
+          const colorMap = {
+            'healthy': '#a9dfbf',   // green
+            'degraded': '#f39c12',  // orange
+            'starting': '#f9e79f',  // yellow
+            'down': '#e74c3c',      // red
+            'unknown': '#95a5a6'    // gray
+          };
+          return colorMap[status] || 'lightgray';
+        }
+
+        // Update individual service node
+        function updateServiceNode(serviceName, statusInfo) {
+          const elementId = getElementId(serviceName);
+          const node = dom.nodes[elementId];
+
+          if (!node) {
+            console.warn(`Node not found for service: ${serviceName} (element: ${elementId})`);
+            return;
+          }
+
+          // Verificar si el servicio está deshabilitado
+          const isDisabled = CONFIG.infoData?.disabled?.includes(serviceName);
+
+          let color;
+          if (isDisabled) {
+            color = 'lightgray';
+          } else {
+            color = getColorFromStatus(statusInfo.status);
+          }
 
           node.style.fill = color;
           node.style.display = 'block';
 
-          if (dom.nodeTexts[id]) {
-            dom.nodeTexts[id].textContent = nodes >= 2 ? nodes : '';
+          // Actualizar número de nodos si hay más de 1
+          if (dom.nodeTexts[elementId]) {
+            const nodeCount = statusInfo.running || 0;
+            dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
           }
+
+          // Actualizar visibilidad del link de consola
+          const link = dom.links[serviceName];
+          if (link) {
+            const shouldShow = statusInfo.running > 0 && !isDisabled;
+            link.style.display = shouldShow ? 'block' : 'none';
+          }
+
+          // Guardar estado
+          state.serviceStates[serviceName] = statusInfo;
         }
 
-        // Update PMS nodes
-        function updatePMSNode(data) {
-          const stack = data.stack || '';
-          let missing = false, hasMessage = false, totalNodes = 0;
-
-          if (!data.service.startsWith(`${stack}_pms-`)) {
-            return
-          }
-          console.log('updatePMSNode data', data);  // DEBUG
-
-          if (data.status.nodes.length === 0) missing = true;
-          totalNodes += service.nodes || 0;
-
+        // Update PMS nodes (agregado de múltiples servicios pms-*)
+        function updatePMSNode() {
           const node = dom.nodes.pms;
-          // const node = document.getElementById('pms')
           if (!node) return;
 
-          let color = '#a9dfbf';
-          if (totalNodes === 0) { missing = false; color = 'orange'; }
-          else if (missing) color = 'red';
+          const pmsServiceNames = Object.keys(state.pmsServices);
+          if (pmsServiceNames.length === 0) {
+            node.style.display = 'none';
+            return;
+          }
+
+          let totalRunning = 0;
+          let totalDesired = 0;
+          let anyDown = false;
+          let anyDegraded = false;
+
+          pmsServiceNames.forEach(name => {
+            const status = state.pmsServices[name];
+            totalRunning += status.running || 0;
+            totalDesired += status.desired || 0;
+            if (status.status === 'down') anyDown = true;
+            if (status.status === 'degraded' || status.status === 'starting') anyDegraded = true;
+          });
+
+          let color = '#a9dfbf'; // green
+          if (anyDown) color = '#e74c3c';
+          else if (anyDegraded) color = '#f39c12';
+          else if (totalRunning < totalDesired) color = '#f39c12';
 
           node.style.fill = color;
           node.style.display = 'block';
 
           if (dom.nodeTexts.pms) {
-            dom.nodeTexts.pms.textContent = totalNodes >= 2 ? totalNodes : '';
+            dom.nodeTexts.pms.textContent = totalRunning >= 2 ? totalRunning : '';
           }
         }
 
-        // Update console link visibility
-        function updateConsoleLink(id, data) {
-          const serviceKey = `${data.stack}_${id}`;
-          const service = data.services?.[serviceKey];
-          const link = dom.links[id];
-
-          if (link && service) {
-            link.style.display = service.missing ? 'none' : 'block';
-          }
-        }
-
-        // Update mascot animation
-        function updateMascot(isOk, isMissing, hasMessage) {
+        // Update mascot animation basado en el estado general
+        function updateMascot() {
           const now = Date.now();
           let sprite, prefix;
 
-          if (isOk) {
+          // Verificar si todos los servicios están healthy
+          const allHealthy = Object.values(state.serviceStates).every(s => s.status === 'healthy');
+          const anyDown = Object.values(state.serviceStates).some(s => s.status === 'down');
+          const anyDegraded = Object.values(state.serviceStates).some(s =>
+            s.status === 'degraded' || s.status === 'starting'
+          );
+
+          if (allHealthy && Object.keys(state.serviceStates).length > 0) {
             sprite = Math.floor((now / 1000) % 2);
             prefix = 'mascot-ok';
             dom.statusTexts.forEach(el => el.style.display = 'none');
-          } else if (isMissing) {
+            dom.message.textContent = 'ready';
+            dom.messageServ.textContent = '';
+            state.allHealthy = true;
+          } else if (anyDown) {
             sprite = Math.floor((now / 1000) % 2);
             prefix = 'mascot-starting';
             dom.statusTexts.forEach(el => el.style.display = 'block');
-          } else if (hasMessage) {
+
+            // Mostrar el primer servicio down
+            const downService = Object.entries(state.serviceStates).find(([_, s]) => s.status === 'down');
+            if (downService) {
+              dom.messageServ.textContent = downService[0];
+              dom.message.textContent = `${downService[1].running}/${downService[1].desired} down`;
+            }
+            state.allHealthy = false;
+          } else if (anyDegraded) {
             sprite = Math.floor((now / 1000) % 3);
             prefix = 'mascot-checking';
             dom.statusTexts.forEach(el => el.style.display = 'block');
+
+            // Mostrar el primer servicio degraded
+            const degradedService = Object.entries(state.serviceStates).find(([_, s]) =>
+              s.status === 'degraded' || s.status === 'starting'
+            );
+            if (degradedService) {
+              dom.messageServ.textContent = degradedService[0];
+              dom.message.textContent = `${degradedService[1].running}/${degradedService[1].desired} ${degradedService[1].status}`;
+            }
+            state.allHealthy = false;
           } else {
-            // Default state when everything is starting
             sprite = 0;
             prefix = 'mascot-ok';
             dom.statusTexts.forEach(el => el.style.display = 'block');
+            state.allHealthy = false;
           }
 
           dom.mascot.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
         }
 
-        // Main UI update
-        function updateUI(data) {
-          if (!data) return;
+        // SSE Message Handler
+        function handleSSEMessage(event) {
+          try {
+            state.waiting = false;
+            state.lastUpdate = Date.now();
 
-          state.currentData = data;
-          state.lastUpdate = Date.now();
+            const data = JSON.parse(event.data);
+            console.log('SSE event received:', data);
 
-          // Update all service nodes
-          CONFIG.services.forEach(id => updateServiceNode(id, data));
-          updatePMSNode(data);
-
-          // Update console links
-          CONFIG.consoleServices.forEach(id => updateConsoleLink(id, data));
-
-          // Determine which service to show message from
-          let messageServ = data.last_message || '';
-
-          // If no last_message or empty serv, find first service with message/missing
-          if (!messageServ) {
-            for (const [key, service] of Object.entries(data.services || {})) {
-              if (service.message || service.missing) {
-                messageServ = key;
-                break;
-              }
+            if (!data.service || !data.status) {
+              console.warn('Invalid SSE data:', data);
+              return;
             }
-          }
 
-          const service = data.services?.[messageServ];
-          const message = service?.message || '';
-          const isMissing = service?.missing || false;
-          const hasAnyMessage = message !== '';
+            // Extraer nombre del servicio sin prefijo
+            const fullServiceName = data.service;
+            const serviceName = getServiceName(fullServiceName);
 
-          dom.message.textContent = message || 'ready';
-          dom.messageServ.textContent = messageServ ? messageServ.split('_').slice(1).join('_') : '';
+            // Verificar si es un servicio PMS
+            if (serviceName.startsWith('pms-')) {
+              state.pmsServices[serviceName] = data.status;
+              updatePMSNode();
+            } else {
+              // Actualizar servicio individual
+              updateServiceNode(serviceName, data.status);
+            }
 
-          updateMascot(data.ok, isMissing && !hasAnyMessage, hasAnyMessage);
+            // Actualizar mascot basado en todos los estados
+            updateMascot();
 
-          // Redirect if ok and not on status page
-          if (data.ok && !window.location.pathname.startsWith('/services/status')) {
-            window.location.href = window.location.href;
-          }
-        }
-
-        function restoreUIFromLastGood() {
-          if (state.lastGoodData) {
-            updateUI(state.lastGoodData);
+            state.wasDisconnected = false;
+          } catch (error) {
+            console.error('SSE parse error:', error);
           }
         }
 
@@ -521,16 +595,12 @@
           state.waiting = true;
           state.eventSource = new EventSource(CONFIG.sseEndpoint);
 
-          state.eventSource.onmessage = (event) => {
-            try {
-              state.waiting = false;
-              const data = JSON.parse(event.data);
-              updateUI(data);
-              state.wasDisconnected = false;
-            } catch (error) {
-              console.error('SSE parse error:', error);
-            }
-          };
+          state.eventSource.addEventListener('message', handleSSEMessage);
+
+          state.eventSource.addEventListener('ping', (event) => {
+            console.log('SSE ping received');
+            state.lastUpdate = Date.now();
+          });
 
           state.eventSource.onerror = () => {
             console.warn('SSE connection lost, reconnecting...');
@@ -542,10 +612,7 @@
 
           state.eventSource.onopen = () => {
             console.log('SSE connected');
-            if (state.wasDisconnected) {
-              restoreUIFromLastGood();
-              state.wasDisconnected = false;
-            }
+            state.wasDisconnected = false;
           };
         }
 
@@ -574,13 +641,13 @@
             showDisconnected();
             return;
           }
+
           const elapsed = Date.now() - state.lastUpdate;
           if (elapsed > CONFIG.waitingThreshold) {
             if (!state.waiting) {
               state.waiting = true;
               showWaiting();
             }
-            return;
           }
         }
 
@@ -614,6 +681,7 @@
           CONFIG.infoData = await fetchInfo();
           if (CONFIG.infoData) initSSE();
           setInterval(checkConnection, 2000);
+          setInterval(updateMascot, 1000); // Actualizar mascot cada segundo para animación
         }
 
         // Cleanup on unload
