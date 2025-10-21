@@ -1,8 +1,8 @@
 #!/bin/sh
 
 _MESSAGE="$1"
-_SERVER="proxy:8001"
-_POINT="http://$_SERVER/services/message"
+_SERVER="${2:-proxy}"
+_POINT="http://$_SERVER:8001/services/message"
 _DATA="{\"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\", \"node\":\"$NODE\", \"container\":\"$HOSTNAME\"}"
 
 while true
