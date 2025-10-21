@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import json
 import socket
 import subprocess
@@ -9,13 +10,14 @@ import select
 import asyncio
 import re
 import threading
+import logging
 from datetime import datetime
 from collections import deque
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 
-import httpx
-import dns.resolver
+# import httpx
+# import dns.resolver
 import docker
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
@@ -24,16 +26,13 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import Template
 from sse_starlette.sse import EventSourceResponse
 
-import logging
-from logging.handlers import RotatingFileHandler
-
 # Logging configuration
 logger = logging.getLogger('services')
-logger.setLevel(logging.DEBUG)
-handler = RotatingFileHandler('/var/log/services.log', maxBytes=1024 * 1024, backupCount=5)
+handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 # Configuration
 FILECONFIG = '/etc/haproxy/haproxy.cfg'
@@ -57,14 +56,7 @@ PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
 PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
 
 # Global data
-global_data = {
-    'services': {},
-    'message': '',
-    'need_reload': True,
-    'extensions': [],
-    'ok': False,
-    'now': datetime.now()
-}
+global_data = {'services': {}, 'message': '', 'need_reload': True, 'extensions': [], 'ok': False, 'now': datetime.now()}
 
 # Docker monitor
 docker_monitor = None
@@ -86,14 +78,14 @@ class DockerSwarmMonitor:
             swarm = info.get('Swarm', {})
 
             if not swarm.get('ControlAvailable', False):
-                logger.warning("Not running on a Swarm manager node - Docker monitoring disabled")
+                logger.warning('Not running on a Swarm manager node - Docker monitoring disabled')
                 self.client = None
                 return
 
-            logger.info(f"Connected to Swarm cluster ID: {swarm.get('Cluster', {}).get('ID', 'unknown')[:12]}")
-            logger.info(f"Nodes: {swarm.get('Nodes', 0)} | Managers: {swarm.get('Managers', 0)}")
+            logger.info(f'Connected to Swarm cluster ID: {swarm.get("Cluster", {}).get("ID", "unknown")[:12]}')
+            logger.info(f'Nodes: {swarm.get("Nodes", 0)} | Managers: {swarm.get("Managers", 0)}')
         except Exception as e:
-            logger.error(f"Error connecting to Docker: {e}")
+            logger.error(f'Error connecting to Docker: {e}')
             self.client = None
 
     def get_active_nodes_count(self):
@@ -101,12 +93,16 @@ class DockerSwarmMonitor:
             return 0
         try:
             nodes = self.client.nodes.list()
-            active = len([n for n in nodes
-                         if n.attrs['Status']['State'] == 'ready'
-                         and n.attrs['Spec']['Availability'] == 'active'])
+            active = len(
+                [
+                    n
+                    for n in nodes
+                    if n.attrs['Status']['State'] == 'ready' and n.attrs['Spec']['Availability'] == 'active'
+                ]
+            )
             return active
         except Exception as e:
-            logger.warning(f"Error counting nodes: {e}")
+            logger.warning(f'Error counting nodes: {e}')
             return 0
 
     def get_service_status(self, service_name):
@@ -115,11 +111,15 @@ class DockerSwarmMonitor:
 
         try:
             service = self.client.services.get(service_name)
+            logger.debug('service: %s', service)
             tasks = service.tasks()
+            logger.debug('tasks: %s', str(tasks))
 
             running_tasks = [t for t in tasks if t['Status']['State'] == 'running']
             running = len(running_tasks)
-            preparing = len([t for t in tasks if t['Status']['State'] in ['preparing', 'starting', 'assigned', 'accepted', 'ready']])
+            preparing = len(
+                [t for t in tasks if t['Status']['State'] in ['preparing', 'starting', 'assigned', 'accepted', 'ready']]
+            )
             failed = len([t for t in tasks if t['Status']['State'] in ['failed', 'rejected', 'shutdown', 'orphaned']])
 
             nodes_info = []
@@ -159,7 +159,7 @@ class DockerSwarmMonitor:
             else:
                 status = 'unknown'
 
-            return {
+            ret = {
                 'running': running,
                 'desired': desired,
                 'preparing': preparing,
@@ -169,10 +169,13 @@ class DockerSwarmMonitor:
                 'nodes': nodes_info,
                 'containers': containers_info,
             }
+            logger.debug(ret)
+
+            return ret
         except docker.errors.NotFound:
             return None
         except Exception as e:
-            logger.warning(f"Error getting status for {service_name}: {e}")
+            logger.warning(f'Error getting status for {service_name}: {e}')
             return None
 
     def update_global_data(self, service_name, status_info, action='update'):
@@ -183,7 +186,7 @@ class DockerSwarmMonitor:
                     'node': '',
                     'container': '',
                     'missing': True,
-                    'nodes': 0
+                    'nodes': 0,
                 }
 
             if status_info:
@@ -195,20 +198,14 @@ class DockerSwarmMonitor:
                 if 'containers' in status_info and status_info['containers']:
                     global_data['services'][service_name]['container'] = ', '.join(status_info['containers'])
 
-                emoji_map = {
-                    'healthy': '✅',
-                    'degraded': '⚠️',
-                    'starting': '🔄',
-                    'down': '❌',
-                    'unknown': '❓'
-                }
+                emoji_map = {'healthy': '✅', 'degraded': '⚠️', 'starting': '🔄', 'down': '❌', 'unknown': '❓'}
                 emoji = emoji_map.get(status_info['status'], '❓')
 
-                message = f"{emoji} {status_info['running']}/{status_info['desired']} {status_info['status']}"
+                message = f'{emoji} {status_info["running"]}/{status_info["desired"]} {status_info["status"]}'
                 if status_info['preparing'] > 0:
-                    message += f" (preparing: {status_info['preparing']})"
+                    message += f' (preparing: {status_info["preparing"]})'
                 if status_info['failed'] > 0:
-                    message += f" (failed: {status_info['failed']})"
+                    message += f' (failed: {status_info["failed"]})'
 
                 global_data['services'][service_name]['message'] = message
             else:
@@ -225,7 +222,7 @@ class DockerSwarmMonitor:
                     service_name = service.name
 
                     # Only monitor current stack services
-                    if not service_name.startswith(f"{STACK}_"):
+                    if not service_name.startswith(f'{STACK}_') or not service_name.startswith('infra_'):
                         continue
 
                     current_status = self.get_service_status(service_name)
@@ -239,27 +236,34 @@ class DockerSwarmMonitor:
                         if prev_status is None:
                             self.service_states[service_name] = current_status
                             self.update_global_data(service_name, current_status, 'initial')
-                        elif (prev_status['status'] != current_status['status'] or
-                              prev_status['running'] != current_status['running']):
-
+                        elif (
+                            prev_status['status'] != current_status['status']
+                            or prev_status['running'] != current_status['running']
+                        ):
                             logger.info(
-                                f"Service {service_name}: {prev_status['status']} "
-                                f"({prev_status['running']}/{prev_status['desired']}) -> "
-                                f"{current_status['status']} ({current_status['running']}/{current_status['desired']})"
+                                f'Service {service_name}: {prev_status["status"]} '
+                                f'({prev_status["running"]}/{prev_status["desired"]}) -> '
+                                f'{current_status["status"]} ({current_status["running"]}/{current_status["desired"]})'
                             )
 
                             self.service_states[service_name] = current_status
                             self.update_global_data(service_name, current_status, 'status_change')
 
-                            nodes_str = ', '.join(current_status.get('nodes', [])) if current_status.get('nodes') else 'unknown'
-                            containers_str = ', '.join(current_status.get('containers', [])) if current_status.get('containers') else 'unknown'
+                            nodes_str = (
+                                ', '.join(current_status.get('nodes', [])) if current_status.get('nodes') else 'unknown'
+                            )
+                            containers_str = (
+                                ', '.join(current_status.get('containers', []))
+                                if current_status.get('containers')
+                                else 'unknown'
+                            )
 
                             msg = {
                                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                                 'service': service_name,
-                                'text': f"Status: {current_status['status']} ({current_status['running']}/{current_status['desired']})",
+                                'text': f'Status: {current_status["status"]} ({current_status["running"]}/{current_status["desired"]})',
                                 'node': nodes_str,
-                                'container': containers_str
+                                'container': containers_str,
                             }
                             MESSAGES_LOG.append(msg)
 
@@ -267,7 +271,7 @@ class DockerSwarmMonitor:
 
             except Exception as e:
                 if self.running:
-                    logger.error(f"Error in check_all_services: {e}")
+                    logger.error(f'Error in check_all_services: {e}')
                 asyncio.run(asyncio.sleep(5))
 
     def monitor_events(self):
@@ -287,10 +291,10 @@ class DockerSwarmMonitor:
                 service_name = attrs.get('name', 'unknown')
 
                 # Only monitor current stack services
-                if not service_name.startswith(f"{STACK}_"):
+                if not service_name.startswith(f'{STACK}_') or not service_name.startswith('infra_'):
                     continue
 
-                asyncio.run(asyncio.sleep(0.5))
+                # asyncio.run(asyncio.sleep(0.5))
 
                 status_info = self.get_service_status(service_name)
 
@@ -304,15 +308,15 @@ class DockerSwarmMonitor:
 
                     self.update_global_data(service_name, status_info, action)
 
-                logger.info(f"Service event: {action} - {service_name}")
+                logger.info(f'Service event: {action} - {service_name}')
 
         except Exception as e:
             if self.running:
-                logger.error(f"Error in monitor_events: {e}")
+                logger.error(f'Error in monitor_events: {e}')
 
     def start(self):
         if not self.client:
-            logger.warning("Docker monitor not available - skipping")
+            logger.warning('Docker monitor not available - skipping')
             return
 
         self.running = True
@@ -322,7 +326,7 @@ class DockerSwarmMonitor:
             services = self.client.services.list()
             with self.lock:
                 for service in services:
-                    if not service.name.startswith(f"{STACK}_"):
+                    if not service.name.startswith(f'{STACK}_') or not service.name.startswith('infra_'):
                         continue
 
                     status = self.get_service_status(service.name)
@@ -330,7 +334,7 @@ class DockerSwarmMonitor:
                         self.service_states[service.name] = status
                         self.update_global_data(service.name, status, 'initial')
         except Exception as e:
-            logger.error(f"Error loading initial state: {e}")
+            logger.error(f'Error loading initial state: {e}')
 
         # Iniciar threads
         self.checker_thread = threading.Thread(target=self.check_all_services, daemon=True)
@@ -339,10 +343,10 @@ class DockerSwarmMonitor:
         self.monitor_thread = threading.Thread(target=self.monitor_events, daemon=True)
         self.monitor_thread.start()
 
-        logger.info("Docker Swarm monitor started")
+        logger.info('Docker Swarm monitor started')
 
     def stop(self):
-        logger.info("Stopping Docker monitor...")
+        logger.info('Stopping Docker monitor...')
         self.running = False
 
         if self.monitor_thread:
@@ -451,10 +455,11 @@ def get_extensions() -> List[str]:
 
 def get_nodes(service: str) -> List[str]:
     """Get service nodes - legacy fallback"""
+    """
     nodes = []
     cmd = f"dig tasks.{service} | grep ^tasks.{service} | awk '{{print $5}}'"
     _code, _out, _err = execute(cmd, interactive=False)
-    logger.debug(f"dig command: {cmd}, output: {_out}, error: {_err}")
+    logger.debug(f'dig command: {cmd}, output: {_out}, error: {_err}')
     if _code == 0:
         for node in _out.decode('utf-8').replace('\n', ' ').split(' '):
             if node:
@@ -462,6 +467,8 @@ def get_nodes(service: str) -> List[str]:
 
     logger.debug(f'nodes for {service}: {nodes}')
     return nodes
+    """
+    pass
 
 
 def check_server(host: str, port: int) -> bool:
@@ -578,10 +585,7 @@ async def manifest():
     """
     content = Template(template).render({})
 
-    return Response(
-        content=content,
-        media_type='text/cache-manifest'
-    )
+    return Response(content=content, media_type='text/cache-manifest')
 
 
 @app.get('/services/logs', response_class=HTMLResponse)
@@ -645,16 +649,8 @@ async def get_message():
                     'node': '',
                     'container': '',
                     'missing': True,
-                    'nodes': 0
+                    'nodes': 0,
                 }
-
-            if docker_monitor and docker_monitor.client:
-                pass
-            else:
-                # Fallback method
-                nodes = len(get_nodes(_service))
-                global_data['services'][service_name]['missing'] = nodes < 1
-                global_data['services'][service_name]['nodes'] = nodes
 
             if global_data['services'][service_name]['missing']:
                 global_data['need_reload'] = True
@@ -697,27 +693,12 @@ async def post_message(request: Request):
     """Post a new message"""
     try:
         data = await request.json()
+        logger.debug(data)
     except Exception:
         data = {}
 
     data['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     MESSAGES_LOG.append(data)
-
-    try:
-        ips = dns.resolver.resolve('tasks.proxy', 'A')
-        async with httpx.AsyncClient() as client:
-            for ip in ips:
-                await client.post(f'http://{str(ip)}:8001/services/update_message', json=data)
-    except Exception as e:
-        logger.error('Error posting message: %s', str(e))
-
-    return JSONResponse(content={'status': 'ok'})
-
-
-@app.post('/services/update_message')
-async def update_message(request: Request):
-    """Update message from other proxy"""
-    data = await request.json()
     make_global_data(data)
 
     return JSONResponse(content={'status': 'ok'})
@@ -725,7 +706,7 @@ async def update_message(request: Request):
 
 @app.get('/services/extensions', response_class=PlainTextResponse)
 async def extensions():
-    return " ".join(get_extensions())
+    return ' '.join(get_extensions())
 
 
 @app.get('/services/nginx_extensions', response_class=PlainTextResponse)
@@ -762,9 +743,9 @@ async def message_stream(request: Request):
                 break
 
             current_state = {
-                'last_message': global_data.get('last_message', ''),
+                # 'last_message': global_data.get('last_message', ''),
                 'services': global_data['services'].copy(),
-                'ok': global_data['ok'],
+                # 'ok': global_data['ok'],
                 'organization': get_organization(),
                 'stack': STACK,
                 'tag': TAG,
