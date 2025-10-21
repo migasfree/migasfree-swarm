@@ -444,24 +444,6 @@ def get_extensions() -> List[str]:
     return list(set(extensions))
 
 
-def check_server(host: str, port: int) -> bool:
-    """Check if server is reachable"""
-    try:
-        args = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-    except Exception:
-        return False
-
-    for family, socktype, proto, _, sockaddr in args:
-        s = socket.socket(family, socktype, proto)
-        try:
-            s.connect(sockaddr)
-        except socket.error:
-            return False
-        else:
-            s.close()
-            return True
-
-
 def config_haproxy():
     """Configure HAProxy"""
     context = {
