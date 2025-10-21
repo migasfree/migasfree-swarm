@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 function wait {
@@ -44,7 +45,7 @@ cd /usr/share/services/
 python3 services.py 8001 &
 cd -
 
-message "Initial configuration"
+send_message "Initial configuration" "localhost"
 
 echo "
 
@@ -77,7 +78,7 @@ mkdir -p /var/run/haproxy/
 rm -rf /usr/local/etc/haproxy/certificates || :
 ln -s /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
 
-message ""
+send_message "" "localhost"
 
 haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
     -p /var/run/haproxy/haproxy.pid -4
