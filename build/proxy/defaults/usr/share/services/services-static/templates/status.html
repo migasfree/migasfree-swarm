@@ -254,6 +254,7 @@
 
         // Configuration
         const CONFIG = {
+          infoEndpoint: '/services/info',
           sseEndpoint: '/services/stream',
           reconnectDelay: 5000,
           waitingThreshold: 5000,
@@ -262,7 +263,8 @@
                      'database', 'datastore', 'portainer', 'datashare_console', 'assistant', 'mcp-server'],
           consoleServices: ['console', 'portainer', 'proxy', 'ca', 'public', 'core',
                            'database_console', 'datastore_console', 'datashare_console',
-                           'worker_console', 'assistant']
+                           'worker_console', 'assistant'],
+          infoData: null,
         };
 
         // State
@@ -315,7 +317,22 @@
           if (publicLink) dom.links.public = publicLink;
         }
 
-        // Setup links
+        async function fetchInfo() {
+          try {
+            const response = await fetch(CONFIG.infoEndpoint);
+            if (!response.ok) throw new Error('Error getting /services/info');
+            const info = await response.json();
+            state.infoData = info;
+            dom.organization.textContent = info.organization || '';
+            dom.stack.textContent = `stack: ${info.stack || ''}`;
+            dom.tag.textContent = `migasfree server: ${info.tag || ''}`;
+            return info;
+          } catch (error) {
+            console.error('Failed to load info:', error);
+            return null;
+          }
+        }
+
         function setupLinks() {
           const host = window.location.host;
           const links = {
@@ -350,28 +367,19 @@
         // Update service node
         function updateServiceNode(id, data) {
           console.log('*****************************************')
-          let serviceKey = `${data.stack}_${id}`;
-          console.log('serviceKey', serviceKey)  // DEBUG
-          let service = data.services?.[serviceKey];
-
-          if (!service) {
-            serviceKey = `infra_${id}`;
-            console.log('serviceKey (infra)', serviceKey); // DEBUG
-            service = data.services?.[serviceKey];
-          }
-
+          const service = data.service;
           console.log('service', service)  // DEBUG
           if (!service && !dom.nodes[id]) return;
 
           const node = dom.nodes[id];
           console.log('node', node);  // DEBUG
-          const isDisabled = data.disables?.includes(id);
+          const isDisabled = CONFIG.infoData.disabled?.includes(id);
           console.log('isDisabled', isDisabled);  // DEBUG
-          const isMissing = service?.missing && !service?.message;
+          const isMissing = data.status.running === 0;
           console.log('isMissing', isMissing);  // DEBUG
-          const hasMessage = !!service?.message;
+          const hasMessage = !!data?.message;
           console.log('hasMessage', hasMessage);  // DEBUG
-          const nodes = service?.nodes || 0;
+          const nodes = data.status.nodes || 0;
           console.log('nodes', nodes);  // DEBUG
 
           let color = '#a9dfbf'; // green
@@ -390,18 +398,16 @@
 
         // Update PMS nodes
         function updatePMSNode(data) {
-          console.log('data', data);  // DEBUG
           const stack = data.stack || '';
           let missing = false, hasMessage = false, totalNodes = 0;
 
-          Object.entries(data.services || {}).forEach(([key, service]) => {
-            console.log(key, service);  // DEBUG
-            if (key.startsWith(`${stack}_pms-`)) {
-              if (service.missing) missing = true;
-              if (service.message) hasMessage = true;
-              totalNodes += service.nodes || 0;
-            }
-          });
+          if (!data.service.startsWith(`${stack}_pms-`)) {
+            return
+          }
+          console.log('updatePMSNode data', data);  // DEBUG
+
+          if (data.status.nodes.length === 0) missing = true;
+          totalNodes += service.nodes || 0;
 
           const node = dom.nodes.pms;
           // const node = document.getElementById('pms')
@@ -470,11 +476,6 @@
 
           // Update console links
           CONFIG.consoleServices.forEach(id => updateConsoleLink(id, data));
-
-          // Update info
-          dom.organization.textContent = data.organization || '';
-          dom.stack.textContent = `stack: ${data.stack || ''}`;
-          dom.tag.textContent = `migasfree server: ${data.tag || ''}`;
 
           // Determine which service to show message from
           let messageServ = data.last_message || '';
@@ -606,11 +607,12 @@
         }
 
         // Initialize
-        function init() {
+        async function init() {
           cacheDOMElements();
           setupLinks();
           showWelcome();
-          initSSE();
+          CONFIG.infoData = await fetchInfo();
+          if (CONFIG.infoData) initSSE();
           setInterval(checkConnection, 2000);
         }
 
