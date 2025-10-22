@@ -1,94 +1,273 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width" />
-    <style>
-      @font-face {
-        font-family: Pompiere;
-        src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width" />
+  <title>Status</title>
+  <style>
+    @font-face {
+      font-family: Pompiere;
+      src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+    }
 
-      * {
-        box-sizing: border-box;
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      font-family: Pompiere, sans-serif;
+      color: #222;
+      background: #f5f5f5;
+    }
+
+    .top-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-panel, .status-panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .info-panel h2, .status-panel h2 {
+      display: none;
+    }
+
+    .info-text {
+      color: #000;
+      margin: 5px 0;
+      font-size: 1.5em;
+    }
+
+    .status-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #mascot {
+      width: 60px;
+      height: 60px;
+      margin-top: 15px;
+    }
+
+    .status-text {
+      font-size: 1.3em;
+      font-style: italic;
+      color: #000;
+      margin: 3px 0;
+    }
+
+    .svg-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .svg-section svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .node {
+      fill: lightgray;
+      transition: fill 0.3s ease;
+    }
+
+    .link {
+      fill: green;
+      fill-opacity: 0.07;
+      cursor: pointer;
+      transition: fill-opacity 0.2s ease;
+    }
+
+    .link:hover {
+      fill-opacity: 0.15;
+    }
+
+    .icon {
+      width: 10px;
+      height: 10px;
+    }
+
+    .circle-text {
+      text-anchor: middle;
+      font-size: 3px;
+      fill: #333;
+    }
+
+    text {
+      font-size: 3px;
+      font-style: italic;
+      fill: #868e96;
+    }
+
+    .logs-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .logs-header {
+      padding: 15px 20px;
+      background: #f8f9fa;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .logs-header:hover {
+      background: #e9ecef;
+    }
+
+    .logs-header h2 {
+      margin: 0;
+      font-size: 1.5em;
+      color: #333;
+    }
+
+    .toggle-icon {
+      font-size: 1.5em;
+      transition: transform 0.3s ease;
+    }
+
+    .toggle-icon.expanded {
+      transform: rotate(180deg);
+    }
+
+    .logs-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .logs-content.expanded {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .logs-table-container {
+      padding: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.9em;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+
+    .loading, .error, .empty {
+      padding: 40px;
+      text-align: center;
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+
+    @media (max-width: 768px) {
+      .top-section {
+        grid-template-columns: 1fr;
       }
 
       body {
-        width: 100%;
-        height: 100vh;
-        margin: 0;
-        padding: 0;
-        font-family: Pompiere, sans-serif;
-        color: #ddd;
-        overflow: hidden;
+        padding: 10px;
       }
 
-      svg {
-        width: 100%;
-        height: 100%;
+      th, td {
+        padding: 6px;
+        font-size: 0.9em;
       }
 
-      .node {
-        fill: lightgray;
-        transition: fill 0.3s ease;
+      #mascot {
+        width: 60px;
+        height: 60px;
       }
+    }
 
-      .link {
-        fill: green;
-        fill-opacity: 0.07;
-        cursor: pointer;
-        transition: fill-opacity 0.2s ease;
-      }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
 
-      .link:hover {
-        fill-opacity: 0.15;
-      }
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Section: Info + Status -->
+  <div class="top-section">
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <h2>Information</h2>
+      <p class="info-text" id="organization"></p>
+      <p class="info-text" id="stack"></p>
+      <p class="info-text" id="tag"></p>
+    </div>
 
-      .icon {
-        width: 10px;
-        height: 10px;
-      }
+    <!-- Status Panel -->
+    <div class="status-panel">
+      <h2>Status</h2>
+      <p class="status-text" id="message_serv"></p>
+      <p class="status-text" id="message">one moment, please</p>
+      <img id="mascot" src="/services-static/img/mascot-welcome.svg" alt="Status" />
+    </div>
+  </div>
 
-      .circle-text {
-        text-anchor: middle;
-        font-size: 3px;
-        fill: #333;
-      }
-
-      .status-text {
-        font-size: 2.5px;
-        font-style: italic;
-        fill: #000;
-      }
-
-      .info-text {
-        font-style: italic;
-        fill: #000;
-      }
-
-      #organization {
-        font-size: 3px;
-      }
-
-      #stack {
-        font-size: 2.5px;
-      }
-
-      #tag {
-        font-size: 2px;
-      }
-
-      text {
-        font-family: Pompiere;
-        font-size: 3px;
-        font-style: italic;
-        fill: #868e96;
-      }
-    </style>
-
-    <title>Status</title>
-  </head>
-  <body>
+  <!-- SVG Section -->
+  <div class="svg-section">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70" id="main-svg">
       <defs>
         <filter id="glow">
@@ -100,27 +279,8 @@
         </filter>
       </defs>
 
-      <!-- Preload images -->
-      <image id="preload-disconnect" href="/services-static/img/mascot-disconnect.svg" x="0" y="0" height="0" width="0" />
-
-      <!-- Info section -->
-      <g id="info-section" transform="translate(146, 80)">
-        <text id="organization" class="info-text"></text>
-        <text id="stack" class="info-text" x="0" y="3"></text>
-        <text id="tag" class="info-text" x="0" y="5"></text>
-      </g>
-
-      <!-- Status message -->
-      <g transform="translate(146, 106)">
-        <a href="/services/logs" target="_blank">
-          <image id="mascot" href="/" class="link" x="6" y="8" height="10" width="10" />
-        </a>
-        <text class="status-text" id="message_serv"></text>
-        <text class="status-text" id="message" x="0" y="3">one moment, please</text>
-      </g>
-
       <!-- Services nodes -->
-      <g id="portainer-node" transform="translate(29, 83)">
+      <g id="portainer-node" transform="translate(40, 83)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
         <a id="portainer_link_parent" target="_blank">
@@ -129,7 +289,7 @@
         <text x="3" y="2">portainer</text>
       </g>
 
-      <g id="proxy-node" transform="translate(29, 103)">
+      <g id="proxy-node" transform="translate(40, 103)">
         <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
         <a id="proxy_link_parent" target="_blank">
@@ -138,7 +298,7 @@
         <text x="4" y="2">proxy</text>
       </g>
 
-      <g id="ca-node" transform="translate(29, 123)">
+      <g id="ca-node" transform="translate(40, 123)">
         <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
         <circle id="ca" class="node" r="1.5" filter="url(#glow)" />
         <a id="ca_link_parent" target="_blank">
@@ -147,7 +307,7 @@
         <text x="6" y="2">ca</text>
       </g>
 
-      <g id="console-node" transform="translate(56, 83)">
+      <g id="console-node" transform="translate(70, 83)">
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
@@ -157,7 +317,7 @@
         <text x="4" y="2">console</text>
       </g>
 
-      <g id="public-node" transform="translate(56, 103)">
+      <g id="public-node" transform="translate(70, 103)">
         <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
@@ -165,21 +325,21 @@
         <text x="4" y="2">public</text>
       </g>
 
-      <g id="pms-node" transform="translate(56, 123)">
+      <g id="pms-node" transform="translate(70, 123)">
         <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
         <circle id="pms" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">pms</text>
       </g>
 
-      <g id="beat-node" transform="translate(76, 83)">
+      <g id="beat-node" transform="translate(90, 83)">
         <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
         <circle id="beat" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">beat</text>
       </g>
 
-      <g id="core-node" transform="translate(76, 103)">
+      <g id="core-node" transform="translate(90, 103)">
         <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
         <circle id="core" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
@@ -189,7 +349,7 @@
         <text x="5" y="2">core</text>
       </g>
 
-      <g id="worker-node" transform="translate(76, 123)">
+      <g id="worker-node" transform="translate(90, 123)">
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
@@ -199,7 +359,7 @@
         <text x="4" y="2">worker</text>
       </g>
 
-      <g id="database-node" transform="translate(96, 83)">
+      <g id="database-node" transform="translate(110, 83)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" filter="url(#glow)" />
         <a id="database_console_link_parent" target="_blank">
@@ -208,7 +368,7 @@
         <text x="3" y="2">database</text>
       </g>
 
-      <g id="datastore-node" transform="translate(96, 103)">
+      <g id="datastore-node" transform="translate(110, 103)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
         <a id="datastore_console_link_parent" target="_blank">
@@ -217,7 +377,7 @@
         <text x="3" y="2">datastore</text>
       </g>
 
-      <g id="datashare-node" transform="translate(96, 123)">
+      <g id="datashare-node" transform="translate(110, 123)">
         <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
         <a id="datashare_console_link_parent" target="_blank">
@@ -226,13 +386,13 @@
         <text x="3" y="2">datashare</text>
       </g>
 
-      <g id="certbot-node" transform="translate(116, 83)">
+      <g id="certbot-node" transform="translate(130, 83)">
         <image class="icon" href="/services-static/img/certbot.svg" x="2" y="-12" />
         <circle id="certbot" class="node" r="1.5" />
         <text x="4" y="2">certbot</text>
       </g>
 
-      <g id="assistant-node" transform="translate(116, 103)">
+      <g id="assistant-node" transform="translate(130, 103)">
         <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
         <a id="assistant_link_parent" target="_blank">
@@ -241,463 +401,586 @@
         <text x="3" y="2">assistant</text>
       </g>
 
-      <g id="mcp-server-node" transform="translate(116, 123)">
+      <g id="mcp-server-node" transform="translate(130, 123)">
         <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
         <circle id="mcp-server" class="node" r="1.5" filter="url(#glow)" />
         <text x="3" y="2">mcp server</text>
       </g>
     </svg>
+  </div>
 
-    <script>
-      (function() {
-        'use strict';
+  <!-- Logs Section (Collapsible) -->
+  <div class="logs-section">
+    <div class="logs-header" id="logs-toggle">
+      <h2>Messages Log</h2>
+      <span class="toggle-icon" id="toggle-icon">▼</span>
+    </div>
+    <div class="logs-content" id="logs-content">
+      <div class="logs-table-container" id="logs-container">
+        <p class="loading">Loading messages...</p>
+      </div>
+    </div>
+  </div>
 
-        // Configuration
-        const CONFIG = {
-          infoEndpoint: '/services/info',
-          sseEndpoint: '/services/stream',
-          reconnectDelay: 5000,
-          waitingThreshold: 30000,
-          welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
-          // Map service names from SSE to HTML element IDs
-          serviceMapping: {
-            'proxy': 'proxy',
-            'ca': 'ca',
-            'certbot': 'certbot',
-            'console': 'console',
-            'core': 'core',
-            'beat': 'beat',
-            'worker': 'worker',
-            'public': 'public',
-            'database': 'database',
-            'datastore': 'datastore',
-            'portainer': 'portainer',
-            'datashare_console': 'datashare_console',
-            'assistant': 'assistant',
-            'mcp-server': 'mcp-server'
-          },
-          consoleServices: ['console', 'portainer', 'proxy', 'ca', 'core',
-                           'database', 'datastore', 'datashare_console',
-                           'worker', 'assistant'],
-          infoData: null,
+  <script>
+    (function() {
+      'use strict';
+
+      // Configuration
+      const CONFIG = {
+        infoEndpoint: '/services/info',
+        statusSSEEndpoint: '/services/stream',
+        logsSSEEndpoint: '/services/logs/stream',
+        reconnectDelay: 5000,
+        waitingThreshold: 5000,
+        welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
+        logsColumns: ['timestamp', 'service', 'status', 'text'],
+        serviceMapping: {
+          'proxy': 'proxy',
+          'ca': 'ca',
+          'certbot': 'certbot',
+          'console': 'console',
+          'core': 'core',
+          'beat': 'beat',
+          'worker': 'worker',
+          'public': 'public',
+          'database': 'database',
+          'datastore': 'datastore',
+          'portainer': 'portainer',
+          'datashare_console': 'datashare_console',
+          'assistant': 'assistant',
+          'mcp-server': 'mcp-server'
+        },
+        consoleServices: ['console', 'portainer', 'proxy', 'ca', 'core',
+                         'database', 'datastore', 'datashare_console',
+                         'worker', 'assistant'],
+        infoData: null,
+      };
+
+      const state = {
+        statusEventSource: null,
+        logsEventSource: null,
+        lastUpdate: Date.now(),
+        serviceStates: {},
+        pmsServices: {},
+        waiting: true,
+        wasDisconnected: false,
+        allHealthy: false,
+        logsExpanded: false,
+        logsData: []
+      };
+
+      // DOM Cache
+      const dom = {
+        nodes: {},
+        links: {},
+        nodeTexts: {},
+        mascot: null,
+        message: null,
+        messageServ: null,
+        organization: null,
+        stack: null,
+        tag: null,
+        logsToggle: null,
+        logsContent: null,
+        logsContainer: null,
+        toggleIcon: null
+      };
+
+      // Initialize DOM cache
+      function cacheDOMElements() {
+        dom.mascot = document.getElementById('mascot');
+        dom.message = document.getElementById('message');
+        dom.messageServ = document.getElementById('message_serv');
+        dom.organization = document.getElementById('organization');
+        dom.stack = document.getElementById('stack');
+        dom.tag = document.getElementById('tag');
+        dom.logsToggle = document.getElementById('logs-toggle');
+        dom.logsContent = document.getElementById('logs-content');
+        dom.logsContainer = document.getElementById('logs-container');
+        dom.toggleIcon = document.getElementById('toggle-icon');
+
+        // Cache all service nodes
+        Object.values(CONFIG.serviceMapping).forEach(elementId => {
+          dom.nodes[elementId] = document.getElementById(elementId);
+          dom.nodeTexts[elementId] = document.getElementById(`nodes_${elementId}`);
+        });
+
+        // Cache console links
+        CONFIG.consoleServices.forEach(service => {
+          const linkParent = document.getElementById(`${service}_link_parent`);
+          const link = document.getElementById(`${service}_link`);
+          if (linkParent) dom.links[service] = linkParent;
+          else if (link) dom.links[service] = link;
+        });
+
+        // Special case for public link
+        const publicLink = document.getElementById('public_link');
+        if (publicLink) dom.links.public = publicLink;
+      }
+
+      async function fetchInfo() {
+        try {
+          const response = await fetch(CONFIG.infoEndpoint);
+          if (!response.ok) throw new Error('Error getting /services/info');
+          const info = await response.json();
+          CONFIG.infoData = info;
+          dom.organization.textContent = info.organization || '';
+          dom.stack.textContent = `stack: ${info.stack || ''}`;
+          dom.tag.textContent = `migasfree server: ${info.tag || ''}`;
+          return info;
+        } catch (error) {
+          console.error('Failed to load info:', error);
+          return null;
+        }
+      }
+
+      function setupLinks() {
+        const host = window.location.host;
+        const links = {
+          portainer_link_parent: `https://portainer-${host}`,
+          proxy_link_parent: `https://${host}/stats`,
+          ca_link_parent: `https://${host}/ca/docs`,
+          console_link_parent: `https://${host}/`,
+          core_link_parent: `https://${host}/docs/`,
+          worker_console_link_parent: `https://worker-${host}/tasks`,
+          database_console_link_parent: `https://database-${host}`,
+          datastore_console_link_parent: `https://datastore-${host}`,
+          datashare_console_link_parent: `https://datashare-${host}`,
+          assistant_link_parent: `https://assistant-${host}`
         };
 
-        // State - ahora almacenamos el estado de cada servicio individualmente
-        const state = {
-          eventSource: null,
-          lastUpdate: Date.now(),
-          serviceStates: {},  // Estado individual de cada servicio
-          pmsServices: {},    // Servicios PMS separados
-          waiting: true,
-          wasDisconnected: false,
-          allHealthy: false
+        Object.entries(links).forEach(([id, href]) => {
+          const el = document.getElementById(id);
+          if (el) el.setAttribute('href', href);
+        });
+
+        // Public link special handling
+        const publicLink = document.getElementById('public_link');
+        if (publicLink) {
+          publicLink.style.cursor = 'pointer';
+          publicLink.addEventListener('click', () => {
+            window.open(`https://${host}/pool/`, '_blank');
+            window.open(`https://${host}/public/`, '_blank');
+          });
+        }
+      }
+
+      function getServiceName(fullName) {
+        if (!CONFIG.infoData) return fullName;
+        const stack = CONFIG.infoData.stack;
+
+        if (fullName.startsWith('infra_')) {
+          return fullName.replace('infra_', '');
+        }
+
+        if (fullName.startsWith(`${stack}_`)) {
+          return fullName.replace(`${stack}_`, '');
+        }
+
+        return fullName;
+      }
+
+      function getElementId(serviceName) {
+        return CONFIG.serviceMapping[serviceName] || serviceName;
+      }
+
+      function getColorFromStatus(status) {
+        const colorMap = {
+          'healthy': '#a9dfbf',   // green
+          'degraded': '#f39c12',  // orange
+          'starting': '#f9e79f',  // yellow
+          'down': '#e74c3c',      // red
+          'unknown': '#95a5a6'    // gray
         };
+        return colorMap[status] || 'lightgray';
+      }
 
-        // DOM Cache
-        const dom = {
-          nodes: {},
-          links: {},
-          nodeTexts: {},
-          mascot: null,
-          statusTexts: null,
-          message: null,
-          messageServ: null,
-          organization: null,
-          stack: null,
-          tag: null
-        };
+      function updateServiceNode(serviceName, statusInfo) {
+        const elementId = getElementId(serviceName);
+        const node = dom.nodes[elementId];
 
-        // Initialize DOM cache
-        function cacheDOMElements() {
-          dom.mascot = document.getElementById('mascot');
-          dom.message = document.getElementById('message');
-          dom.messageServ = document.getElementById('message_serv');
-          dom.organization = document.getElementById('organization');
-          dom.stack = document.getElementById('stack');
-          dom.tag = document.getElementById('tag');
-          dom.statusTexts = document.querySelectorAll('.status-text');
-
-          // Cache all service nodes
-          Object.values(CONFIG.serviceMapping).forEach(elementId => {
-            dom.nodes[elementId] = document.getElementById(elementId);
-            dom.nodeTexts[elementId] = document.getElementById(`nodes_${elementId}`);
-          });
-
-          // Cache console links
-          CONFIG.consoleServices.forEach(service => {
-            const linkParent = document.getElementById(`${service}_link_parent`);
-            const link = document.getElementById(`${service}_link`);
-            if (linkParent) dom.links[service] = linkParent;
-            else if (link) dom.links[service] = link;
-          });
-
-          // Special case for public link
-          const publicLink = document.getElementById('public_link');
-          if (publicLink) dom.links.public = publicLink;
+        if (!node) {
+          console.warn(`Node not found for service: ${serviceName} (element: ${elementId})`);
+          return;
         }
 
-        async function fetchInfo() {
-          try {
-            const response = await fetch(CONFIG.infoEndpoint);
-            if (!response.ok) throw new Error('Error getting /services/info');
-            const info = await response.json();
-            CONFIG.infoData = info;
-            dom.organization.textContent = info.organization || '';
-            dom.stack.textContent = `stack: ${info.stack || ''}`;
-            dom.tag.textContent = `migasfree server: ${info.tag || ''}`;
-            return info;
-          } catch (error) {
-            console.error('Failed to load info:', error);
-            return null;
-          }
+        const isDisabled = CONFIG.infoData?.disabled?.includes(serviceName);
+
+        let color;
+        if (isDisabled) {
+          color = 'lightgray';
+        } else {
+          color = getColorFromStatus(statusInfo.status);
+        }
+        console.log(`${serviceName}: ${color}`)
+
+        node.style.fill = color;
+        node.style.display = 'block';
+
+        // Updates nodes if > 1
+        if (dom.nodeTexts[elementId]) {
+          const nodeCount = statusInfo.running || 0;
+          dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
         }
 
-        function setupLinks() {
-          const host = window.location.host;
-          const links = {
-            portainer_link_parent: `https://portainer-${host}`,
-            proxy_link_parent: `https://${host}/stats`,
-            ca_link_parent: `https://${host}/ca/docs`,
-            console_link_parent: `https://${host}/`,
-            core_link_parent: `https://${host}/docs/`,
-            worker_console_link_parent: `https://worker-${host}/tasks`,
-            database_console_link_parent: `https://database-${host}`,
-            datastore_console_link_parent: `https://datastore-${host}`,
-            datashare_console_link_parent: `https://datashare-${host}`,
-            assistant_link_parent: `https://assistant-${host}`
-          };
-
-          Object.entries(links).forEach(([id, href]) => {
-            const el = document.getElementById(id);
-            if (el) el.setAttribute('href', href);
-          });
-
-          // Public link special handling
-          const publicLink = document.getElementById('public_link');
-          if (publicLink) {
-            publicLink.style.cursor = 'pointer';
-            publicLink.addEventListener('click', () => {
-              window.open(`https://${host}/pool/`, '_blank');
-              window.open(`https://${host}/public/`, '_blank');
-            });
-          }
+        // Updates console link visibility
+        const link = dom.links[serviceName];
+        if (link) {
+          const shouldShow = statusInfo.running > 0 && !isDisabled;
+          link.style.display = shouldShow ? 'block' : 'none';
         }
 
-        // Extraer el nombre del servicio sin el prefijo del stack
-        function getServiceName(fullName) {
-          if (!CONFIG.infoData) return fullName;
-          const stack = CONFIG.infoData.stack;
+        state.serviceStates[serviceName] = statusInfo;
+      }
 
-          // Manejar servicios infra_
-          if (fullName.startsWith('infra_')) {
-            return fullName.replace('infra_', '');
-          }
+      function updatePMSNode() {
+        const node = dom.nodes.pms;
+        if (!node) return;
 
-          // Manejar servicios del stack
-          if (fullName.startsWith(`${stack}_`)) {
-            return fullName.replace(`${stack}_`, '');
-          }
-
-          return fullName;
+        const pmsServiceNames = Object.keys(state.pmsServices);
+        if (pmsServiceNames.length === 0) {
+          node.style.display = 'none';
+          return;
         }
 
-        // Mapear nombre de servicio a ID de elemento
-        function getElementId(serviceName) {
-          return CONFIG.serviceMapping[serviceName] || serviceName;
+        let totalRunning = 0;
+        let totalDesired = 0;
+        let anyDown = false;
+        let anyDegraded = false;
+
+        pmsServiceNames.forEach(name => {
+          const status = state.pmsServices[name];
+          totalRunning += status.running || 0;
+          totalDesired += status.desired || 0;
+          if (status.status === 'down') anyDown = true;
+          if (status.status === 'degraded' || status.status === 'starting') anyDegraded = true;
+        });
+
+        let color = '#a9dfbf';  // green
+        if (anyDown) color = '#e74c3c';
+        else if (anyDegraded) color = '#f39c12';
+        else if (totalRunning < totalDesired) color = '#f39c12';
+        console.log(`updatePMSNode: ${color}`)
+
+        node.style.fill = color;
+        node.style.display = 'block';
+
+        if (dom.nodeTexts.pms) {
+          dom.nodeTexts.pms.textContent = totalRunning >= 2 ? totalRunning : '';
         }
+      }
 
-        // Determinar color según status
-        function getColorFromStatus(status) {
-          const colorMap = {
-            'healthy': '#a9dfbf',   // green
-            'degraded': '#f39c12',  // orange
-            'starting': '#f9e79f',  // yellow
-            'down': '#e74c3c',      // red
-            'unknown': '#95a5a6'    // gray
-          };
-          return colorMap[status] || 'lightgray';
-        }
+      function updateMascot() {
+        const now = Date.now();
+        let sprite, prefix;
 
-        // Update individual service node
-        function updateServiceNode(serviceName, statusInfo) {
-          const elementId = getElementId(serviceName);
-          const node = dom.nodes[elementId];
+        const allHealthy = Object.values(state.serviceStates).every(s => s.status === 'healthy');
+        const anyDown = Object.values(state.serviceStates).some(s => s.status === 'down');
+        const anyDegraded = Object.values(state.serviceStates).some(s =>
+          s.status === 'degraded' || s.status === 'starting'
+        );
 
-          if (!node) {
-            console.warn(`Node not found for service: ${serviceName} (element: ${elementId})`);
-            return;
+        if (allHealthy && Object.keys(state.serviceStates).length > 0) {
+          sprite = Math.floor((now / 1000) % 2);
+          prefix = 'mascot-ok';
+          dom.message.textContent = 'ready';
+          dom.messageServ.textContent = '';
+          state.allHealthy = true;
+        } else if (anyDown) {
+          sprite = Math.floor((now / 1000) % 2);
+          prefix = 'mascot-starting';
+
+          const downService = Object.entries(state.serviceStates).find(([_, s]) => s.status === 'down');
+          if (downService) {
+            dom.messageServ.textContent = downService[0];
+            dom.message.textContent = `${downService[1].running}/${downService[1].desired} down`;
           }
+          state.allHealthy = false;
+        } else if (anyDegraded) {
+          sprite = Math.floor((now / 1000) % 3);
+          prefix = 'mascot-checking';
 
-          // Verificar si el servicio está deshabilitado
-          const isDisabled = CONFIG.infoData?.disabled?.includes(serviceName);
-
-          let color;
-          if (isDisabled) {
-            color = 'lightgray';
-          } else {
-            color = getColorFromStatus(statusInfo.status);
-          }
-
-          node.style.fill = color;
-          node.style.display = 'block';
-
-          // Actualizar número de nodos si hay más de 1
-          if (dom.nodeTexts[elementId]) {
-            const nodeCount = statusInfo.running || 0;
-            dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
-          }
-
-          // Actualizar visibilidad del link de consola
-          const link = dom.links[serviceName];
-          if (link) {
-            const shouldShow = statusInfo.running > 0 && !isDisabled;
-            link.style.display = shouldShow ? 'block' : 'none';
-          }
-
-          // Guardar estado
-          state.serviceStates[serviceName] = statusInfo;
-        }
-
-        // Update PMS nodes (agregado de múltiples servicios pms-*)
-        function updatePMSNode() {
-          const node = dom.nodes.pms;
-          if (!node) return;
-
-          const pmsServiceNames = Object.keys(state.pmsServices);
-          if (pmsServiceNames.length === 0) {
-            node.style.display = 'none';
-            return;
-          }
-
-          let totalRunning = 0;
-          let totalDesired = 0;
-          let anyDown = false;
-          let anyDegraded = false;
-
-          pmsServiceNames.forEach(name => {
-            const status = state.pmsServices[name];
-            totalRunning += status.running || 0;
-            totalDesired += status.desired || 0;
-            if (status.status === 'down') anyDown = true;
-            if (status.status === 'degraded' || status.status === 'starting') anyDegraded = true;
-          });
-
-          let color = '#a9dfbf'; // green
-          if (anyDown) color = '#e74c3c';
-          else if (anyDegraded) color = '#f39c12';
-          else if (totalRunning < totalDesired) color = '#f39c12';
-
-          node.style.fill = color;
-          node.style.display = 'block';
-
-          if (dom.nodeTexts.pms) {
-            dom.nodeTexts.pms.textContent = totalRunning >= 2 ? totalRunning : '';
-          }
-        }
-
-        // Update mascot animation basado en el estado general
-        function updateMascot() {
-          const now = Date.now();
-          let sprite, prefix;
-
-          // Verificar si todos los servicios están healthy
-          const allHealthy = Object.values(state.serviceStates).every(s => s.status === 'healthy');
-          const anyDown = Object.values(state.serviceStates).some(s => s.status === 'down');
-          const anyDegraded = Object.values(state.serviceStates).some(s =>
+          const degradedService = Object.entries(state.serviceStates).find(([_, s]) =>
             s.status === 'degraded' || s.status === 'starting'
           );
+          if (degradedService) {
+            dom.messageServ.textContent = degradedService[0];
+            dom.message.textContent = `${degradedService[1].running}/${degradedService[1].desired} ${degradedService[1].status}`;
+          }
+          state.allHealthy = false;
+        } else {
+          sprite = 0;
+          prefix = 'mascot-ok';
+          state.allHealthy = false;
+        }
 
-          if (allHealthy && Object.keys(state.serviceStates).length > 0) {
-            sprite = Math.floor((now / 1000) % 2);
-            prefix = 'mascot-ok';
-            dom.statusTexts.forEach(el => el.style.display = 'none');
-            dom.message.textContent = 'ready';
-            dom.messageServ.textContent = '';
-            state.allHealthy = true;
-          } else if (anyDown) {
-            sprite = Math.floor((now / 1000) % 2);
-            prefix = 'mascot-starting';
-            dom.statusTexts.forEach(el => el.style.display = 'block');
+        dom.mascot.setAttribute('src', `/services-static/img/${prefix}-${sprite}.svg`);
+      }
 
-            // Mostrar el primer servicio down
-            const downService = Object.entries(state.serviceStates).find(([_, s]) => s.status === 'down');
-            if (downService) {
-              dom.messageServ.textContent = downService[0];
-              dom.message.textContent = `${downService[1].running}/${downService[1].desired} down`;
-            }
-            state.allHealthy = false;
-          } else if (anyDegraded) {
-            sprite = Math.floor((now / 1000) % 3);
-            prefix = 'mascot-checking';
-            dom.statusTexts.forEach(el => el.style.display = 'block');
+      function toggleLogs() {
+        state.logsExpanded = !state.logsExpanded;
 
-            // Mostrar el primer servicio degraded
-            const degradedService = Object.entries(state.serviceStates).find(([_, s]) =>
-              s.status === 'degraded' || s.status === 'starting'
-            );
-            if (degradedService) {
-              dom.messageServ.textContent = degradedService[0];
-              dom.message.textContent = `${degradedService[1].running}/${degradedService[1].desired} ${degradedService[1].status}`;
-            }
-            state.allHealthy = false;
+        if (state.logsExpanded) {
+          dom.logsContent.classList.add('expanded');
+          dom.toggleIcon.classList.add('expanded');
+          if (state.logsData.length > 0) {
+            dom.logsContainer.innerHTML = buildLogsTable(state.logsData);
           } else {
-            sprite = 0;
-            prefix = 'mascot-ok';
-            dom.statusTexts.forEach(el => el.style.display = 'block');
-            state.allHealthy = false;
+            dom.logsContainer.innerHTML = '<p class="empty">No messages available.</p>';
           }
-
-          dom.mascot.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
+        } else {
+          dom.logsContent.classList.remove('expanded');
+          dom.toggleIcon.classList.remove('expanded');
         }
+      }
 
-        // SSE Message Handler
-        function handleSSEMessage(event) {
-          try {
-            state.waiting = false;
-            state.lastUpdate = Date.now();
+      function handleStatusSSEMessage(event) {
+        try {
+          state.waiting = false;
+          state.lastUpdate = Date.now();
 
-            const data = JSON.parse(event.data);
-            console.log('SSE event received:', data);
+          const data = JSON.parse(event.data);
+          console.log('Status SSE event received:', data);
 
-            if (!data.service || !data.status) {
-              console.warn('Invalid SSE data:', data);
-              return;
-            }
-
-            // Extraer nombre del servicio sin prefijo
-            const fullServiceName = data.service;
-            const serviceName = getServiceName(fullServiceName);
-
-            // Verificar si es un servicio PMS
-            if (serviceName.startsWith('pms-')) {
-              state.pmsServices[serviceName] = data.status;
-              updatePMSNode();
-            } else {
-              // Actualizar servicio individual
-              updateServiceNode(serviceName, data.status);
-            }
-
-            // Actualizar mascot basado en todos los estados
-            updateMascot();
-
-            state.wasDisconnected = false;
-          } catch (error) {
-            console.error('SSE parse error:', error);
-          }
-        }
-
-        // SSE Connection
-        function initSSE() {
-          if (state.eventSource) {
-            state.eventSource.close();
-          }
-
-          state.waiting = true;
-          state.eventSource = new EventSource(CONFIG.sseEndpoint);
-
-          state.eventSource.addEventListener('message', handleSSEMessage);
-
-          state.eventSource.addEventListener('ping', (event) => {
-            console.log('SSE ping received');
-            state.lastUpdate = Date.now();
-          });
-
-          state.eventSource.onerror = () => {
-            console.warn('SSE connection lost, reconnecting...');
-            state.eventSource.close();
-            showDisconnected();
-            state.wasDisconnected = true;
-            setTimeout(initSSE, CONFIG.reconnectDelay);
-          };
-
-          state.eventSource.onopen = () => {
-            console.log('SSE connected');
-            state.wasDisconnected = false;
-          };
-        }
-
-        function showWaiting() {
-          dom.message.textContent = 'waiting...';
-          dom.messageServ.textContent = '';
-          dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
-        }
-
-        function showDisconnected() {
-          dom.message.textContent = 'disconnected';
-          dom.messageServ.textContent = '';
-          dom.mascot.setAttribute('href', '/services-static/img/mascot-disconnect.svg');
-
-          Object.values(dom.nodes).forEach(node => {
-            if (node) node.style.display = 'none';
-          });
-
-          Object.values(dom.links).forEach(link => {
-            if (link) link.style.display = 'none';
-          });
-        }
-
-        function checkConnection() {
-          if (!state.eventSource || state.eventSource.readyState !== 1) {
-            showDisconnected();
+          if (!data.service || !data.status) {
+            console.warn('Invalid Status SSE data:', data);
             return;
           }
 
-          const elapsed = Date.now() - state.lastUpdate;
-          if (elapsed > CONFIG.waitingThreshold) {
-            if (!state.waiting) {
-              state.waiting = true;
-              showWaiting();
+          const fullServiceName = data.service;
+          const serviceName = getServiceName(fullServiceName);
+
+          if (serviceName.startsWith('pms-')) {
+            state.pmsServices[serviceName] = data.status;
+            updatePMSNode();
+          } else {
+            updateServiceNode(serviceName, data.status);
+          }
+
+          updateMascot();
+          state.wasDisconnected = false;
+        } catch (error) {
+          console.error('Status SSE parse error:', error);
+        }
+      }
+
+      function initStatusSSE() {
+        if (state.statusEventSource) {
+          state.statusEventSource.close();
+        }
+
+        state.waiting = true;
+        state.statusEventSource = new EventSource(CONFIG.statusSSEEndpoint);
+
+        state.statusEventSource.addEventListener('status', handleStatusSSEMessage);
+
+        state.statusEventSource.addEventListener('ping', () => {
+          console.log('Status SSE ping received');
+          state.lastUpdate = Date.now();
+        });
+
+        state.statusEventSource.onerror = () => {
+          console.warn('Status SSE connection lost, reconnecting...');
+          state.statusEventSource.close();
+          showDisconnected();
+          state.wasDisconnected = true;
+          setTimeout(initStatusSSE, CONFIG.reconnectDelay);
+        };
+
+        state.statusEventSource.onopen = () => {
+          console.log('Status SSE connected');
+          state.wasDisconnected = false;
+        };
+      }
+
+      // Logs SSE handling
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function buildLogsTable(data) {
+        if (!data || data.length === 0) {
+          return '<p class="empty">No messages available.</p>';
+        }
+
+        const thead = CONFIG.logsColumns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+        const tbody = data.map(row => {
+          const cells = CONFIG.logsColumns.map(col => {
+            let value = row[col];
+
+            if (value === undefined || value === null || value === '') {
+              value = col === 'text' ? '🚀' : '';
             }
+
+            return `<td>${escapeHtml(String(value))}</td>`;
+          }).join('');
+
+          return `<tr>${cells}</tr>`;
+        }).join('');
+
+        return `
+          <table>
+            <thead><tr>${thead}</tr></thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        `;
+      }
+
+      function handleLogsSSEMessage(event) {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Logs SSE event received:', data);
+
+          if (!data.service || !data.container) {
+            console.warn('Invalid Logs SSE data:', data);
+            return;
+          }
+
+          // Add new message to beginning of array
+          state.logsData.unshift(data);
+
+          // Keep only last 500 messages
+          if (state.logsData.length > 500) {
+            state.logsData = state.logsData.slice(0, 500);
+          }
+
+          // Update table if expanded
+          if (state.logsExpanded && dom.logsContainer) {
+            dom.logsContainer.innerHTML = buildLogsTable(state.logsData);
+          }
+        } catch (error) {
+          console.error('Logs SSE parse error:', error);
+        }
+      }
+
+      function initLogsSSE() {
+        if (state.logsEventSource) {
+          state.logsEventSource.close();
+        }
+
+        state.logsEventSource = new EventSource(CONFIG.logsSSEEndpoint);
+
+        state.logsEventSource.addEventListener('log', handleLogsSSEMessage);
+
+        state.logsEventSource.addEventListener('ping', () => {
+          console.log('Logs SSE ping received');
+        });
+
+        state.logsEventSource.onerror = () => {
+          console.warn('Logs SSE connection lost, reconnecting...');
+          state.logsEventSource.close();
+          if (dom.logsContainer && state.logsExpanded) {
+            dom.logsContainer.innerHTML = '<p class="error">Disconnected - Unable to fetch logs</p>';
+          }
+          setTimeout(initLogsSSE, CONFIG.reconnectDelay);
+        };
+
+        state.logsEventSource.onopen = () => {
+          console.log('Logs SSE connected');
+        };
+      }
+
+      function showWaiting() {
+        dom.message.textContent = 'waiting...';
+        dom.messageServ.textContent = '';
+        dom.mascot.setAttribute('src', '/services-static/img/mascot-welcome.svg');
+      }
+
+      function showDisconnected() {
+        dom.message.textContent = 'disconnected';
+        dom.messageServ.textContent = '';
+        dom.mascot.setAttribute('src', '/services-static/img/mascot-disconnect.svg');
+
+        Object.values(dom.nodes).forEach(node => {
+          if (node) node.style.display = 'none';
+        });
+
+        Object.values(dom.links).forEach(link => {
+          if (link) link.style.display = 'none';
+        });
+      }
+
+      function checkConnection() {
+        if (!state.statusEventSource || state.statusEventSource.readyState !== 1) {
+          showDisconnected();
+          return;
+        }
+
+        const elapsed = Date.now() - state.lastUpdate;
+        if (elapsed > CONFIG.waitingThreshold) {
+          if (!state.waiting) {
+            state.waiting = true;
+            showWaiting();
           }
         }
+      }
 
-        function showWelcome() {
-          const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
-          dom.message.textContent = randomMsg;
-          dom.mascot.style.display = 'none';
-          dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
+      function showWelcome() {
+        const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
+        dom.message.textContent = randomMsg;
+        dom.messageServ.textContent = '';
+        dom.mascot.style.display = 'none';
+        dom.mascot.setAttribute('src', '/services-static/img/mascot-welcome.svg');
 
-          setTimeout(() => {
-            dom.mascot.style.display = 'block';
-          }, 100);
+        setTimeout(() => {
+          dom.mascot.style.display = 'block';
+        }, 100);
 
-          Object.values(dom.nodes).forEach(node => {
-            if (node) {
-              node.style.fill = 'lightgray';
-              node.style.display = 'none';
-            }
-          });
-
-          Object.values(dom.links).forEach(link => {
-            if (link) link.style.display = 'none';
-          });
-        }
-
-        // Initialize
-        async function init() {
-          cacheDOMElements();
-          setupLinks();
-          showWelcome();
-          CONFIG.infoData = await fetchInfo();
-          if (CONFIG.infoData) initSSE();
-          setInterval(checkConnection, 2000);
-          setInterval(updateMascot, 1000); // Actualizar mascot cada segundo para animación
-        }
-
-        // Cleanup on unload
-        window.addEventListener('beforeunload', () => {
-          if (state.eventSource) {
-            state.eventSource.close();
+        Object.values(dom.nodes).forEach(node => {
+          if (node) {
+            node.style.fill = 'lightgray';
+            node.style.display = 'none';
           }
         });
 
-        // Start when DOM is ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', init);
-        } else {
-          init();
+        Object.values(dom.links).forEach(link => {
+          if (link) link.style.display = 'none';
+        });
+      }
+
+      // Initialize
+      async function init() {
+        cacheDOMElements();
+        setupLinks();
+        showWelcome();
+
+        CONFIG.infoData = await fetchInfo();
+
+        if (CONFIG.infoData) {
+          initStatusSSE();
+          initLogsSSE();
         }
-      })();
-    </script>
-  </body>
+
+        // Setup logs toggle
+        if (dom.logsToggle) {
+          dom.logsToggle.addEventListener('click', toggleLogs);
+        }
+
+        setInterval(checkConnection, 2000);
+        setInterval(updateMascot, 1000);
+      }
+
+      // Cleanup on unload
+      window.addEventListener('beforeunload', () => {
+        if (state.statusEventSource) {
+          state.statusEventSource.close();
+        }
+        if (state.logsEventSource) {
+          state.logsEventSource.close();
+        }
+      });
+
+      // Start when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
 </html>
