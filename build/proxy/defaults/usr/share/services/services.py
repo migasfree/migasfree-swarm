@@ -3,12 +3,12 @@
 import os
 import sys
 import json
-import socket
 import subprocess
 import asyncio
 import re
 import threading
 import logging
+import queue
 from datetime import datetime
 from collections import deque
 from typing import List
@@ -184,12 +184,16 @@ class DockerSwarmMonitor:
         if not status_info:
             return
 
-        event_data = {'service': service_name, 'status': status_info, 'timestamp': datetime.now().isoformat()}
+        event_data = {
+            'service': service_name,
+            'status': status_info,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
 
         with sse_lock:
-            for queue in sse_clients:
+            for client in sse_clients:
                 try:
-                    queue.put_nowait(event_data)
+                    client.put_nowait(event_data)
                 except Exception as e:
                     logger.warning(f'Error broadcasting to SSE client: {e}')
 
@@ -201,13 +205,11 @@ class DockerSwarmMonitor:
                     'message': '',
                     'node': '',
                     'container': '',
-                    'missing': True,
                     'nodes': 0,
                 }
 
             if status_info:
                 service_states_cache[service_name]['nodes'] = status_info['running']
-                service_states_cache[service_name]['missing'] = status_info['status'] in ['down', 'starting']
 
                 if 'nodes' in status_info and status_info['nodes']:
                     service_states_cache[service_name]['node'] = ', '.join(status_info['nodes'])
@@ -226,7 +228,6 @@ class DockerSwarmMonitor:
                 service_states_cache[service_name]['message'] = message
             else:
                 # Removed service
-                service_states_cache[service_name]['missing'] = True
                 service_states_cache[service_name]['nodes'] = 0
 
     def check_all_services(self):
@@ -237,7 +238,6 @@ class DockerSwarmMonitor:
                 for service in services:
                     service_name = service.name
 
-                    # Only monitor current stack services
                     if not service_name.startswith(f'{STACK}_') and not service_name.startswith('infra_'):
                         continue
 
@@ -252,6 +252,7 @@ class DockerSwarmMonitor:
                         if prev_status is None:
                             self.service_states[service_name] = current_status
                             self.update_service_cache(service_name, current_status)
+
                             # Broadcast initial state
                             self.broadcast_to_sse_clients(service_name, current_status)
                         elif (
@@ -280,7 +281,7 @@ class DockerSwarmMonitor:
                             )
 
                             msg = {
-                                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                                 'service': service_name,
                                 'text': f'Status: {current_status["status"]} ({current_status["running"]}/{current_status["desired"]})',
                                 'node': nodes_str,
@@ -288,8 +289,15 @@ class DockerSwarmMonitor:
                             }
                             MESSAGES_LOG.append(msg)
 
-                asyncio.run(asyncio.sleep(5))
+                            # Notify all SSE clients about the new log message
+                            with sse_lock:
+                                for client_queue in sse_clients:
+                                    try:
+                                        client_queue.put_nowait(msg)
+                                    except queue.Full:
+                                        logger.warning('Client queue full, skipping message')
 
+                asyncio.run(asyncio.sleep(5))
             except Exception as e:
                 if self.running:
                     logger.error(f'Error in check_all_services: {e}')
@@ -311,7 +319,6 @@ class DockerSwarmMonitor:
                 attrs = event.get('Actor', {}).get('Attributes', {})
                 service_name = attrs.get('name', 'unknown')
 
-                # Only monitor current stack services
                 if not service_name.startswith(f'{STACK}_') and not service_name.startswith('infra_'):
                     continue
 
@@ -329,7 +336,6 @@ class DockerSwarmMonitor:
                     self.broadcast_to_sse_clients(service_name, status_info)
 
                 logger.info(f'Service event: {action} - {service_name}')
-
         except Exception as e:
             if self.running:
                 logger.error(f'Error in monitor_events: {e}')
@@ -408,7 +414,7 @@ templates = Jinja2Templates(directory='services-static/templates')
 def get_organization() -> str:
     """Extract organization from settings file"""
     try:
-        with open(f'{PATH_CONF}/settings.py', 'r') as file:
+        with open(f'{PATH_CONF}/settings.py', 'r', encoding='utf-8') as file:
             content = file.read()
 
         variable_name = 'MIGASFREE_ORGANIZATION'
@@ -429,7 +435,11 @@ def get_extensions() -> List[str]:
 
     try:
         result = subprocess.run(
-            ['curl', '-X', 'GET', 'core:8080/api/v1/public/pms/'], capture_output=True, text=True, timeout=10
+            ['curl', '-X', 'GET', 'core:8080/api/v1/public/pms/'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
         )
 
         if result.returncode == 0:
@@ -458,7 +468,7 @@ def config_haproxy():
     }
 
     payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
-    with open(FILECONFIG, 'w') as f:
+    with open(FILECONFIG, 'w', encoding='utf-8') as f:
         f.write(payload['haproxy.cfg'])
         f.write('\n')
 
@@ -485,7 +495,7 @@ def userlist_stack() -> str:
     with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
         password = f.read()
 
-    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True)
+    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True, check=True)
 
     return f'    user {username} password {result.stdout}'
 
@@ -495,7 +505,7 @@ def userlist_cluster() -> str:
     with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
         username, password = f.read().split(':')
 
-    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True)
+    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True, check=True)
 
     return f'    user {username} password {result.stdout}'
 
@@ -512,6 +522,7 @@ async def status_page(request: Request):
     """Status page"""
     with cache_lock:
         context = {'services': service_states_cache.copy(), 'request': request}
+
     return templates.TemplateResponse('status.html', context)
 
 
@@ -528,22 +539,84 @@ async def manifest():
     return Response(content=content, media_type='text/cache-manifest')
 
 
+# SSE endpoint for real-time logs
+@app.get('/services/logs/stream')
+async def logs_stream(request: Request):
+    """Server-Sent Events endpoint for real-time log messages"""
+    client_queue = queue.Queue()
+
+    # Register client
+    with sse_lock:
+        sse_clients.append(client_queue)
+
+    logger.info(f'Logs SSE client connected. Total clients: {len(sse_clients)}')
+
+    async def event_generator():
+        try:
+            # Send initial log messages (last 50 messages)
+            initial_messages = list(MESSAGES_LOG)[-50:] if len(MESSAGES_LOG) > 50 else list(MESSAGES_LOG)
+
+            for message in initial_messages:
+                yield {'event': 'log', 'data': json.dumps(message)}
+                # Small delay to avoid overwhelming the client
+                await asyncio.sleep(0.01)
+
+            # Stream new log updates
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                try:
+                    # Wait for new log events with timeout
+                    log_data = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: client_queue.get(timeout=30)
+                    )
+                    yield {'event': 'log', 'data': json.dumps(log_data)}
+                except queue.Empty:
+                    # Send keepalive ping
+                    yield {
+                        'event': 'ping',
+                        'data': json.dumps({'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}),
+                    }
+                except Exception as e:
+                    logger.error(f'Error in logs event generator: {e}')
+                    break
+
+        finally:
+            # Unregister client
+            with sse_lock:
+                if client_queue in sse_clients:
+                    sse_clients.remove(client_queue)
+
+            logger.info(f'Logs SSE client disconnected. Remaining clients: {len(sse_clients)}')
+
+    return EventSourceResponse(event_generator())
+
+
+# Keep the JSON endpoint for compatibility (optional)
+@app.get('/services/logs/json')
+async def logs_json():
+    """Get logs as JSON (deprecated - use /services/logs/stream instead)"""
+    return JSONResponse(content=list(MESSAGES_LOG))
+
+
 @app.get('/services/logs', response_class=HTMLResponse)
 async def logs(request: Request):
     """Logs page"""
-    columns = ['time', 'service', 'text', 'node', 'container']
+    columns = ['timestamp', 'service', 'text', 'node', 'container']
+
     return templates.TemplateResponse('logs.html', {'request': request, 'columns': columns})
 
 
 @app.get('/services/logs/json')
-async def logs_json():
+async def logs_json_legacy():
     """Get logs as JSON"""
     return JSONResponse(content=list(MESSAGES_LOG))
 
 
 @app.get('/services/info')
 async def get_info():
-    """Get static application info (organization, stack, tag, disables)"""
+    """Get static application info (organization, stack, tag, disabled)"""
     disabled = []
     if os.environ['HTTPSMODE'] == 'manual':
         disabled.append('certbot')
@@ -570,8 +643,16 @@ async def post_message(request: Request):
     except Exception:
         data = {}
 
-    data['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     MESSAGES_LOG.append(data)
+
+    # Notify all SSE clients about the new log message
+    with sse_lock:
+        for client_queue in sse_clients:
+            try:
+                client_queue.put_nowait(data)
+            except queue.Full:
+                logger.warning('Client queue full, skipping message')
 
     return JSONResponse(content={'status': 'ok'})
 
@@ -607,8 +688,6 @@ async def nginx_extensions():
 @app.get('/services/stream')
 async def service_stream(request: Request):
     """Server-Sent Events endpoint for real-time Docker service updates"""
-    import queue
-
     client_queue = queue.Queue()
 
     # Register client
@@ -633,9 +712,9 @@ async def service_stream(request: Request):
                                 if service_data.get('container')
                                 else [],
                             },
-                            'timestamp': datetime.now().isoformat(),
+                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         }
-                        yield {'event': 'message', 'data': json.dumps(initial_data)}
+                        yield {'event': 'status', 'data': json.dumps(initial_data)}
 
             # Stream updates
             while True:
@@ -647,10 +726,13 @@ async def service_stream(request: Request):
                     event_data = await asyncio.get_event_loop().run_in_executor(
                         None, lambda: client_queue.get(timeout=30)
                     )
-                    yield {'event': 'message', 'data': json.dumps(event_data)}
+                    yield {'event': 'status', 'data': json.dumps(event_data)}
                 except queue.Empty:
                     # Send keepalive ping
-                    yield {'event': 'ping', 'data': json.dumps({'timestamp': datetime.now().isoformat()})}
+                    yield {
+                        'event': 'ping',
+                        'data': json.dumps({'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}),
+                    }
                 except Exception as e:
                     logger.error(f'Error in event generator: {e}')
                     break
@@ -660,6 +742,7 @@ async def service_stream(request: Request):
             with sse_lock:
                 if client_queue in sse_clients:
                     sse_clients.remove(client_queue)
+
             logger.info(f'SSE client disconnected. Remaining clients: {len(sse_clients)}')
 
     return EventSourceResponse(event_generator())
