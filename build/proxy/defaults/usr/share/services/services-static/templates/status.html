@@ -44,8 +44,8 @@
 
     .info-text {
       color: #000;
-      margin: 5px 0;
-      font-size: 1.5em;
+      margin: 10px 0;
+      font-size: 1.6em;
     }
 
     .status-panel {
@@ -58,11 +58,11 @@
     #mascot {
       width: 60px;
       height: 60px;
-      margin-top: 15px;
+      margin-top: 10px;
     }
 
     .status-text {
-      font-size: 1.3em;
+      font-size: 1.2em;
       font-style: italic;
       color: #000;
       margin: 3px 0;
@@ -268,7 +268,7 @@
 
   <!-- SVG Section -->
   <div class="svg-section">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 70" id="main-svg">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 60" id="main-svg">
       <defs>
         <filter id="glow">
           <feGaussianBlur stdDeviation="0.3" result="coloredBlur"/>
@@ -280,7 +280,7 @@
       </defs>
 
       <!-- Services nodes -->
-      <g id="portainer-node" transform="translate(40, 83)">
+      <g id="portainer-node" transform="translate(40, 74)">
         <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
         <a id="portainer_link_parent" target="_blank">
@@ -289,7 +289,7 @@
         <text x="3" y="2">portainer</text>
       </g>
 
-      <g id="proxy-node" transform="translate(40, 103)">
+      <g id="proxy-node" transform="translate(40, 94)">
         <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
         <a id="proxy_link_parent" target="_blank">
@@ -298,7 +298,7 @@
         <text x="4" y="2">proxy</text>
       </g>
 
-      <g id="ca-node" transform="translate(40, 123)">
+      <g id="ca-node" transform="translate(40, 114)">
         <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
         <circle id="ca" class="node" r="1.5" filter="url(#glow)" />
         <a id="ca_link_parent" target="_blank">
@@ -307,7 +307,7 @@
         <text x="6" y="2">ca</text>
       </g>
 
-      <g id="console-node" transform="translate(70, 83)">
+      <g id="console-node" transform="translate(70, 74)">
         <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
@@ -317,7 +317,7 @@
         <text x="4" y="2">console</text>
       </g>
 
-      <g id="public-node" transform="translate(70, 103)">
+      <g id="public-node" transform="translate(70, 94)">
         <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
@@ -325,21 +325,21 @@
         <text x="4" y="2">public</text>
       </g>
 
-      <g id="pms-node" transform="translate(70, 123)">
+      <g id="pms-node" transform="translate(70, 114)">
         <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
         <circle id="pms" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">pms</text>
       </g>
 
-      <g id="beat-node" transform="translate(90, 83)">
+      <g id="beat-node" transform="translate(90, 74)">
         <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
         <circle id="beat" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">beat</text>
       </g>
 
-      <g id="core-node" transform="translate(90, 103)">
+      <g id="core-node" transform="translate(90, 94)">
         <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
         <circle id="core" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
@@ -349,7 +349,7 @@
         <text x="5" y="2">core</text>
       </g>
 
-      <g id="worker-node" transform="translate(90, 123)">
+      <g id="worker-node" transform="translate(90, 114)">
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
@@ -359,7 +359,7 @@
         <text x="4" y="2">worker</text>
       </g>
 
-      <g id="database-node" transform="translate(110, 83)">
+      <g id="database-node" transform="translate(110, 74)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" filter="url(#glow)" />
         <a id="database_console_link_parent" target="_blank">
@@ -368,7 +368,7 @@
         <text x="3" y="2">database</text>
       </g>
 
-      <g id="datastore-node" transform="translate(110, 103)">
+      <g id="datastore-node" transform="translate(110, 94)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
         <a id="datastore_console_link_parent" target="_blank">
@@ -377,7 +377,7 @@
         <text x="3" y="2">datastore</text>
       </g>
 
-      <g id="datashare-node" transform="translate(110, 123)">
+      <g id="datashare-node" transform="translate(110, 114)">
         <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
         <a id="datashare_console_link_parent" target="_blank">
@@ -386,13 +386,13 @@
         <text x="3" y="2">datashare</text>
       </g>
 
-      <g id="certbot-node" transform="translate(130, 83)">
+      <g id="certbot-node" transform="translate(130, 74)">
         <image class="icon" href="/services-static/img/certbot.svg" x="2" y="-12" />
         <circle id="certbot" class="node" r="1.5" />
         <text x="4" y="2">certbot</text>
       </g>
 
-      <g id="assistant-node" transform="translate(130, 103)">
+      <g id="assistant-node" transform="translate(130, 94)">
         <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
         <a id="assistant_link_parent" target="_blank">
@@ -401,7 +401,7 @@
         <text x="3" y="2">assistant</text>
       </g>
 
-      <g id="mcp-server-node" transform="translate(130, 123)">
+      <g id="mcp-server-node" transform="translate(130, 114)">
         <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
         <circle id="mcp-server" class="node" r="1.5" filter="url(#glow)" />
         <text x="3" y="2">mcp server</text>
@@ -628,6 +628,7 @@
         const link = dom.links[serviceName];
         if (link) {
           const shouldShow = statusInfo.running > 0 && !isDisabled;
+          console.log(`${serviceName} shouldShow: ${shouldShow}`)
           link.style.display = shouldShow ? 'block' : 'none';
         }
 
@@ -732,6 +733,11 @@
         } else {
           dom.logsContent.classList.remove('expanded');
           dom.toggleIcon.classList.remove('expanded');
+        }
+
+        const h2 = dom.logsToggle.querySelector('h2');
+        if (h2) {
+          h2.textContent = `Messages Log (${state.logsData.length})`;
         }
       }
 
@@ -852,6 +858,16 @@
           if (state.logsExpanded && dom.logsContainer) {
             dom.logsContainer.innerHTML = buildLogsTable(state.logsData);
           }
+
+          if (dom.logsToggle) {
+            const h2 = dom.logsToggle.querySelector('h2');
+            if (h2) {
+              h2.textContent = `Messages Log (${state.logsData.length})`;
+            }
+          }
+
+          dom.message.textContent = data?.text || 'ready';
+          dom.messageServ.textContent = data?.service || '';
         } catch (error) {
           console.error('Logs SSE parse error:', error);
         }
