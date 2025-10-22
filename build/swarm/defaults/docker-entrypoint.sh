@@ -36,24 +36,23 @@ run_manager() {
 
 show_help() {
     cat <<EOF
-Uso: migasfree-swarm <comando>
+Usage:
+  migasfree-swarm <command>
 
-Comandos disponibles:
-  deploy                Deploy de la pila de contenedores
-  undeploy              Undeploy (solo manager)
-  redeploy              Undeploy + deploy
-  deploy_all            Deploy de todos los stacks (solo manager)
-  undeploy_all          Undeploy de todos los stacks (solo manager)
-  redeploy_all          Undeploy + deploy de todos los stacks
-  consoles-dev          Ejecuta consoles.py en modo dev (solo manager)
-  consoles-pro          Ejecuta consoles.py en modo pro (solo manager)
-  secret                Muestra los "secretos" de los contenedores (solo manager)
-  config                Ejecuta config.py
-  config-stack          Ejecuta config-stack.py (solo manager)
-  leave                 Ejecuta leave.py (solo manager)
-  pull                  Ejecuta pull.sh
-  url-admin-certificate Ejecuta url-admin-certificate.py (solo manager)
-  join-worker           Ejecuta join-worker.sh (solo manager)
+Available commands:
+  deploy                 Deploy a migasfree stack
+  undeploy               Undeploy a migasfree stack
+  redeploy               Perform undeploy + deploy
+  deploy_all             Deploy all migasfree stacks
+  undeploy_all           Undeploy all migasfree stacks
+  redeploy_all           Perform undeploy + deploy for all migasfree stacks
+  consoles-dev           Enable development consoles
+  consoles-pro           Disable development consoles
+  secret                 Show the "secrets" for console access
+  config                 Configure the swarm cluster
+  pull                   Pull all images
+  url-admin-certificate  Generate a one-time URL to create a client certificate for administration console access
+  join-worker            Add a worker node to the cluster
 EOF
 }
 
