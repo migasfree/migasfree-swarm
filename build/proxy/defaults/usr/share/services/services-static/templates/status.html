@@ -443,6 +443,7 @@
           'beat': 'beat',
           'worker': 'worker',
           'public': 'public',
+          'pms': 'pms',
           'database': 'database',
           'datastore': 'datastore',
           'portainer': 'portainer',
@@ -618,6 +619,8 @@
 
         // Updates nodes if > 1
         if (dom.nodeTexts[elementId]) {
+          console.log(statusInfo);
+          console.log(dom.nodeTexts[elementId]);
           const nodeCount = statusInfo.running || 0;
           dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
         }
@@ -635,9 +638,11 @@
 
       function updatePMSNode() {
         const node = dom.nodes.pms;
+        console.log('updatePMSNode node:', node);
         if (!node) return;
 
         const pmsServiceNames = Object.keys(state.pmsServices);
+        console.log('pmsServiceNames', pmsServiceNames, pmsServiceNames.length);
         if (pmsServiceNames.length === 0) {
           node.style.display = 'none';
           return;
@@ -660,13 +665,13 @@
         if (anyDown) color = '#e74c3c';
         else if (anyDegraded) color = '#f39c12';
         else if (totalRunning < totalDesired) color = '#f39c12';
-        console.log(`updatePMSNode: ${color}`)
+        console.log(`updatePMSNode color: ${color}`)
 
         node.style.fill = color;
         node.style.display = 'block';
 
         if (dom.nodeTexts.pms) {
-          dom.nodeTexts.pms.textContent = totalRunning >= 2 ? totalRunning : '';
+          dom.nodeTexts.pms.textContent = totalRunning > 0 ? totalRunning : '';
         }
       }
 
@@ -755,6 +760,7 @@
 
           const fullServiceName = data.service;
           const serviceName = getServiceName(fullServiceName);
+          console.log('handleStatusSSEMessage', serviceName, data.status);
 
           if (serviceName.startsWith('pms-')) {
             state.pmsServices[serviceName] = data.status;
