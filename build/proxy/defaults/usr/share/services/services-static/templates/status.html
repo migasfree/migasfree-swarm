@@ -429,12 +429,11 @@
       // Configuration
       const CONFIG = {
         infoEndpoint: '/services/info',
-        statusSSEEndpoint: '/services/stream',
-        logsSSEEndpoint: '/services/logs/stream',
+        streamEndpoint: '/services/stream',
         reconnectDelay: 5000,
         waitingThreshold: 5000,
         welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
-        logsColumns: ['timestamp', 'service', 'status', 'text'],
+        logsColumns: ['timestamp', 'service', 'text', 'node', 'container'],
         serviceMapping: {
           'proxy': 'proxy',
           'ca': 'ca',
@@ -458,8 +457,7 @@
       };
 
       const state = {
-        statusEventSource: null,
-        logsEventSource: null,
+        eventSource: null,
         lastUpdate: Date.now(),
         serviceStates: {},
         pmsServices: {},
@@ -746,6 +744,7 @@
           state.waiting = false;
           state.lastUpdate = Date.now();
 
+          console.log('event.data', event.data);
           const data = JSON.parse(event.data);
           console.log('Status SSE event received:', data);
 
@@ -771,73 +770,9 @@
         }
       }
 
-      function initStatusSSE() {
-        if (state.statusEventSource) {
-          state.statusEventSource.close();
-        }
-
-        state.waiting = true;
-        state.statusEventSource = new EventSource(CONFIG.statusSSEEndpoint);
-
-        state.statusEventSource.addEventListener('status', handleStatusSSEMessage);
-
-        state.statusEventSource.addEventListener('ping', () => {
-          console.log('Status SSE ping received');
-          state.lastUpdate = Date.now();
-        });
-
-        state.statusEventSource.onerror = () => {
-          console.warn('Status SSE connection lost, reconnecting...');
-          state.statusEventSource.close();
-          showDisconnected();
-          state.wasDisconnected = true;
-          setTimeout(initStatusSSE, CONFIG.reconnectDelay);
-        };
-
-        state.statusEventSource.onopen = () => {
-          console.log('Status SSE connected');
-          state.wasDisconnected = false;
-        };
-      }
-
-      // Logs SSE handling
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
-      function buildLogsTable(data) {
-        if (!data || data.length === 0) {
-          return '<p class="empty">No messages available.</p>';
-        }
-
-        const thead = CONFIG.logsColumns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
-
-        const tbody = data.map(row => {
-          const cells = CONFIG.logsColumns.map(col => {
-            let value = row[col];
-
-            if (value === undefined || value === null || value === '') {
-              value = col === 'text' ? '🚀' : '';
-            }
-
-            return `<td>${escapeHtml(String(value))}</td>`;
-          }).join('');
-
-          return `<tr>${cells}</tr>`;
-        }).join('');
-
-        return `
-          <table>
-            <thead><tr>${thead}</tr></thead>
-            <tbody>${tbody}</tbody>
-          </table>
-        `;
-      }
-
       function handleLogsSSEMessage(event) {
         try {
+          console.log('event.data', event.data);
           const data = JSON.parse(event.data);
           console.log('Logs SSE event received:', data);
 
@@ -873,31 +808,70 @@
         }
       }
 
-      function initLogsSSE() {
-        if (state.logsEventSource) {
-          state.logsEventSource.close();
+      function buildLogsTable(data) {
+        if (!data || data.length === 0) {
+          return '<p class="empty">No messages available.</p>';
         }
 
-        state.logsEventSource = new EventSource(CONFIG.logsSSEEndpoint);
+        const thead = CONFIG.logsColumns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
 
-        state.logsEventSource.addEventListener('log', handleLogsSSEMessage);
+        const tbody = data.map(row => {
+          const cells = CONFIG.logsColumns.map(col => {
+            let value = row[col];
 
-        state.logsEventSource.addEventListener('ping', () => {
-          console.log('Logs SSE ping received');
+            if (value === undefined || value === null || value === '') {
+              value = col === 'text' ? '🚀' : '';
+            }
+
+            return `<td>${escapeHtml(String(value))}</td>`;
+          }).join('');
+
+          return `<tr>${cells}</tr>`;
+        }).join('');
+
+        return `
+          <table>
+            <thead><tr>${thead}</tr></thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        `;
+      }
+
+      function initSSE() {
+        if (state.eventSource) {
+          state.eventSource.close();
+        }
+
+        state.waiting = true;
+        state.eventSource = new EventSource(CONFIG.streamEndpoint);
+
+        state.eventSource.addEventListener('status', handleStatusSSEMessage);
+        state.eventSource.addEventListener('log', handleLogsSSEMessage);
+
+        state.eventSource.addEventListener('ping', () => {
+          console.log('SSE ping received');
+          state.lastUpdate = Date.now();
         });
 
-        state.logsEventSource.onerror = () => {
-          console.warn('Logs SSE connection lost, reconnecting...');
-          state.logsEventSource.close();
-          if (dom.logsContainer && state.logsExpanded) {
-            dom.logsContainer.innerHTML = '<p class="error">Disconnected - Unable to fetch logs</p>';
-          }
-          setTimeout(initLogsSSE, CONFIG.reconnectDelay);
+        state.eventSource.onerror = () => {
+          console.warn('SSE connection lost, reconnecting...');
+          state.eventSource.close();
+          showDisconnected();
+          state.wasDisconnected = true;
+          setTimeout(initSSE, CONFIG.reconnectDelay);
         };
 
-        state.logsEventSource.onopen = () => {
-          console.log('Logs SSE connected');
+        state.eventSource.onopen = () => {
+          console.log('SSE connected');
+          state.wasDisconnected = false;
         };
+      }
+
+      // Logs SSE handling
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
       }
 
       function showWaiting() {
@@ -921,7 +895,7 @@
       }
 
       function checkConnection() {
-        if (!state.statusEventSource || state.statusEventSource.readyState !== 1) {
+        if (!state.eventSource || state.eventSource.readyState !== 1) {
           showDisconnected();
           return;
         }
@@ -967,8 +941,7 @@
         CONFIG.infoData = await fetchInfo();
 
         if (CONFIG.infoData) {
-          initStatusSSE();
-          initLogsSSE();
+          initSSE();
         }
 
         // Setup logs toggle
@@ -982,11 +955,8 @@
 
       // Cleanup on unload
       window.addEventListener('beforeunload', () => {
-        if (state.statusEventSource) {
-          state.statusEventSource.close();
-        }
-        if (state.logsEventSource) {
-          state.logsEventSource.close();
+        if (state.eventSource) {
+          state.eventSource.close();
         }
       });
 
