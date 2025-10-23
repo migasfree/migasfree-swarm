@@ -24,7 +24,7 @@ from sse_starlette.sse import EventSourceResponse
 # Logging configuration
 logger = logging.getLogger('services')
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
@@ -57,6 +57,10 @@ client_id_lock = asyncio.Lock()
 
 service_states_cache = {}
 cache_lock = asyncio.Lock()
+
+
+def get_timestamp():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
 class DockerSwarmMonitor:
@@ -111,7 +115,9 @@ class DockerSwarmMonitor:
 
             running_tasks = [t for t in tasks if t['Status']['State'] == 'running']
             running = len(running_tasks)
-            preparing = len([t for t in tasks if t['Status']['State'] in ['preparing', 'starting', 'assigned', 'accepted', 'ready']])
+            preparing = len(
+                [t for t in tasks if t['Status']['State'] in ['preparing', 'starting', 'assigned', 'accepted', 'ready']]
+            )
             failed = len([t for t in tasks if t['Status']['State'] in ['failed', 'rejected', 'shutdown', 'orphaned']])
 
             nodes_info = []
@@ -176,8 +182,10 @@ class DockerSwarmMonitor:
         event_data = {
             'service': service_name,
             'status': status_info,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': get_timestamp(),
         }
+        logger.debug('event_data: %s', event_data)
+
         to_remove = []
         async with client_id_lock:
             for cid, client_queue in sse_clients.items():
@@ -195,6 +203,7 @@ class DockerSwarmMonitor:
             if service_name not in service_states_cache:
                 service_states_cache[service_name] = {
                     'message': '',
+                    'status': '',
                     'node': '',
                     'container': '',
                     'nodes': 0,
@@ -202,6 +211,7 @@ class DockerSwarmMonitor:
 
             if status_info:
                 service_states_cache[service_name]['nodes'] = status_info['running']
+                service_states_cache[service_name]['status'] = status_info['status']
 
                 if 'nodes' in status_info and status_info['nodes']:
                     service_states_cache[service_name]['node'] = ', '.join(status_info['nodes'])
@@ -231,39 +241,41 @@ class DockerSwarmMonitor:
                     if not service_name.startswith(f'{STACK}_') and not service_name.startswith('infra_'):
                         continue
                     current_status = await self.get_service_status(service_name)
+                    logger.debug('current_status service %s: %s', service_name, current_status)
                     if not current_status:
                         continue
+
                     async with self.lock:
                         prev_status = self.service_states.get(service_name)
                         if prev_status is None:
                             self.service_states[service_name] = current_status
                             await self.update_service_cache(service_name, current_status)
                             await self.broadcast_to_sse_clients(service_name, current_status)
-                        elif prev_status['status'] != current_status['status'] or prev_status['running'] != current_status['running']:
-                            logger.info(f'Service {service_name}: {prev_status["status"]} ({prev_status["running"]}/{prev_status["desired"]}) -> {current_status["status"]} ({current_status["running"]}/{current_status["desired"]})')
+                        elif (
+                            prev_status['status'] != current_status['status']
+                            or prev_status['running'] != current_status['running']
+                        ):
+                            logger.info(
+                                f'Service {service_name}: {prev_status["status"]} ({prev_status["running"]}/{prev_status["desired"]}) -> {current_status["status"]} ({current_status["running"]}/{current_status["desired"]})'
+                            )
                             self.service_states[service_name] = current_status
                             await self.update_service_cache(service_name, current_status)
                             await self.broadcast_to_sse_clients(service_name, current_status)
                             msg = {
-                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'timestamp': get_timestamp(),
                                 'service': service_name,
                                 'text': f'Status: {current_status["status"]} ({current_status["running"]}/{current_status["desired"]})',
-                                'node': ', '.join(current_status.get('nodes', [])) if current_status.get('nodes') else 'unknown',
-                                'container': ', '.join(current_status.get('containers', [])) if current_status.get('containers') else 'unknown',
+                                'node': ', '.join(current_status.get('nodes', []))
+                                if current_status.get('nodes')
+                                else 'unknown',
+                                'container': ', '.join(current_status.get('containers', []))
+                                if current_status.get('containers')
+                                else 'unknown',
                             }
                             MESSAGES_LOG.append(msg)
-                            # Notify all SSE clients about new log message
-                            to_remove = []
-                            async with client_id_lock:
-                                for cid, client_queue in sse_clients.items():
-                                    try:
-                                        client_queue.put_nowait(msg)
-                                    except asyncio.QueueFull:
-                                        logger.warning(f'Client queue full, skipping message for client {cid}')
-                                        to_remove.append(cid)
-                            async with client_id_lock:
-                                for cid in to_remove:
-                                    sse_clients.pop(cid, None)
+                            logger.debug('service %s, message %s', service_name, msg)
+                            await self.broadcast_to_sse_clients(service_name, msg)
+
                 await asyncio.sleep(5)
             except Exception as e:
                 if self.running:
@@ -346,6 +358,7 @@ async def lifespan(app: FastAPI):
     logger.info('Shutting down application...')
     if docker_monitor:
         await docker_monitor.stop()
+
 
 app = FastAPI(title='Services API', lifespan=lifespan)
 app.mount('/services-static', StaticFiles(directory='services-static'), name='static')
@@ -499,7 +512,10 @@ async def logs_stream(request: Request):
                     log_data = await asyncio.wait_for(queue.get(), timeout=30)
                     yield {'event': 'log', 'data': json.dumps(log_data)}
                 except asyncio.TimeoutError:
-                    yield {'event': 'ping', 'data': json.dumps({'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})}
+                    yield {
+                        'event': 'ping',
+                        'data': json.dumps({'timestamp': get_timestamp()}),
+                    }
         finally:
             async with client_id_lock:
                 sse_clients.pop(client_id, None)
@@ -548,11 +564,11 @@ async def post_message(request: Request):
     """Post a new message"""
     try:
         data = await request.json()
-        logger.debug(data)
+        logger.debug('post_message data: %s', data)
     except Exception:
         data = {}
 
-    data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    data['timestamp'] = get_timestamp()
     MESSAGES_LOG.append(data)
 
     # Notify all SSE clients about the new log message
@@ -618,18 +634,20 @@ async def service_stream(request: Request):
             async with cache_lock:
                 for service_name, service_data in service_states_cache.items():
                     if 'nodes' in service_data:
-                        logger.debug('service_data: %s', vars(service_data))
                         initial_data = {
                             'service': service_name,
                             'status': {
-                                'status': service_data.get('status', ''),
+                                'status': service_data.get('status', ''),  # FIXME
                                 'running': service_data.get('nodes', 0),
                                 'nodes': service_data.get('node', '').split(', ') if service_data.get('node') else [],
-                                'containers': service_data.get('container', '').split(', ') if service_data.get('container') else [],
+                                'containers': service_data.get('container', '').split(', ')
+                                if service_data.get('container')
+                                else [],
                             },
-                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'timestamp': get_timestamp(),
                         }
                         yield {'event': 'status', 'data': json.dumps(initial_data)}
+                        logger.debug('data: %s', initial_data)
 
             # Stream updates
             while True:
@@ -640,7 +658,10 @@ async def service_stream(request: Request):
                     event_data = await asyncio.wait_for(queue.get(), timeout=30)
                     yield {'event': 'status', 'data': json.dumps(event_data)}
                 except asyncio.TimeoutError:
-                    yield {'event': 'ping', 'data': json.dumps({'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})}
+                    yield {
+                        'event': 'ping',
+                        'data': json.dumps({'timestamp': get_timestamp()}),
+                    }
         finally:
             async with client_id_lock:
                 sse_clients.pop(client_id, None)
