@@ -175,16 +175,10 @@ class DockerSwarmMonitor:
             logger.warning(f'Error getting status for {service_name}: {e}')
             return None
 
-    async def broadcast_to_sse_clients(self, service_name, status_info):
-        if not status_info:
-            return
-
-        event_data = {
-            'service': service_name,
-            'status': status_info,
-            'timestamp': get_timestamp(),
-        }
+    async def broadcast_to_sse_clients(self, event_data):
         logger.debug('event_data: %s', event_data)
+        if not event_data:
+            return
 
         to_remove = []
         async with client_id_lock:
@@ -247,10 +241,15 @@ class DockerSwarmMonitor:
 
                     async with self.lock:
                         prev_status = self.service_states.get(service_name)
+                        event_data = {
+                            'service': service_name,
+                            'status': current_status,
+                            'timestamp': get_timestamp(),
+                        }
                         if prev_status is None:
                             self.service_states[service_name] = current_status
                             await self.update_service_cache(service_name, current_status)
-                            await self.broadcast_to_sse_clients(service_name, current_status)
+                            await self.broadcast_to_sse_clients({'event': 'status', 'data': event_data})
                         elif (
                             prev_status['status'] != current_status['status']
                             or prev_status['running'] != current_status['running']
@@ -260,7 +259,7 @@ class DockerSwarmMonitor:
                             )
                             self.service_states[service_name] = current_status
                             await self.update_service_cache(service_name, current_status)
-                            await self.broadcast_to_sse_clients(service_name, current_status)
+                            await self.broadcast_to_sse_clients({'event': 'status', 'data': event_data})
                             msg = {
                                 'timestamp': get_timestamp(),
                                 'service': service_name,
@@ -274,7 +273,7 @@ class DockerSwarmMonitor:
                             }
                             MESSAGES_LOG.append(msg)
                             logger.debug('service %s, message %s', service_name, msg)
-                            await self.broadcast_to_sse_clients(service_name, msg)
+                            await self.broadcast_to_sse_clients({'event': 'log', 'data': msg})
 
                 await asyncio.sleep(5)
             except Exception as e:
@@ -307,8 +306,13 @@ class DockerSwarmMonitor:
                         self.service_states[service_name] = status_info
                     elif service_name in self.service_states:
                         del self.service_states[service_name]
+                event_data = {
+                    'service': service_name,
+                    'status': status_info,
+                    'timestamp': get_timestamp(),
+                }
                 await self.update_service_cache(service_name, status_info)
-                await self.broadcast_to_sse_clients(service_name, status_info)
+                await self.broadcast_to_sse_clients({'event': 'status', 'data': event_data})
                 logger.info(f'Service event: {action} - {service_name}')
         except Exception as e:
             if self.running:
@@ -485,6 +489,7 @@ async def manifest():
 
 
 # SSE endpoint: logs stream with asyncio.Queue per client
+"""
 @app.get('/services/logs/stream')
 async def logs_stream(request: Request):
     global client_id_counter
@@ -522,6 +527,7 @@ async def logs_stream(request: Request):
             logger.info(f'Logs SSE client {client_id} disconnected. Remaining clients: {len(sse_clients)}')
 
     return EventSourceResponse(event_generator())
+"""
 
 
 # Keep the JSON endpoint for compatibility (optional)
@@ -577,7 +583,7 @@ async def post_message(request: Request):
     async with client_id_lock:
         for cid, client_queue in sse_clients.items():
             try:
-                client_queue.put_nowait(data)
+                client_queue.put_nowait({'event': 'log', 'data': data})
             except asyncio.QueueFull:
                 logger.warning(f'SSE client {cid} queue full, removing client.')
                 to_remove.append(cid)
@@ -649,6 +655,9 @@ async def service_stream(request: Request):
                         yield {'event': 'status', 'data': json.dumps(initial_data)}
                         logger.debug('data: %s', initial_data)
 
+                for message in list(MESSAGES_LOG)[-50:]:
+                    yield {'event': 'log', 'data': json.dumps(message)}
+
             # Stream updates
             while True:
                 if await request.is_disconnected():
@@ -656,7 +665,7 @@ async def service_stream(request: Request):
 
                 try:
                     event_data = await asyncio.wait_for(queue.get(), timeout=30)
-                    yield {'event': 'status', 'data': json.dumps(event_data)}
+                    yield {'event': event_data['event'], 'data': json.dumps(event_data['data'])}
                 except asyncio.TimeoutError:
                     yield {
                         'event': 'ping',
