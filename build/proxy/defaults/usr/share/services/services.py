@@ -481,68 +481,10 @@ async def manifest():
     template = """CACHE MANIFEST
 /services/status
 /services-static/*
-/services/logs
     """
     content = Template(template).render({})
 
     return Response(content=content, media_type='text/cache-manifest')
-
-
-# SSE endpoint: logs stream with asyncio.Queue per client
-"""
-@app.get('/services/logs/stream')
-async def logs_stream(request: Request):
-    global client_id_counter
-    queue = asyncio.Queue(maxsize=100)
-    async with client_id_lock:
-        global client_id_counter
-        client_id = client_id_counter
-        client_id_counter += 1
-        sse_clients[client_id] = queue
-
-    logger.info(f'Logs SSE client {client_id} connected. Total clients: {len(sse_clients)}')
-
-    async def event_generator():
-        try:
-            initial_messages = list(MESSAGES_LOG)[-50:]
-            for message in initial_messages:
-                yield {'event': 'log', 'data': json.dumps(message)}
-                await asyncio.sleep(0.01)
-
-            # Stream new log updates
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    log_data = await asyncio.wait_for(queue.get(), timeout=30)
-                    yield {'event': 'log', 'data': json.dumps(log_data)}
-                except asyncio.TimeoutError:
-                    yield {
-                        'event': 'ping',
-                        'data': json.dumps({'timestamp': get_timestamp()}),
-                    }
-        finally:
-            async with client_id_lock:
-                sse_clients.pop(client_id, None)
-            logger.info(f'Logs SSE client {client_id} disconnected. Remaining clients: {len(sse_clients)}')
-
-    return EventSourceResponse(event_generator())
-"""
-
-
-# Keep the JSON endpoint for compatibility (optional)
-@app.get('/services/logs/json')
-async def logs_json():
-    """Get logs as JSON (deprecated - use /services/logs/stream instead)"""
-    return JSONResponse(content=list(MESSAGES_LOG))
-
-
-@app.get('/services/logs', response_class=HTMLResponse)
-async def logs(request: Request):
-    """Logs page"""
-    columns = ['timestamp', 'service', 'text', 'node', 'container']
-
-    return templates.TemplateResponse('logs.html', {'request': request, 'columns': columns})
 
 
 @app.get('/services/info')
@@ -576,21 +518,6 @@ async def post_message(request: Request):
 
     data['timestamp'] = get_timestamp()
     MESSAGES_LOG.append(data)
-
-    # Notify all SSE clients about the new log message
-    """
-    to_remove = []
-    async with client_id_lock:
-        for cid, client_queue in sse_clients.items():
-            try:
-                client_queue.put_nowait({'event': 'log', 'data': data})
-            except asyncio.QueueFull:
-                logger.warning(f'SSE client {cid} queue full, removing client.')
-                to_remove.append(cid)
-        async with client_id_lock:
-            for cid in to_remove:
-                sse_clients.pop(cid, None)
-    """
 
     return JSONResponse(content={'status': 'ok'})
 
@@ -643,7 +570,7 @@ async def service_stream(request: Request):
                         initial_data = {
                             'service': service_name,
                             'status': {
-                                'status': service_data.get('status', ''),  # FIXME
+                                'status': service_data.get('status', ''),
                                 'running': service_data.get('nodes', 0),
                                 'nodes': service_data.get('node', '').split(', ') if service_data.get('node') else [],
                                 'containers': service_data.get('container', '').split(', ')
@@ -665,7 +592,10 @@ async def service_stream(request: Request):
 
                 try:
                     event_data = await asyncio.wait_for(queue.get(), timeout=30)
-                    yield {'event': event_data['event'], 'data': json.dumps(event_data['data'])}
+                    yield {
+                        'event': event_data['event'],
+                        'data': json.dumps(event_data['data'])
+                    }
                 except asyncio.TimeoutError:
                     yield {
                         'event': 'ping',
