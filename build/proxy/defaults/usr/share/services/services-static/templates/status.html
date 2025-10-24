@@ -594,15 +594,15 @@
         } else {
           color = getColorFromStatus(statusInfo.status);
         }
-        console.log(`${serviceName}: ${color}`)
+        console.debug(`${serviceName}: ${color}`)
 
         node.style.fill = color;
         node.style.display = 'block';
 
         // Updates nodes if > 1
         if (dom.nodeTexts[elementId]) {
-          console.log(statusInfo);
-          console.log(dom.nodeTexts[elementId]);
+          console.debug(statusInfo);
+          console.debug(dom.nodeTexts[elementId]);
           const nodeCount = statusInfo.running || 0;
           dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
         }
@@ -611,7 +611,7 @@
         const link = dom.links[serviceName];
         if (link) {
           const shouldShow = statusInfo.running > 0 && !isDisabled;
-          console.log(`${serviceName} shouldShow: ${shouldShow}`)
+          console.debug(`${serviceName} shouldShow: ${shouldShow}`)
           link.style.display = shouldShow ? 'block' : 'none';
         }
 
@@ -620,11 +620,11 @@
 
       function updatePMSNode() {
         const node = dom.nodes.pms;
-        console.log('updatePMSNode node:', node);
+        console.debug('updatePMSNode node:', node);
         if (!node) return;
 
         const pmsServiceNames = Object.keys(state.pmsServices);
-        console.log('pmsServiceNames', pmsServiceNames, pmsServiceNames.length);
+        console.debug('pmsServiceNames', pmsServiceNames, pmsServiceNames.length);
         if (pmsServiceNames.length === 0) {
           node.style.display = 'none';
           return;
@@ -647,7 +647,7 @@
         if (anyDown) color = '#e74c3c';
         else if (anyDegraded) color = '#f39c12';
         else if (totalRunning < totalDesired) color = '#f39c12';
-        console.log(`updatePMSNode color: ${color}`)
+        console.debug(`updatePMSNode color: ${color}`)
 
         node.style.fill = color;
         node.style.display = 'block';
@@ -731,9 +731,9 @@
           state.waiting = false;
           state.lastUpdate = Date.now();
 
-          console.log('event.data', event.data);
+          console.debug('event.data', event.data);
           const data = JSON.parse(event.data);
-          console.log('Status SSE event received:', data);
+          console.debug('Status SSE event received:', data);
 
           if (!data.service || !data.status) {
             console.warn('Invalid Status SSE data:', data);
@@ -742,7 +742,7 @@
 
           const fullServiceName = data.service;
           const serviceName = getServiceName(fullServiceName);
-          console.log('handleStatusSSEMessage', serviceName, data.status);
+          console.debug('handleStatusSSEMessage', serviceName, data.status);
 
           if (serviceName.startsWith('pms-')) {
             state.pmsServices[serviceName] = data.status;
@@ -760,9 +760,9 @@
 
       function handleLogsSSEMessage(event) {
         try {
-          console.log('event.data', event.data);
+          console.debug('event.data', event.data);
           const data = JSON.parse(event.data);
-          console.log('Logs SSE event received:', data);
+          console.debug('Logs SSE event received:', data);
 
           if (!data.service || !data.container) {
             console.warn('Invalid Logs SSE data:', data);
@@ -837,7 +837,7 @@
         state.eventSource.addEventListener('log', handleLogsSSEMessage);
 
         state.eventSource.addEventListener('ping', () => {
-          console.log('SSE ping received');
+          console.debug('SSE ping received');
           state.lastUpdate = Date.now();
         });
 
@@ -850,7 +850,7 @@
         };
 
         state.eventSource.onopen = () => {
-          console.log('SSE connected');
+          console.debug('SSE connected');
           state.wasDisconnected = false;
         };
       }
