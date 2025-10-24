@@ -462,6 +462,30 @@
         toggleIcon: null
       };
 
+      // Preload mascot images
+      const mascotImages = {};
+
+      function preloadMascotImages() {
+        const sprites = {
+          'mascot-ok': 2,
+          'mascot-starting': 2,
+          'mascot-checking': 3,
+          'mascot-disconnect': 1,
+          'mascot-welcome': 1
+        };
+
+        Object.keys(sprites).forEach(prefix => {
+          for (let sprite = 0; sprite < sprites[prefix]; sprite++) {
+            // Solo mascot-disconnect y mascot-welcome usan la clave sin sprite
+            const key = (sprites[prefix] === 1) ? prefix : `${prefix}-${sprite}`;
+            const img = new Image();
+            img.src = `/services-static/img/${key}.svg`;
+            mascotImages[key] = img;
+          }
+        });
+        console.debug(mascotImages)
+      }
+
       // Initialize DOM cache
       function cacheDOMElements() {
         dom.mascot = document.getElementById('mascot');
@@ -687,11 +711,20 @@
           state.allHealthy = false;
         } else {
           sprite = 0;
-          prefix = 'mascot-ok';
+          prefix = 'mascot-welcome';
           state.allHealthy = false;
         }
 
-        dom.mascot.setAttribute('href', `/services-static/img/${prefix}-${sprite}.svg`);
+        let key = (sprite === 0 && (prefix === 'mascot-disconnect' || prefix === 'mascot-welcome'))
+               ? prefix
+               : `${prefix}-${sprite}`;
+        if (mascotImages[key]) {
+          // Use preloaded image src to avoid new fetch
+          dom.mascot.setAttribute('href', mascotImages[key].src);
+        } else {
+          // Fallback to default image if not preloaded
+          dom.mascot.setAttribute('href', `/services-static/img/${key}.svg`);
+        }
       }
 
       function toggleLogs() {
@@ -855,13 +888,13 @@
       function showWaiting() {
         dom.message.textContent = 'waiting...';
         dom.messageServ.textContent = '';
-        dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
+        dom.mascot.setAttribute('href', mascotImages['mascot-welcome'].src);
       }
 
       function showDisconnected() {
         dom.message.textContent = 'disconnected';
         dom.messageServ.textContent = '';
-        dom.mascot.setAttribute('href', '/services-static/img/mascot-disconnect.svg');
+        dom.mascot.setAttribute('href', mascotImages['mascot-disconnect'].src);
 
         Object.values(dom.nodes).forEach(node => {
           if (node) node.style.display = 'none';
@@ -892,7 +925,7 @@
         dom.message.textContent = randomMsg;
         dom.messageServ.textContent = '';
         dom.mascot.style.display = 'none';
-        dom.mascot.setAttribute('href', '/services-static/img/mascot-welcome.svg');
+        dom.mascot.setAttribute('href', mascotImages['mascot-welcome'].src);
 
         setTimeout(() => {
           dom.mascot.style.display = 'block';
@@ -913,6 +946,7 @@
       // Initialize
       async function init() {
         cacheDOMElements();
+        preloadMascotImages();
         setupLinks();
         showWelcome();
 
