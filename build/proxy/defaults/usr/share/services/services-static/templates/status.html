@@ -335,8 +335,8 @@
         <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
-        <a id="worker_console_link_parent" target="_blank">
-          <circle id="worker_console_link" class="link" cx="7" cy="-7" r="7"><title>Worker Console</title></circle>
+        <a id="worker_link_parent" target="_blank">
+          <circle id="worker_link" class="link" cx="7" cy="-7" r="7"><title>Worker Console</title></circle>
         </a>
         <text x="4" y="2">worker</text>
       </g>
@@ -344,8 +344,8 @@
       <g id="database-node" transform="translate(110, 74)">
         <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" filter="url(#glow)" />
-        <a id="database_console_link_parent" target="_blank">
-          <circle id="database_console_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
+        <a id="database_link_parent" target="_blank">
+          <circle id="database_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
         </a>
         <text x="3" y="2">database</text>
       </g>
@@ -353,8 +353,8 @@
       <g id="datastore-node" transform="translate(110, 94)">
         <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
-        <a id="datastore_console_link_parent" target="_blank">
-          <circle id="datastore_console_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
+        <a id="datastore_link_parent" target="_blank">
+          <circle id="datastore_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
         </a>
         <text x="3" y="2">datastore</text>
       </g>
@@ -423,9 +423,13 @@
           'database', 'datastore', 'datashare_console',
           'certbot', 'assistant', 'mcp-server'
         ],
-        consoleServices: ['console', 'portainer', 'proxy', 'ca', 'core',
-                         'database', 'datastore', 'datashare_console',
-                         'worker', 'assistant'],
+        consoleServices: [
+          'portainer', 'proxy', 'ca',
+          'console',
+          'core', 'worker',
+          'database', 'datastore', 'datashare_console',
+          'assistant'
+        ],
         infoData: null,
       };
 
@@ -514,9 +518,9 @@
           ca_link_parent: `https://${host}/ca/docs`,
           console_link_parent: `https://${host}/`,
           core_link_parent: `https://${host}/docs/`,
-          worker_console_link_parent: `https://worker-${host}/tasks`,
-          database_console_link_parent: `https://database-${host}`,
-          datastore_console_link_parent: `https://datastore-${host}`,
+          worker_link_parent: `https://worker-${host}/tasks`,
+          database_link_parent: `https://database-${host}`,
+          datastore_link_parent: `https://datastore-${host}`,
           datashare_console_link_parent: `https://datashare-${host}`,
           assistant_link_parent: `https://assistant-${host}`
         };
@@ -565,11 +569,12 @@
 
       function updateServiceNode(serviceName, statusInfo) {
         const node = dom.nodes[serviceName];
-
         if (!node) {
           console.warn(`Node not found for service: ${serviceName}`);
           return;
         }
+
+        console.debug(`${serviceName} statusInfo:`, statusInfo);
 
         const isDisabled = CONFIG.infoData?.disabled?.includes(serviceName);
 
@@ -579,15 +584,14 @@
         } else {
           color = getColorFromStatus(statusInfo.status);
         }
-        console.debug(`${serviceName}: ${color}`)
+        console.debug(`${serviceName} color: ${color}`)
 
         node.style.fill = color;
         node.style.display = 'block';
 
         // Updates nodes if > 1
         if (dom.nodeTexts[serviceName]) {
-          console.debug(statusInfo);
-          console.debug(dom.nodeTexts[serviceName]);
+          console.debug('nodeText:', dom.nodeTexts[serviceName]);
           const nodeCount = statusInfo.running || 0;
           dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? nodeCount : '';
         }
@@ -598,6 +602,7 @@
           const shouldShow = statusInfo.running > 0 && !isDisabled;
           console.debug(`${serviceName} shouldShow: ${shouldShow}`)
           link.style.display = shouldShow ? 'block' : 'none';
+          console.debug('dom.link:', link);
         }
 
         state.serviceStates[serviceName] = statusInfo;
