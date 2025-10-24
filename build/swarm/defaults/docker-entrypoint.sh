@@ -43,9 +43,9 @@ Available commands:
   deploy                 Deploy a migasfree stack
   undeploy               Undeploy a migasfree stack
   redeploy               Perform undeploy + deploy
-  deploy_all             Deploy all migasfree stacks
-  undeploy_all           Undeploy all migasfree stacks
-  redeploy_all           Perform undeploy + deploy for all migasfree stacks
+  deploy-all             Deploy all migasfree stacks
+  undeploy-all           Undeploy all migasfree stacks
+  redeploy-all           Perform undeploy + deploy for all migasfree stacks
   consoles-dev           Enable development consoles
   consoles-pro           Disable development consoles
   secret                 Show the "secrets" for console access
