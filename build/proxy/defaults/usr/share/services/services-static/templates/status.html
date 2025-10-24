@@ -416,23 +416,13 @@
         waitingThreshold: 5000,
         welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
         logsColumns: ['timestamp', 'service', 'text', 'node', 'container'],
-        serviceMapping: {
-          'proxy': 'proxy',
-          'ca': 'ca',
-          'certbot': 'certbot',
-          'console': 'console',
-          'core': 'core',
-          'beat': 'beat',
-          'worker': 'worker',
-          'public': 'public',
-          'pms': 'pms',
-          'database': 'database',
-          'datastore': 'datastore',
-          'portainer': 'portainer',
-          'datashare_console': 'datashare_console',
-          'assistant': 'assistant',
-          'mcp-server': 'mcp-server'
-        },
+        serviceList: [
+          'portainer', 'proxy', 'ca',
+          'console', 'public', 'pms',
+          'beat', 'core', 'worker',
+          'database', 'datastore', 'datashare_console',
+          'certbot', 'assistant', 'mcp-server'
+        ],
         consoleServices: ['console', 'portainer', 'proxy', 'ca', 'core',
                          'database', 'datastore', 'datashare_console',
                          'worker', 'assistant'],
@@ -482,7 +472,7 @@
         dom.toggleIcon = document.getElementById('toggle-icon');
 
         // Cache all service nodes
-        Object.values(CONFIG.serviceMapping).forEach(elementId => {
+        CONFIG.serviceList.forEach(elementId => {
           dom.nodes[elementId] = document.getElementById(elementId);
           dom.nodeTexts[elementId] = document.getElementById(`nodes_${elementId}`);
         });
@@ -562,10 +552,6 @@
         return fullName;
       }
 
-      function getElementId(serviceName) {
-        return CONFIG.serviceMapping[serviceName] || serviceName;
-      }
-
       function getColorFromStatus(status) {
         const colorMap = {
           'healthy': '#a9dfbf',   // green
@@ -578,11 +564,10 @@
       }
 
       function updateServiceNode(serviceName, statusInfo) {
-        const elementId = getElementId(serviceName);
-        const node = dom.nodes[elementId];
+        const node = dom.nodes[serviceName];
 
         if (!node) {
-          console.warn(`Node not found for service: ${serviceName} (element: ${elementId})`);
+          console.warn(`Node not found for service: ${serviceName}`);
           return;
         }
 
@@ -600,11 +585,11 @@
         node.style.display = 'block';
 
         // Updates nodes if > 1
-        if (dom.nodeTexts[elementId]) {
+        if (dom.nodeTexts[serviceName]) {
           console.debug(statusInfo);
-          console.debug(dom.nodeTexts[elementId]);
+          console.debug(dom.nodeTexts[serviceName]);
           const nodeCount = statusInfo.running || 0;
-          dom.nodeTexts[elementId].textContent = nodeCount >= 2 ? nodeCount : '';
+          dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? nodeCount : '';
         }
 
         // Updates console link visibility
