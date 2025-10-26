@@ -241,11 +241,11 @@ def deploy_stack(compose_file, stack_name):
 
 
 def create_network_overlay(network_name):
-    os.system(f'docker network create --attachable --driver overlay --opt encrypted {network_name} --opt com.docker.network.driver.mtu=1450 2>/dev/null')
+    os.system(f'docker network create --attachable --driver overlay --opt encrypted {network_name} --opt com.docker.network.driver.mtu=1200 2>/dev/null')
 
 
 def create_network_internal(network_name):
-    os.system(f'docker network create --internal --driver overlay --opt encrypted {network_name} --opt com.docker.network.driver.mtu=1450 2>/dev/null')
+    os.system(f'docker network create --internal --driver overlay --opt encrypted {network_name} --opt com.docker.network.driver.mtu=1200 2>/dev/null')
 
 
 def deploy_migasfree(context):
@@ -258,16 +258,6 @@ def deploy_migasfree(context):
     api = PortainerAPI("http://portainer:9000/api", token)
     file_yml = f"/stack/{context['STACK']}.yml"
     api.set_enpoint_id("primary")
-
-    """
-    # Secrets stack
-    (user, password) = credentials(f"{CONTEXT['STACK']}","admin")
-
-    # Stack secrets
-    api.create_secret(f"{context['STACK']}_superadmin_name", user)
-    api.create_secret(f"{context['STACK']}_superadmin_pass", password)
-    api.create_secret(f"{context['STACK']}_pms_pass", generate_password(12))
-    """
 
     # CUSTOM TEMPLATE
     name_template = f"{context['STACK']}"
@@ -312,7 +302,6 @@ def deploy_migasfree(context):
         "SwarmID": api.swarm_id
     }
 
-    # api.deploy(payload)
     deploy_stack(file_yml, f"{context['STACK']}")
 
     os.remove(file_yml)

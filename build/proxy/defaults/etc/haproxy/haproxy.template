@@ -57,9 +57,6 @@ http-errors myerrors
     errorfile 429 /etc/haproxy/errors-custom/429.http
 
 
-userlist users_cluster
-{{USERLIST_CLUSTER}}
-
 userlist users_stack
 {{USERLIST_STACK}}
 
@@ -67,7 +64,7 @@ userlist users_stack
 listen stats
     # https://www.haproxy.com/blog/haproxy-on-docker-swarm-load-balancing-and-dns-service-discovery#haproxy-configuration
     bind *:8404 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
-    acl auth_ok http_auth(users_cluster)
+    acl auth_ok http_auth(users_stack)
     stats http-request auth unless auth_ok
     mode http
     stats enable

@@ -415,7 +415,6 @@ def config_haproxy():
         'certbot': HTTPSMODE == 'auto',
         'PORT_HTTPS': PORT_HTTPS,
         'USERLIST_STACK': userlist_stack(),
-        'USERLIST_CLUSTER': userlist_cluster(),
         'NETWORK_MNG': NETWORK_MNG,
         'MTLS': MTLS == 'True',
     }
@@ -445,15 +444,6 @@ def userlist_stack() -> str:
         username = f.read()
     with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
         password = f.read()
-
-    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True, check=True)
-
-    return f'    user {username} password {result.stdout}'
-
-
-def userlist_cluster() -> str:
-    with open('/run/secrets/swarm-credential', 'r', encoding='utf-8') as f:
-        username, password = f.read().split(':')
 
     result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True, check=True)
 

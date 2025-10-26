@@ -1,6 +1,79 @@
 
 services:
 
+    ca:
+        image: migasfree/ca:{{TAG}}
+        environment:
+            - TZ=Europe/Madrid
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+        deploy:
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 0
+                window: 180s
+        volumes:
+            - migasfree-swarm:/mnt/cluster
+
+        networks:
+            - infra_network
+
+    proxy:
+        image: migasfree/proxy:{{TAG}}
+        ports:
+            - published: {{PORT_HTTP}}
+              target: 80
+              protocol: tcp
+              mode: host
+            - published: {{PORT_HTTPS}}
+              target: 443
+              protocol: tcp
+              mode: host
+        dns: 127.0.0.11
+        environment:
+            - TZ=Europe/Madrid
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - PORT_HTTPS={{PORT_HTTPS}}
+            - MTLS={{MTLS}}
+            - HTTPSMODE={{HTTPSMODE}}
+            - PMS_ENABLED={{PMS_ENABLED}}
+            - NETWORK_MNG={{NETWORK_MNG}}
+            - GOOGLE_API_KEY={{GOOGLE_API_KEY}}  # TODO: improve token handling — avoid storing sensitive data in environment variables
+        depends_on:
+            - ca
+        deploy:
+            mode: global
+            restart_policy:
+                condition: on-failure
+                delay: 10s
+                max_attempts: 0
+            placement:
+                constraints:
+                    - node.role == manager
+        secrets:
+            - source: {{STACK}}_superadmin_name
+            - source: {{STACK}}_superadmin_pass
+            - source: swarm-credential
+
+        volumes:
+            - migasfree-swarm:/mnt/cluster
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+
+        networks:
+            - infra_network
+
+
+
+
+
+
 #    s3:
 #        # https://min.io/docs/minio/linux/integrations/setup-nginx-proxy-with-minio.html
 #        image: migasfree/s3:{{TAG}}
@@ -506,6 +579,9 @@ networks:
 
 
 secrets:
+    swarm-credential:
+        external: true
+
     {{STACK}}_superadmin_name:
         external: true
     {{STACK}}_superadmin_pass:

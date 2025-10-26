@@ -214,7 +214,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
     Example credentials:
 
     ```txt
-      ● proxy & portainer:
+      ● portainer:
 
           3GPtv76r lMyr2vNK5A3guYUr5nKefzqZZHxWfZ
 

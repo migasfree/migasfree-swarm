@@ -1,8 +1,8 @@
 #!/bin/sh
 
-CONTAINER_PROXY_ID=$(docker ps|grep infra_proxy| awk '{print $1}')
+CONTAINER_PROXY_ID=$(docker ps|grep ${STACK}_proxy| awk '{print $1}')
 echo
-echo "● proxy & portainer:"
+echo "● portainer:"
 echo
 docker exec -ti ${CONTAINER_PROXY_ID} sh -c "echo -n '    ';cat /var/run/secrets/swarm-credential | tr ':' ' ';echo"
 echo
