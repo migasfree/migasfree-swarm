@@ -1,27 +1,22 @@
 #!/bin/sh
 
 export MIGASFREE_SECRET_DIR=/var/run/secrets
-BROKER_URL=redis://default:$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)@datastore:6379/0
-BACKEND_URL=$BROKER_URL
+BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
 
-function set_TZ {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
+set_TZ() {
+    : ${TZ:=Europe/Madrid}
+    # Link only if the target differs (reduces noisy “File exists” errors)
+    [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ] && \
+        ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
 }
 
-function wait {
+wait() {
     local _SERVER=$1
     local _PORT=$2
     local _COUNTER=0
     until [ $_COUNTER -gt 30 ]
     do
-        nc -z $_SERVER $_PORT 2> /dev/null
-        if [ $? = 0 ]
+        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
             echo "$_SERVER:$_PORT is running."
             return
@@ -36,9 +31,8 @@ function wait {
 }
 
 send_message "init worker console"
-send_message "wait worker"
-
-#wait worker 8080
+# send_message "wait worker"
+# wait worker 8080
 
 echo "
 
@@ -62,19 +56,16 @@ echo "
 
 "
 
-
 # CELERY CONFIG
 # =============
 CONFIG_FILE=celeryconfig.py
 echo "broker_url = '${BROKER_URL}'" > ${CONFIG_FILE}
-echo "result_backend = '${BROKER_URL}'"  >> ${CONFIG_FILE}
+echo "result_backend = '${BROKER_URL}'" >> ${CONFIG_FILE}
 echo "broker_connection_retry_on_startup = True" >> ${CONFIG_FILE}
 echo "enable_utc = False" >> ${CONFIG_FILE}
 echo "timezone = '${TZ}'" >> ${CONFIG_FILE}
 
-
 send_message ""
 
 export FLOWER_UNAUTHENTICATED_API=True
-celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api=${BROKER_URL}/api/
-
+celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api="${BROKER_URL}/api/"
