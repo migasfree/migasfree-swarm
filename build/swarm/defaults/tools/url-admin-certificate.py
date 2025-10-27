@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_user_token(stack, common_name, validity_days=VALIDITY_DAYS):
-    url = f'{BASE_URL}/v1/{stack}/admin/token'
+    url = f'{BASE_URL}/v1/private/admin/token'
     headers = {
         'Content-Type': 'application/json'
     }
@@ -59,6 +59,8 @@ if __name__ == '__main__':
         client.networks.get(NETWORK).connect(socket.gethostname())
     except docker.errors.APIError as exc:
         logger.warning('Could not connect to network %s: %s', NETWORK, exc)
+    except Exception as err:
+        logger.warning(err)
 
     user_token = create_user_token(stack, common_name, validity_days)
     if user_token:

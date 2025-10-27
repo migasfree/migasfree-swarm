@@ -213,13 +213,8 @@ frontend http
 
     # Certificates & tokens
     acl url_no_mTLS_get   path_beg /ca/static/
-    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/admin/token/[a-f0-9]{64}$
-    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/admin/token/[a-f0-9]{64}$
-    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/admin$
-    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/computer/token/[a-f0-9]{64}$
-    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/computer/token/[a-f0-9]{64}$
-    acl url_no_mTLS_post  path_reg ^/ca/v1/[^/]+/computer$
-    acl url_no_mTLS_get   path_reg ^/ca/v1/[^/]+/crl$
+    acl url_no_mTLS_get   path_beg /ca/v1/public/
+    acl url_no_mTLS_post  path_beg /ca/v1/public/
 
     acl url_no_mTLS_get   path_beg /services-static/
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/

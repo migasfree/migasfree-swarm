@@ -20,16 +20,17 @@ app = FastAPI(
     title="Certificate Authority API",
     version="1.0.0",
     description="API for certificate management with local CA",
-#    docs_url="/ca/docs",
     root_path="/ca"
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="ca-static")
 
 
-app.include_router(admin.router)
-app.include_router(computer.router)
-app.include_router(crl.router)
+app.include_router(admin.router_public)
+app.include_router(admin.router_private)
+app.include_router(computer.router_public)
+app.include_router(computer.router_private)
+app.include_router(crl.router_public)
 
 @app.get(f'/health', tags=["health"])
 async def health_check():

@@ -8,10 +8,10 @@ import logging
 import time
 import secrets
 
-from core.config import ROOT, PATH_CERTIFICATES
+
+from core.config import ROOT, STACK, PATH_CERTIFICATES
 
 from core.security import (
-    get_stack_dependency,
     TokenValidator,
     create_admin_cert,
     revoke_admin_cert
@@ -26,20 +26,24 @@ logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
 
-router = APIRouter(
-    prefix=f"{ROOT}/{{stack}}/admin",
+router_public = APIRouter(
+    prefix=f"{ROOT}/public/admin",
+    tags=["admin-certificates"]
+)
+
+router_private = APIRouter(
+    prefix=f"{ROOT}/private/admin",
     tags=["admin-certificates"]
 )
 
 
-@router.post(
+@router_private.post(
     '/token',
     response_model=TokenCreateResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def create_token(
-    data: TokenCreateRequest,
-    stack: str = Depends(get_stack_dependency)
+    data: TokenCreateRequest
 ):
     """Create a temporary token for certificate request in a specific stack"""
 
@@ -47,7 +51,7 @@ async def create_token(
     token = secrets.token_hex(32)
     expires_at = datetime.utcnow() + timedelta(hours=72)
 
-    stack_token_dir = PATH_CERTIFICATES / stack / "admin" / "tokens"
+    stack_token_dir = PATH_CERTIFICATES / STACK / "admin" / "tokens"
     stack_token_dir.mkdir(parents=True, exist_ok=True)
 
     # Save common_name|validity_days
@@ -55,17 +59,16 @@ async def create_token(
     content = f"{data.common_name}|{data.validity_days}"
     token_file.write_text(content, encoding='utf-8')
 
-    logger.info(f"Token created for CN={data.common_name} in stack={stack}")
-    host = get_host(stack)
-    return TokenCreateResponse(url=f"https://{host}/ca/v1/{stack}/admin/token/{token}")
+    logger.info(f"Token created for CN={data.common_name} in stack={STACK}")
+    host = get_host(STACK)
+    return TokenCreateResponse(url=f"https://{host}/ca/v1/public/admin/token/{token}")
 
-@router.get("/token/{token}", response_class=HTMLResponse)
+@router_public.get("/token/{token}", response_class=HTMLResponse)
 async def get_admin_cert_request_form(
     request: Request,
-    token: str ,
-    stack: str = Depends(get_stack_dependency)
+    token: str
 ):
-    token_file_path =  PATH_CERTIFICATES / stack / "admin" / "tokens" / token
+    token_file_path =  PATH_CERTIFICATES / STACK / "admin" / "tokens" / token
     if not token_file_path.exists():
         raise HTTPException(status_code=404, detail="Token not found")
 
@@ -87,28 +90,27 @@ async def get_admin_cert_request_form(
             "common_name": common_name,
             "validity_days": int(validity_days),
             "token": token,
-            "fqdn": get_fqdn(stack),
-            "stack": stack
+            "fqdn": get_fqdn(STACK),
+            "stack": STACK
         }
     )
 
 
-@router.post("")
+@router_public.post("")
 async def create_admin_certificate(
     token: str = Form(...),
     email: EmailStr = Form(...),
-    password: Optional[str] = Form(None),
-    stack: str = Depends(get_stack_dependency)
+    password: Optional[str] = Form(None)
 ):
     """Creates a user certificate in a specific stack"""
 
-    validator = TokenValidator(stack, token, "admin")
+    validator = TokenValidator(STACK, token, "admin")
     common_name, validity_days = validator.validate()
-    FQDN = get_fqdn(stack)
-    HOST = get_host(stack)
+    FQDN = get_fqdn(STACK)
+    HOST = get_host(STACK)
 
     success = create_admin_cert(
-        FQDN, HOST, stack, common_name, password, validity_days, email
+        FQDN, HOST, STACK, common_name, password, validity_days, email
     )
 
     if not success:
@@ -116,7 +118,7 @@ async def create_admin_certificate(
         raise HTTPException(status_code=500, detail="Certificate creation failed")
 
     cert_name = f"{common_name}"
-    cert_dir = PATH_CERTIFICATES / stack / "admin" / "certs"
+    cert_dir = PATH_CERTIFICATES / STACK / "admin" / "certs"
     file_tar = cert_dir / f"{cert_name}.tar"
 
     if not file_tar.exists():
@@ -129,7 +131,7 @@ async def create_admin_certificate(
         validator.consume()
         file_tar.unlink()
 
-        logger.info(f"Certificate delivered for {email} in stack {stack}")
+        logger.info(f"Certificate delivered for {email} in stack {STACK}")
 
         return Response(
             content=content,
@@ -146,24 +148,23 @@ async def create_admin_certificate(
         raise HTTPException(status_code=500, detail="Error serving certificate")
 
 
-@router.post("/revoke", status_code=status.HTTP_204_NO_CONTENT)
+@router_private.post("/revoke", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_admin_certificate(
-    common_name: str = Body(..., embed=True),
-    stack: str = Depends(get_stack_dependency)
+    common_name: str = Body(..., embed=True)
 ):
     """
     Revokes the admin certificate identified by common_name in a specific stack.
     """
 
     try:
-        revoked = revoke_admin_cert(common_name, stack)
+        revoked = revoke_admin_cert(common_name, STACK)
         if not revoked:
-            logger.warning(f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {stack}")
+            logger.warning(f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}")
             raise HTTPException(status_code=404, detail="Certificate not found or already revoked")
 
-        logger.info(f"Certificate revoked for {common_name} in stack {stack}")
+        logger.info(f"Certificate revoked for {common_name} in stack {STACK}")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     except Exception as e:
-        logger.error(f"Error revoking certificate for {common_name} in stack {stack}: {e}")
+        logger.error(f"Error revoking certificate for {common_name} in stack {STACK}: {e}")
         raise HTTPException(status_code=500, detail="Error revoking certificate")

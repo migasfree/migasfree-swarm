@@ -1,26 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
-from core.config import ROOT, PATH_CERTIFICATES
-
-from core.security import (
-    get_stack_dependency
-)
+from core.config import ROOT, STACK, PATH_CERTIFICATES
 
 
-router = APIRouter(
-    prefix=f"{ROOT}/{{stack}}",
+router_public = APIRouter(
+    prefix=f"{ROOT}/public",
     tags=["crl"]
 )
 
 
-@router.get("/crl")
-async def get_crl(stack: str = Depends(get_stack_dependency)):
+@router_public.get("/crl")
+async def get_crl():
     """Obtiene la Lista de Revocación de Certificados (CRL) para usuarios del stack"""
 
-    file_crl = PATH_CERTIFICATES / stack / "crl.pem"
+    file_crl = PATH_CERTIFICATES / STACK / "crl.pem"
     if not file_crl.exists():
-        logger.warning(f"CRL not found for stack {stack}")
+        logger.warning(f"CRL not found for stack {STACK}")
         raise HTTPException(status_code=404, detail="CRL not found")
 
     try:

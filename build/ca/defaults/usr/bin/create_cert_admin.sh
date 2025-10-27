@@ -32,7 +32,7 @@ cat > $CONFIG_EXT <<EOF
 [ v3_ext ]
 extendedKeyUsage = clientAuth, 1.2.3.4.5.6.7.8.1
 subjectAltName = DNS:${FQDN}, email:copy
-crlDistributionPoints = URI:http://${HOST}/ca/v1/${STACK}/crl
+crlDistributionPoints = URI:http://${HOST}/ca/v1/public/crl
 
 EOF
 
