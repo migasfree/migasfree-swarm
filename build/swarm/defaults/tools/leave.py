@@ -1,16 +1,11 @@
-import os
 import time
 import docker
 import urllib3
 import subprocess
 
-from context import ContextLoader, get_stacks
+from context import get_stacks
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-_PATH = "/stack"  # Path in this container
-_PATH_CREDENTIALS = os.path.join(_PATH, "credentials")
-_PATH_CERTIFICATE = os.path.join(_PATH, "certificates")
 
 
 def remove_stacks(stack_names):
@@ -18,11 +13,13 @@ def remove_stacks(stack_names):
         try:
             subprocess.run(['docker', 'stack', 'rm', stack_name], check=True)
             print(f"Stack '{stack_name}' removed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error removing stack '{stack_name}': {e}")
         except Exception as e:
             print(f"Unexpected error when attempting to remove the stack '{stack_name}': {e}")
 
 
-def remove_volumes(volume_names, wait_time=5, max_retries=10):
+def remove_volumes(client, volume_names, wait_time=5, max_retries=10):
     for volume_name in volume_names:
         retries = 0
         while retries < max_retries:
@@ -50,7 +47,7 @@ def remove_volumes(volume_names, wait_time=5, max_retries=10):
             print(f"Failed to remove the volume '{volume_name}' after {max_retries} attempts.")
 
 
-def leave_swarm_force():
+def leave_swarm_force(client):
     try:
         client.api.leave_swarm(force=True)
         print("Node has forcefully left the swarm.")
@@ -62,7 +59,6 @@ def leave_swarm_force():
 
 def system_prune():
     try:
-        # Ejecutar el comando docker system prune -f
         subprocess.run(['docker', 'system', 'prune', '-f'], check=True)
         print("Docker system cleaned successfully.")
     except subprocess.CalledProcessError as e:
@@ -71,17 +67,18 @@ def system_prune():
         print(f"Unexpected error: {e}")
 
 
-print()
-print("Warning!")
-response = "n"
-response = input("Do you want to leave the Swarm cluster? (y/N): ") or response
-if response.lower() != "y":
-    exit()
-else:
-    cl = ContextLoader()
-    CONTEXT = cl.context
-    client = docker.from_env()
+def main():
+    print("Warning!")
+    response = input("Do you want to leave the Swarm cluster? (y/N): ").strip().lower()
+    if response != "y":
+        print('Aborted by user.')
+        return
 
-    remove_stacks(get_stacks() + ['portainer', 'proxy'])
-    leave_swarm_force()
+    client = docker.from_env()
+    remove_stacks(client, get_stacks() + ['portainer', 'proxy'])
+    leave_swarm_force(client)
     system_prune()
+
+
+if __name__ == '__main__':
+    main()
