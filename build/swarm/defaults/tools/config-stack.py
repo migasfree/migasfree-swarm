@@ -1,14 +1,14 @@
 from context import ContextLoader, get_stacks
 
 
-# PROGRAM
-# =======
+def main():
+    # Cluster Context
+    cl = ContextLoader()
+    cl.save()
 
-# Cluster Context
-cl = ContextLoader()
-CONTEXT = cl.context
-cl.save()
+    cl.load_stack(" | ".join(get_stacks()))
+    cl.save_stack()
 
-cl.load_stack(" |".join(get_stacks()))
-CONTEXT = cl.context
-cl.save_stack()
+
+if __name__ == '__main__':
+    main()
