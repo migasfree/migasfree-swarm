@@ -1,10 +1,10 @@
 from context import ContextLoader
 
 
-# PROGRAM
-# =======
+def main():
+    cl = ContextLoader()
+    cl.save()
 
-# Cluster Context
-cl = ContextLoader()
-CONTEXT = cl.context
-cl.save()
+
+if __name__ == '__main__':
+    main()
