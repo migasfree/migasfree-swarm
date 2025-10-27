@@ -1,6 +1,7 @@
 import os
 import sys
 import importlib.util
+
 from pathlib import Path
 
 _PATH = '/stack'
@@ -35,33 +36,39 @@ def import_source_file(filename):
 
 class ContextLoader:
     def __init__(self):
+        self.context = {}
         self.load()
 
+    def _getval(self, name, default):
+        if hasattr(self.module, name):
+            return getattr(self.module, name)
+
+        return default
+
     def prompt(self, name, default, options=[]):
-        if name in vars(self.module):
-            self.context[name] = vars(self.module)[name]
-        elif len(options) == 0:
+        val = self._getval(name, None)
+        if val is not None:
+            self.context[name] = val
+        elif not options:
             self.context[name] = input(f"{name} ({default}): ") or default
         else:
-            self.context[name] = input(f"{name} ({' | '.join(options)}): ")
-            if not self.context[name] in options:
-                self.context[name] = ""
-                self.prompt(name, default, options)
+            while True:
+                answer = input(f"{name} ({' | '.join(options)}) [{default}]: ") or default
+                if answer in options:
+                    self.context[name] = answer
+                    break
+                print(f"Value must be one of: {options}.")
 
     def default(self, name, default):
-        if name in vars(self.module):
-            self.context[name] = vars(self.module)[name]
-        else:
-            self.context[name] = default
+        val = self._getval(name, None)
+        self.context[name] = val if val is not None else default
 
     def load(self):
-        self.context = {}
+        path = Path(_FILE_CLUSTER_VARS)
+        if not path.exists():
+            path.write_text('')
 
-        if not os.path.exists(_FILE_CLUSTER_VARS):
-            with open(_FILE_CLUSTER_VARS, "w") as f:
-                f.write("")
-
-        self.module = import_source_file(Path(_FILE_CLUSTER_VARS))
+        self.module = import_source_file(path)
 
         # Cluster context
         # ===============
@@ -140,13 +147,13 @@ class ContextLoader:
         # ===
         # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-wpt")
         self.default("PMS_ENABLED", "pms-apt,pms-yum")
-        self.default("REPLICAS_console", "1")
-        self.default("REPLICAS_core", "1")
-        self.default("REPLICAS_public", "1")
-        self.default("REPLICAS_worker", "1")
-        self.default("REPLICAS_database_console", "1")
-        self.default("REPLICAS_datastore_console", "1")
-        self.default("REPLICAS_worker_console", "1")
+
+        for key in [
+            "REPLICAS_console", "REPLICAS_core", "REPLICAS_public",
+            "REPLICAS_worker", "REPLICAS_database_console",
+            "REPLICAS_datastore_console", "REPLICAS_worker_console"
+        ]:
+            self.default(key, "1")
 
         # BACKUP
         # ======
@@ -156,6 +163,8 @@ class ContextLoader:
         # =========
         self.default("GOOGLE_API_KEY", "")
         self.default("OLLAMA_BASE_URL", "")
+
+        self.save_stack()
 
     def comment(self, key):
         line = '-' * 120
@@ -364,20 +373,16 @@ class ContextLoader:
         return ""
 
     def environment(self):
-        string = """
-# ENVIRONMENT
-# To apply the changes to these variables, you need to run:
-#     ./migasfree-swarm undeploy
-#     ./migasfree-swarm deploy
+        lines = [
+            "# ENVIRONMENT\n"
+            "# To apply changes to these variables, run:\n"
+            "#     ./migasfree-swarm undeploy\n"
+            "#     ./migasfree-swarm deploy\n\n"
+        ]
+        for k, v in self.context.items():
+            lines.append(f"{self.comment(k)}{k}='{v}'\n\n")
 
-
-"""
-
-        for key, value in self.context.items():
-            string += self.comment(key)
-            string += f"{key}='{value}'\n\n\n"
-
-        return string
+        return ''.join(lines)
 
     def save(self):
         with open(_FILE_CLUSTER_VARS, "w") as f:
