@@ -1,13 +1,12 @@
-from fastapi import HTTPException, Path
-from datetime import datetime, timedelta
-from pathlib import Path as PathLib
-from typing import Optional
+import os
+import subprocess
 import secrets
 import time
 import logging
 import re
-import subprocess
-import os
+
+from fastapi import HTTPException, Path
+from datetime import datetime, timedelta
 
 from core.config import PATH_CERTIFICATES, MAX_TOKEN_AGE_HOURS
 
@@ -21,8 +20,10 @@ def validate_stack_name(stack: str) -> str:
             status_code=400,
             detail="Stack name must contain only alphanumeric characters, hyphens, and underscores"
         )
+
     if '..' in stack or '/' in stack or '\\' in stack:
         raise HTTPException(status_code=400, detail="Invalid stack name")
+
     return stack
 
 
@@ -46,7 +47,6 @@ class TokenValidator:
         self.token_file = PATH_CERTIFICATES / stack / resource / "tokens" / token
 
     def validate(self) -> tuple[str, str]:
-
         # Validación básica
         if not self.token or len(self.token) != 64:
             logger.warning(f"Invalid token format from stack {self.stack}")
@@ -101,12 +101,11 @@ def sanitize_input(value: str, allowed_chars: str = r'[^a-zA-Z0-9@._:-]') -> str
     return re.sub(allowed_chars, '', value)
 
 
-
-
-def create_admin_cert(fqdn: str, host: str, stack: str, common_name: str, password: str,
-                        days: str, email: str ) -> bool:
+def create_admin_cert(
+    fqdn: str, host: str, stack: str, common_name: str, password: str,
+    days: str, email: str
+) -> bool:
     try:
-
         stack_clean = sanitize_input(stack)
         common_name_clean = sanitize_input(common_name)
         email_clean = sanitize_input(email, r'[^a-zA-Z0-9@._+-]')
@@ -146,7 +145,6 @@ def create_admin_cert(fqdn: str, host: str, stack: str, common_name: str, passwo
         return False
 
 
-
 def revoke_admin_cert(common_name: str, stack: str) -> bool:
     """
     Revokes the user certificate identified by common_name in the specified stack.
@@ -162,7 +160,7 @@ def revoke_admin_cert(common_name: str, stack: str) -> bool:
 
     try:
         resource_dir = PATH_CERTIFICATES / stack / "admin"
-        crl_file = resource_dir / "crl" / "crl.pem"
+        # crl_file = resource_dir / "crl" / "crl.pem"
 
         # Revoke
         subprocess.run([
@@ -187,8 +185,11 @@ def revoke_admin_cert(common_name: str, stack: str) -> bool:
         logger.error(f"Unexpected error during revocation: {e}")
         return False
 
-def create_computer_cert(fqdn: str, host: str, stack: str, common_name: str, password: str,
-                        days: str, email: str ) -> bool:
+
+def create_computer_cert(
+    fqdn: str, host: str, stack: str, common_name: str, password: str,
+    days: str, email: str
+) -> bool:
     try:
         stack_clean = sanitize_input(stack)
         common_name_clean = sanitize_input(common_name)
@@ -229,18 +230,17 @@ def create_computer_cert(fqdn: str, host: str, stack: str, common_name: str, pas
         return False
 
 
-
 def revoke_computer_cert(common_name: str, stack: str) -> bool:
     cert_dir = PATH_CERTIFICATES / stack / "computer" / "certs"
     cert_file = f"{common_name}.crt"
     cert_path = cert_dir / cert_file
 
     if not cert_path.is_file():
-        return False  # Certificado not exists
+        return False
 
     try:
         resource_dir = PATH_CERTIFICATES / stack / "computer"
-        crl_file = resource_dir / "crl" / "crl.pem"
+        # crl_file = resource_dir / "crl" / "crl.pem"
 
         # Revoke
         subprocess.run([
