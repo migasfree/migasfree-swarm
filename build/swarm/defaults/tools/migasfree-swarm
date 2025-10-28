@@ -238,7 +238,7 @@ then
   docker run --name migasfree-swarm \
       --detach=${_DETACH} --rm -ti \
       --env STACK="${STACK}" \
-      -v "$(pwd)":/stack \
+      -v "${SCRIPT_DIR}":/stack \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -v $VOLUME:/mnt/cluster \
       "$_IMAGE" "$_COMMAND"
