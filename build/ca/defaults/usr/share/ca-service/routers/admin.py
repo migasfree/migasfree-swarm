@@ -1,24 +1,21 @@
-from fastapi import APIRouter, Request, HTTPException, Form, Depends, Query, Body, status
+import logging
+import time
+import secrets
+
+from fastapi import APIRouter, Request, HTTPException, Form, Body, status
 from fastapi.responses import Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
 from datetime import datetime, timedelta
 from typing import Optional
-import logging
-import time
-import secrets
-
 
 from core.config import ROOT, STACK, PATH_CERTIFICATES
-
 from core.security import (
     TokenValidator,
     create_admin_cert,
     revoke_admin_cert
 )
-
 from core.models import TokenCreateResponse, TokenCreateRequest
-
 from core.utils import get_fqdn, get_host
 
 
@@ -46,10 +43,8 @@ async def create_token(
     data: TokenCreateRequest
 ):
     """Create a temporary token for certificate request in a specific stack"""
-
-
     token = secrets.token_hex(32)
-    expires_at = datetime.utcnow() + timedelta(hours=72)
+    # expires_at = datetime.utcnow() + timedelta(hours=72)
 
     stack_token_dir = PATH_CERTIFICATES / STACK / "admin" / "tokens"
     stack_token_dir.mkdir(parents=True, exist_ok=True)
@@ -63,12 +58,13 @@ async def create_token(
     host = get_host(STACK)
     return TokenCreateResponse(url=f"https://{host}/ca/v1/public/admin/token/{token}")
 
+
 @router_public.get("/token/{token}", response_class=HTMLResponse)
 async def get_admin_cert_request_form(
     request: Request,
     token: str
 ):
-    token_file_path =  PATH_CERTIFICATES / STACK / "admin" / "tokens" / token
+    token_file_path = PATH_CERTIFICATES / STACK / "admin" / "tokens" / token
     if not token_file_path.exists():
         raise HTTPException(status_code=404, detail="Token not found")
 
