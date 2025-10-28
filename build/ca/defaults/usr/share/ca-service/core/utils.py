@@ -1,6 +1,6 @@
-from fastapi import Request
-from core.config import PATH_DATASHARES
 import re
+
+from core.config import PATH_DATASHARES
 
 
 def grep(file, pattern):
@@ -23,12 +23,12 @@ def get_variable(file, variable):
 
 def get_host(stack) -> str:
     fqdn = get_fqdn(stack)
-    port = get_variable( str(PATH_DATASHARES/stack/"env.py"), "PORT_HTTPS")
+    port = get_variable(str(PATH_DATASHARES/stack/"env.py"), "PORT_HTTPS")
     if port == "443":
         return fqdn
+
     return f"{fqdn}:{port}"
 
 
 def get_fqdn(stack) -> str:
-    return get_variable( str(PATH_DATASHARES/stack/"env.py"), "FQDN")
-
+    return get_variable(str(PATH_DATASHARES/stack/"env.py"), "FQDN")
