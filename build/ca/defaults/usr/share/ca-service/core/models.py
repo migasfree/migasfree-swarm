@@ -1,16 +1,18 @@
-from pydantic import BaseModel, EmailStr, field_validator
-from datetime import datetime
+from pydantic import BaseModel, field_validator
+
+VALIDITY_DAYS = 7305
 
 
 class TokenCreateRequest(BaseModel):
-    common_name: str           # CN solicitado
-    validity_days: int = 7305  # Días de validez del certificado
+    common_name: str
+    validity_days: int = VALIDITY_DAYS
 
     @field_validator('validity_days')
     @classmethod
     def validate_validity_days(cls, v: int) -> int:
-        if not 1 <= v <= 7305:
-            raise ValueError('validity_days must be between 1 and 7305')
+        if not 1 <= v <= VALIDITY_DAYS:
+            raise ValueError(f'validity_days must be between 1 and {VALIDITY_DAYS}')
+
         return v
 
 
