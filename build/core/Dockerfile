@@ -49,7 +49,7 @@ RUN  cd / && \
     cd /migasfree-backend && \
     pip install --no-cache-dir -r requirements/production.txt && \
     pip install --no-cache-dir requests_toolbelt && \
-    pip install . && \
+    pip install --no-cache-dir --no-build-isolation . && \
     rm -rf /migasfree-backend
 
 RUN cd / && \
