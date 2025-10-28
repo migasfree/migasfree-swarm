@@ -4,8 +4,6 @@ from fastapi import FastAPI
 from datetime import datetime
 from routers import admin, computer, crl
 
-from core.config import ROOT
-
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -25,14 +23,14 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="static"), name="ca-static")
 
-
 app.include_router(admin.router_public)
 app.include_router(admin.router_private)
 app.include_router(computer.router_public)
 app.include_router(computer.router_private)
 app.include_router(crl.router_public)
 
-@app.get(f'/health', tags=["health"])
+
+@app.get('/health', tags=["health"])
 async def health_check():
     """Health check endpoint"""
     return {
@@ -40,9 +38,11 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("static/img/mtls.svg")
+
 
 @app.get("/", tags=["root"])
 async def root():
@@ -50,10 +50,11 @@ async def root():
     return {
         "message": "Certificate Authority API",
         "docs": "/ca/docs",
-        "health": f"/ca/health"
+        "health": "/ca/health"
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
