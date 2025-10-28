@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from core.config import ROOT, STACK, PATH_CERTIFICATES
-
 
 router_public = APIRouter(
     prefix=f"{ROOT}/public",
     tags=["crl"]
 )
+logger = logging.getLogger(__name__)
 
 
 @router_public.get("/crl")
