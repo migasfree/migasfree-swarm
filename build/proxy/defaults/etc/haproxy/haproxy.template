@@ -103,7 +103,7 @@ frontend http
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT,OPTIONS" "http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
+    http-request lua.cors "GET,POST,PUT,PATCH,DELETE,OPTIONS" "http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
     http-response lua.cors
 
 
