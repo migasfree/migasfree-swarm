@@ -1,7 +1,5 @@
 FROM python:3.14-alpine3.22
 
-ENV FQDN=inv.org
-ENV INV=inv
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /usr/share/ca-service
