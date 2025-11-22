@@ -11,6 +11,13 @@ for STACK in $(ls /mnt/cluster/datashares)
 do
     source /mnt/cluster/datashares/${STACK}/env.py
     echo "● Stack ${STACK}:"
+
+    echo
+    echo "    ● Package Manage Systems:"
+    echo
+    docker exec -ti "${CONTAINER_PROXY_ID}" sh -c "echo -n '        pms '; cat /var/run/secrets/${STACK}_pms_pass"
+    echo
+
     echo
     echo "    ● database_console & assistant:"
     echo
