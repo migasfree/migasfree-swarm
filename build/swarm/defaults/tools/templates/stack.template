@@ -193,6 +193,7 @@ services:
                 max_attempts: 0
                 window: 180s
         secrets:
+            - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
         depends_on:
             - database

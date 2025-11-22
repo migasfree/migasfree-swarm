@@ -157,6 +157,26 @@ sequence_reset()
 EOF
 }
 
+function create_superuser() {
+    local USERNAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
+    local PASSWD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+    local EMAIL=""
+    local COMMAND="
+import os
+import django
+from migasfree.core.models.user_profile import UserProfile
+django.setup()
+def create_superuser(username,  password, email):
+    if not UserProfile.objects.filter(username=username).exists():
+        UserProfile.objects.create_superuser(username=username, password=password, email=email)
+        print('Superuser created successfully')
+create_superuser('${USERNAME}', '${PASSWD}', '${EMAIL}' )
+"
+
+    run_as_www_data "django-admin shell --settings=migasfree.settings.production -c \"${COMMAND}\"" >/dev/null
+
+}
+
 
 function migasfree_init {
     set_permissions
@@ -173,6 +193,8 @@ function migasfree_init {
             apply_fixtures
         fi
     )
+
+    create_superuser
 
 }
 
