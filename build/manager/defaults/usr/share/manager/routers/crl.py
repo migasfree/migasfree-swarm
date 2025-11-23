@@ -3,10 +3,10 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from core.config import ROOT, STACK, PATH_CERTIFICATES
+from core.config import API_VERSION, STACK, PATH_CERTIFICATES
 
 router_public = APIRouter(
-    prefix=f"{ROOT}/public",
+    prefix=f"{API_VERSION}/public",
     tags=["crl"]
 )
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @router_public.get("/crl")
 async def get_crl():
-    """Obtiene la Lista de Revocación de Certificados (CRL) para usuarios del stack"""
+    """Gets the Certificate Revocation List (CRL)"""
 
     file_crl = PATH_CERTIFICATES / STACK / "crl.pem"
     if not file_crl.exists():

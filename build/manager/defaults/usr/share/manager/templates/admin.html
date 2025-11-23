@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Computer Certificate (mTLS)</title>
+  <title>Migasfree Admin Certificate (mTLS)</title>
   <style>
     @font-face {
       font-family: Pompiere;
-      src: url('/ca/static/fonts/Pompiere-Regular.ttf') format('truetype');
+      src: url('{{root_path}}/static/fonts/Pompiere-Regular.ttf') format('truetype');
     }
     body {
       font-family: Pompiere;
@@ -86,13 +86,13 @@
 </head>
 <body>
   <div class="container">
-    <image src="/ca/static/img/mtls.svg" height="96" width="96" />
-    <h2>Computer Certificate (mTLS)</h2>
+    <image src="{{root_path}}/static/img/mtls.svg" height="96" width="96" />
+    <h2>Migasfree Admin Certificate (mTLS)</h2>
     <h3>Common Name: {{ common_name }}</h3>
     <p>DNS Name: {{ fqdn }}</p>
     <p>Validity: {{ validity_days }} days</p>
 
-    <form action="/ca/v1/public/computer " method="POST" id="certForm">
+    <form action="{{root_path}}/v1/public/mtls/admin-certificates" method="POST" id="certForm">
       <input type="hidden" name="token" value="{{ token }}">
       <input type="email" id="email" name="email" placeholder="Email" required />
       <input type="password" id="password" name="password" placeholder="Password" required />

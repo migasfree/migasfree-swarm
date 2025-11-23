@@ -280,13 +280,13 @@
         <text x="4" y="2">proxy</text>
       </g>
 
-      <g id="ca-node" transform="translate(40, 114)">
-        <image class="icon" href="/services-static/img/ca.svg" x="2" y="-12" />
-        <circle id="ca" class="node" r="1.5" filter="url(#glow)" />
-        <a id="ca_link_parent" target="_blank">
-          <circle id="ca_link" class="link" cx="7" cy="-7" r="7"><title>Certificate Authority API</title></circle>
+      <g id="manager-node" transform="translate(40, 114)">
+        <image class="icon" href="/services-static/img/manager.svg" x="2" y="-12" />
+        <circle id="manager" class="node" r="1.5" filter="url(#glow)" />
+        <a id="manager_link_parent" target="_blank">
+          <circle id="manager_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree Manager API</title></circle>
         </a>
-        <text x="6" y="2">ca</text>
+        <text x="3" y="2">manager</text>
       </g>
 
       <g id="console-node" transform="translate(70, 74)">
@@ -417,14 +417,14 @@
         welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
         logsColumns: ['timestamp', 'service', 'text', 'node', 'container'],
         serviceList: [
-          'portainer', 'proxy', 'ca',
+          'portainer', 'proxy', 'manager',
           'console', 'public', 'pms',
           'beat', 'core', 'worker',
           'database', 'datastore', 'datashare_console',
           'certbot', 'assistant', 'mcp-server'
         ],
         consoleServices: [
-          'portainer', 'proxy', 'ca',
+          'portainer', 'proxy', 'manager',
           'console',
           'core', 'worker',
           'database', 'datastore', 'datashare_console',
@@ -539,7 +539,7 @@
         const links = {
           portainer_link_parent: `https://portainer-${host}`,
           proxy_link_parent: `https://${host}/stats`,
-          ca_link_parent: `https://${host}/ca/docs`,
+          manager_link_parent: `https://${host}/manager/docs`,
           console_link_parent: `https://${host}/`,
           core_link_parent: `https://${host}/docs/`,
           worker_link_parent: `https://worker-${host}/tasks`,

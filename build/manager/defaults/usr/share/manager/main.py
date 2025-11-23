@@ -2,10 +2,11 @@ import logging
 
 from fastapi import FastAPI
 from datetime import datetime
-from routers import admin, computer, crl
+from routers import admin, computer, crl, auth
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from core.config import ROOT_PATH
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,11 +19,12 @@ app = FastAPI(
     title="Certificate Authority API",
     version="1.0.0",
     description="API for certificate management with local CA",
-    root_path="/ca"
+    root_path=ROOT_PATH
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="ca-static")
 
+app.include_router(auth.router_private)
 app.include_router(admin.router_public)
 app.include_router(admin.router_private)
 app.include_router(computer.router_public)
@@ -49,8 +51,8 @@ async def root():
     """Root endpoint"""
     return {
         "message": "Certificate Authority API",
-        "docs": "/ca/docs",
-        "health": "/ca/health"
+        "docs": f"{ROOT_PATH}/docs",
+        "health": f"{ROOT_PATH}/health"
     }
 
 

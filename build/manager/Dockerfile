@@ -2,13 +2,13 @@ FROM python:3.14-alpine3.22
 
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /usr/share/ca-service
+WORKDIR /usr/share/manager
 
-COPY ./requirements.txt /usr/share/ca-service/requirements.txt
+COPY ./requirements.txt /usr/share/manager/requirements.txt
 
 RUN apk update && \
     apk add tar openssl haveged curl cronie socat && \
-    pip install --no-cache-dir --upgrade -r /usr/share/ca-service/requirements.txt
+    pip install --no-cache-dir --upgrade -r /usr/share/manager/requirements.txt
 
 COPY ./defaults/ /
 

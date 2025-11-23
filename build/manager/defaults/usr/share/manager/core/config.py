@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
-
-ROOT = '/v1'
+ROOT_PATH = '/manager'
+API_VERSION = '/v1'
 
 PATH_CERTIFICATES = Path('/mnt/cluster/certificates')
 PATH_DATASHARES = Path('/mnt/cluster/datashares')

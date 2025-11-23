@@ -1,21 +1,54 @@
+import os
 import json
 import requests
 import socket
 import logging
 import docker
 
+from deploy import credentials
+
 VALIDITY_DAYS = 7305
-BASE_URL = 'http://ca:8080/ca'
+BASE_URL = 'http://manager:8080/manager'
 NETWORK = 'infra_network'
+
+_PATH_SHARE = "/mnt/cluster"  # data shared
+_PATH_CREDENTIALS = os.path.join(_PATH_SHARE, "credentials")
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
+def login(stack):
+
+    username, password = credentials(stack)
+
+    url = f'{BASE_URL}/v1/private/auth/login'
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    data = {
+        'grant_type': 'password',
+        'username': username,
+        'password': password,
+        'scope': '',
+        'client_id': '',
+        'client_secret': ''
+    }
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()["access_token"]  # Token info in response
+    except requests.RequestException as exc:
+        print(f'Login error: {exc}')
+        return None
 
 def create_user_token(stack, common_name, validity_days=VALIDITY_DAYS):
-    url = f'{BASE_URL}/v1/private/admin/token'
+
+    token = login(stack)
+    url = f'{BASE_URL}/v1/private/mtls/admin-tokens'
     headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token}'
     }
     payload = {
         'common_name': common_name,

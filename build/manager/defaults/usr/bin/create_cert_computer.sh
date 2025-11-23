@@ -4,21 +4,21 @@
 FQDN="$1"
 HOST="$2"
 STACK="$3"
-CN="$4"
+UUID="$4"
 PASSWORD="$5"
 DAYS_VALID="$6"
 EMAIL="$7"
 
 
-CERT_NAME="${CN}"
+CERT_NAME="${UUID}"
 
 if [ -z "${DAYS_VALID}" ]; then
    DAYS_VALID="7305"
 fi
 
 PATH_CA="/mnt/cluster/certificates/${STACK}/ca"
-PATH_RESOURCE="/mnt/cluster/certificates/${STACK}/admin"
-PATH_CERTS="/mnt/cluster/certificates/${STACK}/admin/certs"
+PATH_RESOURCE="/mnt/cluster/certificates/${STACK}/computer"
+PATH_CERTS="/mnt/cluster/certificates/${STACK}/computer/certs"
 
 
 CA_CERT="${PATH_CA}/ca.crt"       # CA Certificate
@@ -30,9 +30,9 @@ cd ${PATH_CERTS}
 
 cat > $CONFIG_EXT <<EOF
 [ v3_ext ]
-extendedKeyUsage = clientAuth, 1.2.3.4.5.6.7.8.1
+extendedKeyUsage = clientAuth, 1.2.3.4.5.6.7.8.2
 subjectAltName = DNS:${FQDN}, email:copy
-crlDistributionPoints = URI:http://${HOST}/ca/v1/public/crl
+crlDistributionPoints = URI:http://${HOST}/manager/v1/public/crl
 
 EOF
 
@@ -41,7 +41,7 @@ EOF
 openssl genrsa -aes256 -passout pass:$PASSWORD -out ${CERT_NAME}.key 2048
 
 # Generate CSR with private key
-openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=ADMINS"
+openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=COMPUTERS"
 
 # Sign the CSR with the CA to create the client certificate
 openssl ca -config ${PATH_RESOURCE}/openssl.cnf -extensions v3_ext -extfile $CONFIG_EXT \
@@ -96,7 +96,7 @@ To import '${CERT_NAME}.p12' certificate file into Mozilla Firefox, follow these
 
     10. Click OK and restart Firefox.
 
-    11. Visit https://${HOST}/  (User: ${USER})
+    11. Visit https://${HOST}/
 
     (In other web browsers, the steps are quite similar)
 

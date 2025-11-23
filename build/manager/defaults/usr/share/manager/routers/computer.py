@@ -9,44 +9,46 @@ from pydantic import EmailStr
 from datetime import datetime, timedelta
 from typing import Optional
 
-from core.config import ROOT, STACK, PATH_CERTIFICATES
+from core.config import ROOT_PATH, API_VERSION, STACK, PATH_CERTIFICATES
 from core.security import (
     TokenValidator,
-    create_admin_cert,
-    revoke_admin_cert
+    create_computer_cert,
+    revoke_computer_cert
 )
 from core.models import TokenCreateResponse, TokenCreateRequest
 from core.utils import get_fqdn, get_host
-
 
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
 
 router_public = APIRouter(
-    prefix=f"{ROOT}/public/admin",
-    tags=["admin-certificates"]
+    prefix=f"{API_VERSION}/public/mtls",
+    tags=["mtls-computer"]
 )
 
 router_private = APIRouter(
-    prefix=f"{ROOT}/private/admin",
-    tags=["admin-certificates"]
+    prefix=f"{API_VERSION}/private/mtls",
+    tags=["mtls-computer"]
 )
 
 
 @router_private.post(
-    '/token',
+    '/computer-tokens',
     response_model=TokenCreateResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def create_token(
     data: TokenCreateRequest
 ):
-    """Create a temporary token for certificate request in a specific stack"""
+    """
+    Create a token for the issuance of an mTLS certificate for an computer.
+    """
+
     token = secrets.token_hex(32)
     # expires_at = datetime.utcnow() + timedelta(hours=72)
 
-    stack_token_dir = PATH_CERTIFICATES / STACK / "admin" / "tokens"
+    stack_token_dir = PATH_CERTIFICATES / STACK / "computer" / "tokens"
     stack_token_dir.mkdir(parents=True, exist_ok=True)
 
     # Save common_name|validity_days
@@ -56,15 +58,19 @@ async def create_token(
 
     logger.info(f"Token created for CN={data.common_name} in stack={STACK}")
     host = get_host(STACK)
-    return TokenCreateResponse(url=f"https://{host}/ca/v1/public/admin/token/{token}")
+    return TokenCreateResponse(url=f"https://{host}{ROOT_PATH}/v1/public/mtls/computer-requests/{token}")
 
 
-@router_public.get("/token/{token}", response_class=HTMLResponse)
-async def get_admin_cert_request_form(
+@router_public.get("/computer-requests/{token}", response_class=HTMLResponse)
+async def get_computer_cert_request_form(
     request: Request,
     token: str
 ):
-    token_file_path = PATH_CERTIFICATES / STACK / "admin" / "tokens" / token
+    """
+    mTLS Certificate Issuance Form for computers.
+    """
+
+    token_file_path = PATH_CERTIFICATES / STACK / "computer" / "tokens" / token
     if not token_file_path.exists():
         raise HTTPException(status_code=404, detail="Token not found")
 
@@ -80,32 +86,35 @@ async def get_admin_cert_request_form(
         raise HTTPException(status_code=500, detail="Corrupted token file content")
 
     return templates.TemplateResponse(
-        "admin.html",
+        "computer.html",
         {
             "request": request,
             "common_name": common_name,
             "validity_days": int(validity_days),
             "token": token,
             "fqdn": get_fqdn(STACK),
-            "stack": STACK
+            "stack": STACK,
+            "root_path": ROOT_PATH
         }
     )
 
 
-@router_public.post("")
-async def create_admin_certificate(
+@router_public.post("/computer-certificates")
+async def create_computer_certificate(
     token: str = Form(...),
     email: EmailStr = Form(...),
     password: Optional[str] = Form(None)
 ):
-    """Creates a user certificate in a specific stack"""
+    """
+    mTLS Certificate Issuance for computers.
+    """
 
-    validator = TokenValidator(STACK, token, "admin")
+    validator = TokenValidator(STACK, token, "computer")
     common_name, validity_days = validator.validate()
     FQDN = get_fqdn(STACK)
     HOST = get_host(STACK)
 
-    success = create_admin_cert(
+    success = create_computer_cert(
         FQDN, HOST, STACK, common_name, password, validity_days, email
     )
 
@@ -114,7 +123,7 @@ async def create_admin_certificate(
         raise HTTPException(status_code=500, detail="Certificate creation failed")
 
     cert_name = f"{common_name}"
-    cert_dir = PATH_CERTIFICATES / STACK / "admin" / "certs"
+    cert_dir = PATH_CERTIFICATES / STACK / "computer" / "certs"
     file_tar = cert_dir / f"{cert_name}.tar"
 
     if not file_tar.exists():
@@ -144,16 +153,16 @@ async def create_admin_certificate(
         raise HTTPException(status_code=500, detail="Error serving certificate")
 
 
-@router_private.post("/revoke", status_code=status.HTTP_204_NO_CONTENT)
-async def revoke_admin_certificate(
+@router_private.delete("/computer-certificates", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_computer_certificate(
     common_name: str = Body(..., embed=True)
 ):
     """
-    Revokes the admin certificate identified by common_name in a specific stack.
+    mTLS Certificate Revocation for computers.
     """
 
     try:
-        revoked = revoke_admin_cert(common_name, STACK)
+        revoked = revoke_computer_cert(common_name, STACK)
         if not revoked:
             logger.warning(f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}")
             raise HTTPException(status_code=404, detail="Certificate not found or already revoked")

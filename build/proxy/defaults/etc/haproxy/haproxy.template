@@ -156,9 +156,9 @@ frontend http
     acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
 
 
-    # CA
-    # ==
-    acl url_ca path_beg /ca/
+    # MANAGER
+    # =======
+    acl url_manager path_beg /manager/
 
     # services
     # ========
@@ -212,9 +212,9 @@ frontend http
 
 
     # Certificates & tokens
-    acl url_no_mTLS_get   path_beg /ca/static/
-    acl url_no_mTLS_get   path_beg /ca/v1/public/
-    acl url_no_mTLS_post  path_beg /ca/v1/public/
+    acl url_no_mTLS_get   path_beg /mamager/static/
+    acl url_no_mTLS_get   path_beg /manager/v1/public/
+    acl url_no_mTLS_post  path_beg /manager/v1/public/
 
     acl url_no_mTLS_get   path_beg /services-static/
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
@@ -273,7 +273,7 @@ frontend http
     # ===================================
 
 
-    use_backend ca if network_mng url_ca
+    use_backend manager if network_mng url_manager
 
 {% if certbot %}
     use_backend mf_certbot if certbot
@@ -300,10 +300,10 @@ frontend http
     use_backend mf_console if network_mng
 
 
-backend ca
+backend manager
     mode http
     balance leastconn
-        server-template ca- 1 tasks.ca:8080 resolvers docker check init-addr none
+        server-template manager- 1 tasks.manager:8080 resolvers docker check init-addr none
 
 
 {% if certbot %}
