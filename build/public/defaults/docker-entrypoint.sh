@@ -85,9 +85,9 @@ echo "
 # ======================================
 /usr/bin/update_extensions.sh
 
-# Get external deployments extensions from proxy
-# =================================================
-echo "$(curl http://proxy:8001/services/nginx_extensions 2>/dev/null)" > /var/tmp/external-deployments.conf
+# Get external deployments extensions from manager
+# ================================================
+echo "$(curl http://manager:8080/manager/v1/private/nginx_extensions 2>/dev/null)" > /var/tmp/external-deployments.conf
 
 send_message ""
 

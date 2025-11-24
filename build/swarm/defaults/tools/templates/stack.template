@@ -9,6 +9,9 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
+            - HTTPSMODE={{HTTPSMODE}}
+            - GOOGLE_API_KEY={{GOOGLE_API_KEY}}
+            - PMS_ENABLED={{PMS_ENABLED}}
         deploy:
             replicas: 1
             restart_policy:
@@ -18,6 +21,7 @@ services:
                 window: 180s
         volumes:
             - migasfree-swarm:/mnt/cluster
+            - /var/run/docker.sock:/var/run/docker.sock:ro
 
         networks:
             - infra_network
@@ -65,7 +69,7 @@ services:
 
         volumes:
             - migasfree-swarm:/mnt/cluster
-            - /var/run/docker.sock:/var/run/docker.sock:ro
+
 
         networks:
             - infra_network

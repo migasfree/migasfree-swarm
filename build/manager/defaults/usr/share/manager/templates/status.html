@@ -7,7 +7,7 @@
   <style>
     @font-face {
       font-family: Pompiere;
-      src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+      src: url('/manager/static/fonts/Pompiere-Regular.ttf') format('truetype');
     }
 
     * {
@@ -254,8 +254,8 @@
 
       <!-- Status message -->
       <g transform="translate(160, 100)">
-        <a href="/services/logs" target="_blank">
-          <image id="mascot" href="/services-static/img/mascot-welcome.svg" class="link" x="6" y="8" height="10" width="10" />
+        <a href="/manager/v1/private/logs" target="_blank">
+          <image id="mascot" href="/manager/static/img/mascot-welcome.svg" class="link" x="6" y="8" height="10" width="10" />
         </a>
         <text class="status-text" id="message_serv"></text>
         <text class="status-text" id="message" x="0" y="3">one moment, please</text>
@@ -263,7 +263,7 @@
 
       <!-- Services nodes -->
       <g id="portainer-node" transform="translate(40, 74)">
-        <image class="icon" href="/services-static/img/portainer.svg" x="1" y="-12" />
+        <image class="icon" href="/manager/static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
         <a id="portainer_link_parent" target="_blank">
           <circle id="portainer_link" class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
@@ -272,7 +272,7 @@
       </g>
 
       <g id="proxy-node" transform="translate(40, 94)">
-        <image class="icon" href="/services-static/img/proxy.svg" x="1" y="-12" />
+        <image class="icon" href="/manager/static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
         <a id="proxy_link_parent" target="_blank">
           <circle id="proxy_link" class="link" cx="7" cy="-7" r="7"><title>Proxy Statistics</title></circle>
@@ -281,7 +281,7 @@
       </g>
 
       <g id="manager-node" transform="translate(40, 114)">
-        <image class="icon" href="/services-static/img/manager.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/manager.svg" x="2" y="-12" />
         <circle id="manager" class="node" r="1.5" filter="url(#glow)" />
         <a id="manager_link_parent" target="_blank">
           <circle id="manager_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree Manager API</title></circle>
@@ -290,7 +290,7 @@
       </g>
 
       <g id="console-node" transform="translate(70, 74)">
-        <image class="icon" href="/services-static/img/console.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/console.svg" x="2" y="-12" />
         <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
         <a id="console_link_parent" target="_blank">
@@ -300,7 +300,7 @@
       </g>
 
       <g id="public-node" transform="translate(70, 94)">
-        <image class="icon" href="/services-static/img/public.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
         <circle id="public_link" class="link" cx="7" cy="-7" r="7"><title>Public Files</title></circle>
@@ -308,21 +308,21 @@
       </g>
 
       <g id="pms-node" transform="translate(70, 114)">
-        <image class="icon" href="/services-static/img/pms.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/pms.svg" x="2" y="-12" />
         <circle id="pms" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">pms</text>
       </g>
 
       <g id="beat-node" transform="translate(90, 74)">
-        <image class="icon" href="/services-static/img/beat.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/beat.svg" x="2" y="-12" />
         <circle id="beat" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
         <text x="5" y="2">beat</text>
       </g>
 
       <g id="core-node" transform="translate(90, 94)">
-        <image class="icon" href="/services-static/img/core.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/core.svg" x="2" y="-12" />
         <circle id="core" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
         <a id="core_link_parent" target="_blank">
@@ -332,7 +332,7 @@
       </g>
 
       <g id="worker-node" transform="translate(90, 114)">
-        <image class="icon" href="/services-static/img/worker.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/worker.svg" x="2" y="-12" />
         <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
         <a id="worker_link_parent" target="_blank">
@@ -342,7 +342,7 @@
       </g>
 
       <g id="database-node" transform="translate(110, 74)">
-        <image class="icon" href="/services-static/img/database.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" filter="url(#glow)" />
         <a id="database_link_parent" target="_blank">
           <circle id="database_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
@@ -351,7 +351,7 @@
       </g>
 
       <g id="datastore-node" transform="translate(110, 94)">
-        <image class="icon" href="/services-static/img/datastore.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
         <a id="datastore_link_parent" target="_blank">
           <circle id="datastore_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
@@ -360,7 +360,7 @@
       </g>
 
       <g id="datashare-node" transform="translate(110, 114)">
-        <image class="icon" href="/services-static/img/datashare.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
         <a id="datashare_console_link_parent" target="_blank">
           <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7"><title>Datashare Console</title></circle>
@@ -369,13 +369,13 @@
       </g>
 
       <g id="certbot-node" transform="translate(130, 74)">
-        <image class="icon" href="/services-static/img/certbot.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/certbot.svg" x="2" y="-12" />
         <circle id="certbot" class="node" r="1.5" />
         <text x="4" y="2">certbot</text>
       </g>
 
       <g id="assistant-node" transform="translate(130, 94)">
-        <image class="icon" href="/services-static/img/assistant.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
         <a id="assistant_link_parent" target="_blank">
           <circle id="assistant_link" class="link" cx="7" cy="-7" r="7"><title>Assistant</title></circle>
@@ -384,7 +384,7 @@
       </g>
 
       <g id="mcp-server-node" transform="translate(130, 114)">
-        <image class="icon" href="/services-static/img/mcp-server.svg" x="2" y="-12" />
+        <image class="icon" href="/manager/static/img/mcp-server.svg" x="2" y="-12" />
         <circle id="mcp-server" class="node" r="1.5" filter="url(#glow)" />
         <text x="3" y="2">mcp server</text>
       </g>
@@ -410,8 +410,8 @@
 
       // Configuration
       const CONFIG = {
-        infoEndpoint: '/services/info',
-        streamEndpoint: '/services/stream',
+        infoEndpoint: '/manager/v1/private/info',
+        streamEndpoint: '/manager/v1/private/stream',
         reconnectDelay: 5000,
         waitingThreshold: 5000,
         welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
@@ -479,7 +479,7 @@
             // Solo mascot-disconnect y mascot-welcome usan la clave sin sprite
             const key = (sprites[prefix] === 1) ? prefix : `${prefix}-${sprite}`;
             const img = new Image();
-            img.src = `/services-static/img/${key}.svg`;
+            img.src = `/manager/static/img/${key}.svg`;
             mascotImages[key] = img;
           }
         });
@@ -521,7 +521,7 @@
       async function fetchInfo() {
         try {
           const response = await fetch(CONFIG.infoEndpoint);
-          if (!response.ok) throw new Error('Error getting /services/info');
+          if (!response.ok) throw new Error('Error getting /manager/info');
           const info = await response.json();
           CONFIG.infoData = info;
           dom.organization.textContent = info.organization || '';
@@ -723,7 +723,7 @@
           dom.mascot.setAttribute('href', mascotImages[key].src);
         } else {
           // Fallback to default image if not preloaded
-          dom.mascot.setAttribute('href', `/services-static/img/${key}.svg`);
+          dom.mascot.setAttribute('href', `/manager/static/img/${key}.svg`);
         }
       }
 

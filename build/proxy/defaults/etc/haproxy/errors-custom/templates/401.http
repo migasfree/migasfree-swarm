@@ -11,11 +11,11 @@ Content-Type: text/html
           name="viewport"
           content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"
         />
-        <link rel="icon" href="https://{{FQDN}}/services-static/img/logo.svg" type="image/svg+xml" />
+        <link rel="icon" href="https://{{FQDN}}/manager/static/img/logo.svg" type="image/svg+xml" />
         <style>
             @font-face {
                 font-family: Pompiere;
-                src: url('https://{{FQDN}}/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+                src: url('https://{{FQDN}}/manager/static/fonts/Pompiere-Regular.ttf') format('truetype');
             }
             body {
                 width: 100%;
@@ -36,7 +36,7 @@ Content-Type: text/html
                 justify-content: center;
             }
             h1 {
-                font-size: 16vh;
+                font-size: 10vh;
                 font-style: italic;
                 margin: 0;
             }
@@ -46,12 +46,27 @@ Content-Type: text/html
     <body>
         <main class="center">
             <div id="info">
-                <h1>Unauthorized</h1>
-                <img
-                    src="https://{{FQDN}}/services-static/img/mascot-no-auth.svg"
-                    alt=""
-                    title="proxy"
-                />
+                <svg viewBox="0 0 311.74435 273.99712" version="1.0" id="svg2" height="292.26361" width="332.52731" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd">
+                <g transform="matrix(3.4729059,0,0,3.4729059,-393.19531,-100.50611)" id="g834">
+                    <path id="path3180" d="m142.57003,31.282665c-5.8392,0.494201-11.85716,3.778568-16.07537,11.19205-3.78073,7.213746-4.41669,18.142486-2.83816,27.266588,1.95501,11.688338,7.62457,21.739346,14.56423,23.736561,6.516,1.984479,13.26318-1.194945,18.86391-7.129547,4.22357-4.431938,8.23698-10.818485,9.51491-19.487133,1.65701-10.515874-1.40601-22.287737-6.62005-27.857863-4.9609-5.526133-10.9336-7.48499-16.72647-7.750203-0.22766,0.0099-0.45534,0.01967-0.683,0.02956z" style="fill:#ff6600;fill-opacity:1;fill-rule:nonzero;stroke:none;"/>
+                    <ellipse id="path3190" style="fill:#feda00;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.9500668" cx="178.0654" cy="92.226799" rx="15.120144" ry="13.581159"/>
+                </g>
+                <flowRoot xml:space="preserve" id="flowRoot840" style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;fill:#000000;stroke:none;" transform="matrix(0.93749997,0,0,0.93749997,-33.073666,-31.428358)">
+                    <flowRegion id="flowRegion842" style="fill:#000000;stroke:none;">
+                    <rect id="rect844" width="241.43697" height="42.502354" x="65.52446" y="299.39099" style="fill:#000000;stroke:none"/>
+                    </flowRegion>
+                    <flowPara id="flowPara846">migasfree</flowPara>
+                </flowRoot>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.50965" id="path851-3" cx="115.50024" cy="57.021214" rx="39.304623" ry="35.722122"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:6.64622" id="path999-6" cx="126.45432" cy="79.154388" rx="11.565677" ry="10.332875"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.28235" id="path851-36" cx="193.37764" cy="177.56129" rx="39.000744" ry="37.69202"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:5.54995" id="path999-7" cx="204.50668" cy="202.97212" rx="9.8137712" ry="9.3776884"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.34568" id="path851-3-5" cx="249.61089" cy="181.19221" rx="36.013748" ry="37.047085"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:5.80381" id="path999-6-3" cx="257.6033" cy="204.95424" rx="10.66977" ry="8.5411234"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.64195" id="path851" cx="53.434799" cy="51.201946" rx="40.191029" ry="40.882805"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:6.6405" id="path999" cx="72.136505" cy="74.01577" rx="12.006441" ry="10.973491"/>
+                </svg>
+                <h1>401 Unauthorized</h1>
             </div>
         </main>
     </body>

@@ -1,4 +1,4 @@
-build/ca/VERSION
+build/manager/VERSION
 build/certbot/VERSION
 build/console/VERSION
 build/core/VERSION
@@ -21,6 +21,7 @@ build/mcp-server/VERSION
 build/assistant/VERSION
 images/migasfree-*.tar
 images/*.log
+build/manager/defaults/usr/bin/send_message
 build/certbot/defaults/usr/bin/send_message
 build/assistant/defaults/usr/bin/send_message
 build/console/defaults/usr/bin/send_message
@@ -39,4 +40,3 @@ build/proxy/defaults/usr/bin/send_message
 build/public/defaults/usr/bin/send_message
 build/swarm/defaults/usr/bin/send_message
 build/worker_console/defaults/usr/bin/send_message
-build/ca/defaults/usr/bin/send_message

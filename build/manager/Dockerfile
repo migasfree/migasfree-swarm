@@ -1,6 +1,9 @@
 FROM python:3.14-alpine3.22
 
-ENV PYTHONUNBUFFERED=1
+ARG TAG=latest
+
+ENV TAG=${TAG} \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /usr/share/manager
 

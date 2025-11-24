@@ -13,18 +13,19 @@ ENV TAG=${TAG} \
     LIVE_CERT_FOLDER="/etc/letsencrypt/live" \
     BUILD_DEPENDS='py3-pip' \
     RUNTIME_DEPENDS='bash tzdata inotify-tools openssl ca-certificates socat curl bind-tools python3 py3-virtualenv curl' \
-    RUNTIME_PIP='fastapi uvicorn sse-starlette httpx dnspython jinja2 docker'
+    RUNTIME_PIP='jinja2'
 
 RUN apk upgrade --no-cache && \
     apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
+    mkdir /usr/share/proxy && \
+    cd /usr/share/proxy && \
     python3 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --no-cache-dir $RUNTIME_PIP && \
     apk del $BUILD_DEPENDS && \
     rm -rf /var/cache/apk/*
 
-COPY defaults/usr/share /usr/share
-COPY defaults/usr/bin /usr/bin
+COPY defaults/usr /usr
 COPY defaults/etc /etc
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 

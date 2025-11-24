@@ -1,12 +1,16 @@
 import logging
 
-from fastapi import FastAPI
+from jinja2 import Template
 from datetime import datetime
-from routers import admin, computer, crl, auth
 
+from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
 from core.config import ROOT_PATH
+from routers import admin, computer, crl, auth, status, extensions
+from routers.status import lifespan
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,13 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
-    title="Certificate Authority API",
+    title="Migasfree Manager API",
     version="1.0.0",
-    description="API for certificate management with local CA",
-    root_path=ROOT_PATH
+    description="API for Migasfree Manager",
+    root_path=ROOT_PATH,
+    lifespan=lifespan
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="ca-static")
+app.mount("/static", StaticFiles(directory="static"), name="manager-static")
 
 app.include_router(auth.router_private)
 app.include_router(admin.router_public)
@@ -30,9 +35,13 @@ app.include_router(admin.router_private)
 app.include_router(computer.router_public)
 app.include_router(computer.router_private)
 app.include_router(crl.router_public)
+app.include_router(status.router)
+app.include_router(status.router_internal)
+app.include_router(status.router_private)
+app.include_router(status.router_public)
+app.include_router(extensions.router_private)
 
-
-@app.get('/health', tags=["health"])
+@app.get('/v1/internal/health', tags=["status"])
 async def health_check():
     """Health check endpoint"""
     return {
@@ -50,10 +59,22 @@ async def favicon():
 async def root():
     """Root endpoint"""
     return {
-        "message": "Certificate Authority API",
+        "message": "Migasfree Manager API",
         "docs": f"{ROOT_PATH}/docs",
-        "health": f"{ROOT_PATH}/health"
+        "health": f"{ROOT_PATH}/v1/internal/health"
     }
+
+
+@app.get('/manifest')
+async def manifest():
+    """Cache manifest"""
+    template = """CACHE MANIFEST
+/manager/v1/private/status
+/manager/static/*
+    """
+    content = Template(template).render({})
+
+    return Response(content=content, media_type='text/cache-manifest')
 
 
 if __name__ == "__main__":

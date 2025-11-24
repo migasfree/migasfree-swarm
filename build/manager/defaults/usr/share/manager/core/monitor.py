@@ -1,25 +1,14 @@
-#!/usr/bin/python3
-
 import os
-import sys
-import json
-import asyncio
-import re
 import logging
 import subprocess
 import docker
+import sys
+import asyncio
 
-from datetime import datetime
-from collections import deque
-from typing import List, Dict
-from contextlib import asynccontextmanager
+from typing import Dict
 
-from fastapi import FastAPI, Request, Response, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from jinja2 import Template
-from sse_starlette.sse import EventSourceResponse
+from core.utils import get_timestamp
+
 
 # Logging configuration
 logger = logging.getLogger('services')
@@ -29,43 +18,25 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-# Configuration
-FILECONFIG = '/etc/haproxy/haproxy.cfg'
-FILECONFIG_TEMPLATE = '/etc/haproxy/haproxy.template'
-with open(FILECONFIG_TEMPLATE, encoding='utf-8') as f:
-    HAPROXY_TEMPLATE = f.read()
-
-FQDN = os.environ['FQDN']
-STACK = os.environ['STACK']
-PORT_HTTPS = os.environ['PORT_HTTPS']
-HTTPSMODE = os.environ['HTTPSMODE']
-MTLS = os.environ['MTLS']
-TAG = os.environ['TAG']
-NETWORK_MNG = os.environ['NETWORK_MNG']
-
-MESSAGES_LOG = deque(maxlen=500)
-
-PATH_MTLS = '/mnt/cluster/certificates/mtls'
-PATH_MTLS_CERTS = f'{PATH_MTLS}/certs'
-PATH_MTLS_TOKEN = f'{PATH_MTLS}/token'
-PATH_CONF = f'/mnt/cluster/datashares/{STACK}/conf'
-
-# Use asyncio.Queue for SSE clients to avoid blocking and support concurrency
-sse_clients: Dict[int, asyncio.Queue] = {}
-client_id_counter = 0
-client_id_lock = asyncio.Lock()
-
 service_states_cache = {}
-cache_lock = asyncio.Lock()
 
-
-def get_timestamp():
-    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+STACK = os.environ['STACK']
 
 
 class DockerSwarmMonitor:
     def __init__(self):
         self.client = None
+        self.service_states = {}
+        self.lock = asyncio.Lock()
+        self.cache_lock = asyncio.Lock()  # Cache Lock
+        self.client_id_lock = asyncio.Lock()  # SSE clients Lock
+        self.running = False
+        # Use asyncio.Queue for SSE clients to avoid blocking and support concurrency
+        self.sse_clients: Dict[int, asyncio.Queue] = {}
+        self.messages_log = []
+
+
+
         try:
             self.client = docker.from_env()
             info = self.client.info()
@@ -80,10 +51,6 @@ class DockerSwarmMonitor:
         except Exception as e:
             logger.error(f'Error connecting to Docker: {e}')
             self.client = None
-
-        self.service_states = {}
-        self.lock = asyncio.Lock()
-        self.running = False
 
     async def get_active_nodes_count(self):
         if not self.client:
@@ -111,7 +78,6 @@ class DockerSwarmMonitor:
         try:
             service = self.client.services.get(service_name)
             tasks = service.tasks()
-            # logger.debug('tasks: %s', str(tasks))
 
             running_tasks = [t for t in tasks if t['Status']['State'] == 'running']
             running = len(running_tasks)
@@ -176,24 +142,44 @@ class DockerSwarmMonitor:
             return None
 
     async def broadcast_to_sse_clients(self, event_data):
-        logger.debug('event_data: %s', event_data)
+        """Broadcast event to all connected SSE clients"""
+        logger.debug('Broadcasting event_data: %s', event_data)
         if not event_data:
+            logger.warning('Empty event_data, skipping broadcast')
             return
 
+        # Create snapshot without holding lock during broadcast
+        async with self.client_id_lock:
+            clients_snapshot = list(self.sse_clients.items())
+
+        if not clients_snapshot:
+            logger.debug('No SSE clients connected, skipping broadcast')
+            return
+
+        logger.debug(f'Broadcasting to {len(clients_snapshot)} client(s)')
+
         to_remove = []
-        async with client_id_lock:
-            for cid, client_queue in sse_clients.items():
-                try:
-                    client_queue.put_nowait(event_data)
-                except asyncio.QueueFull:
-                    logger.warning(f'SSE client {cid} queue full, removing client.')
-                    to_remove.append(cid)
-        async with client_id_lock:
-            for cid in to_remove:
-                sse_clients.pop(cid, None)
+        for cid, client_queue in clients_snapshot:
+            try:
+                client_queue.put_nowait(event_data)
+                logger.debug(f'✅ Broadcasted to client {cid}')
+            except asyncio.QueueFull:
+                logger.warning(f'SSE client {cid} queue full, marking for removal')
+                to_remove.append(cid)
+            except Exception as e:
+                logger.error(f'Error broadcasting to client {cid}: {e}')
+                to_remove.append(cid)
+
+        # Remove failed clients
+        if to_remove:
+            async with self.client_id_lock:
+                for cid in to_remove:
+                    removed = self.sse_clients.pop(cid, None)
+                    if removed:
+                        logger.info(f'Removed failed client {cid}')
 
     async def update_service_cache(self, service_name, status_info):
-        async with cache_lock:
+        async with self.cache_lock:
             if service_name not in service_states_cache:
                 service_states_cache[service_name] = {
                     'message': '',
@@ -271,7 +257,7 @@ class DockerSwarmMonitor:
                                 if current_status.get('containers')
                                 else 'unknown',
                             }
-                            MESSAGES_LOG.append(msg)
+                            self.messages_log.append(msg)
                             logger.debug('service %s, message %s', service_name, msg)
                             await self.broadcast_to_sse_clients({'event': 'log', 'data': msg})
 
@@ -344,279 +330,10 @@ class DockerSwarmMonitor:
         asyncio.create_task(self.monitor_events())
         logger.info('Docker Swarm monitor started')
 
+    async def cache(self):
+        async with self.cache_lock:
+            return service_states_cache.copy()
+
     async def stop(self):
         logger.info('Stopping Docker monitor...')
         self.running = False
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global docker_monitor
-    logger.info('Starting application...')
-    render_error_pages()
-    config_haproxy()
-    docker_monitor = DockerSwarmMonitor()
-    await docker_monitor.start()
-    logger.info('Application started successfully')
-    yield
-    logger.info('Shutting down application...')
-    if docker_monitor:
-        await docker_monitor.stop()
-
-
-app = FastAPI(title='Services API', lifespan=lifespan)
-app.mount('/services-static', StaticFiles(directory='services-static'), name='static')
-templates = Jinja2Templates(directory='services-static/templates')
-
-
-async def get_organization() -> str:
-    try:
-        with open(f'{PATH_CONF}/settings.py', 'r', encoding='utf-8') as file:
-            content = file.read()
-
-        pattern = r'MIGASFREE_ORGANIZATION\s*=\s*(.+)'
-        result = re.search(pattern, content)
-        if result:
-            return result.group(1)[1:-1]
-    except Exception as e:
-        logger.error(f'Error reading organization: {e}')
-
-    return ''
-
-
-def get_extensions() -> List[str]:
-    pms_enabled = os.environ['PMS_ENABLED']
-    extensions = []
-
-    try:
-        result = subprocess.run(
-            ['curl', '-X', 'GET', 'core:8080/api/v1/public/pms/'],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-        )
-        if result.returncode == 0:
-            all_pms = json.loads(result.stdout)
-            for pms in all_pms:
-                if f'pms-{pms}' in pms_enabled:
-                    for extension in all_pms[pms]['extensions']:
-                        extensions.append(extension)
-    except Exception as e:
-        logger.error(f'Error getting extensions: {e}')
-
-    return list(set(extensions))
-
-
-def config_haproxy():
-    context = {
-        'FQDN': FQDN,
-        'STACK': STACK,
-        'certbot': HTTPSMODE == 'auto',
-        'PORT_HTTPS': PORT_HTTPS,
-        'USERLIST_STACK': userlist_stack(),
-        'NETWORK_MNG': NETWORK_MNG,
-        'MTLS': MTLS == 'True',
-    }
-
-    payload = {'haproxy.cfg': Template(HAPROXY_TEMPLATE).render(context)}
-    with open(FILECONFIG, 'w', encoding='utf-8') as f:
-        f.write(payload['haproxy.cfg'])
-        f.write('\n')
-
-
-def render_error_pages():
-    context = {'FQDN': FQDN}
-    _path = '/etc/haproxy/errors-custom'
-    _path_template = '/etc/haproxy/errors-custom/templates'
-    for f_template in os.listdir(_path_template):
-        _file = os.path.join(_path, os.path.basename(f_template))
-        if _file.endswith('.http'):
-            with open(os.path.join(_path_template, f_template), 'r', encoding='utf-8') as f:
-                content = f.read()
-            with open(_file, 'w', encoding='utf-8') as f:
-                f.write(Template(content).render(context))
-                f.write('\n')
-
-
-def userlist_stack() -> str:
-    with open(f'/run/secrets/{STACK}_superadmin_name', 'r', encoding='utf-8') as f:
-        username = f.read()
-    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r', encoding='utf-8') as f:
-        password = f.read()
-
-    result = subprocess.run(['mkpasswd', '-m', 'sha-512', password], capture_output=True, text=True, check=True)
-
-    return f'    user {username} password {result.stdout}'
-
-
-@app.get('/favicon.ico')
-async def favicon():
-    """Redirect to logo"""
-    return RedirectResponse(url=f'https://{FQDN}/services-static/img/logo.svg')
-
-
-@app.get('/services/status/', response_class=HTMLResponse)
-async def status_page(request: Request):
-    """Status page"""
-    async with cache_lock:
-        context = {'services': service_states_cache.copy(), 'request': request}
-
-    return templates.TemplateResponse('status.html', context)
-
-
-@app.get('/services/manifest')
-async def manifest():
-    """Cache manifest"""
-    template = """CACHE MANIFEST
-/services/status
-/services-static/*
-    """
-    content = Template(template).render({})
-
-    return Response(content=content, media_type='text/cache-manifest')
-
-
-@app.get('/services/info')
-async def get_info():
-    """Get static application info (organization, stack, tag, disabled)"""
-    disabled = []
-    if os.environ['HTTPSMODE'] == 'manual':
-        disabled.append('certbot')
-    if os.environ.get('GOOGLE_API_KEY', '') == '':
-        disabled.append('assistant')
-        disabled.append('mcp-server')
-
-    return JSONResponse(
-        content={
-            'organization': await get_organization(),
-            'stack': STACK,
-            'tag': TAG,
-            'disabled': disabled,
-        }
-    )
-
-
-@app.post('/services/message')
-async def post_message(request: Request):
-    """Post a new message"""
-    try:
-        data = await request.json()
-        logger.debug('post_message data: %s', data)
-    except Exception:
-        data = {}
-
-    data['timestamp'] = get_timestamp()
-    MESSAGES_LOG.append(data)
-
-    return JSONResponse(content={'status': 'ok'})
-
-
-@app.get('/services/extensions', response_class=PlainTextResponse)
-async def extensions():
-    return ' '.join(get_extensions())
-
-
-@app.get('/services/nginx_extensions', response_class=PlainTextResponse)
-async def nginx_extensions():
-    """Get nginx extensions configuration"""
-    template = """
-        # External Deployments. Auto-generated from proxy (in services.py -> config_nginx)
-        # ========================================================================
-    {% for extension in extensions %}
-        location ~* /src/?(.*){{extension}}$ {
-            alias /var/migasfree/public/$1{{extension}};
-            error_page 404 = @backend;
-        }
-    {% endfor %}
-        # ========================================================================
-    """
-
-    extensions = get_extensions()
-    if len(get_extensions()) > 0:
-        return Template(template).render({'extensions': extensions})
-
-    return ''
-
-
-# SSE endpoint: services stream
-@app.get('/services/stream')
-async def service_stream(request: Request):
-    global client_id_counter
-    queue = asyncio.Queue(maxsize=100)
-    async with client_id_lock:
-        global client_id_counter
-        client_id = client_id_counter
-        client_id_counter += 1
-        sse_clients[client_id] = queue
-
-    logger.info(f'Service SSE client {client_id} connected. Total clients: {len(sse_clients)}')
-
-    async def event_generator():
-        try:
-            async with cache_lock:
-                for service_name, service_data in service_states_cache.items():
-                    if 'nodes' in service_data:
-                        initial_data = {
-                            'service': service_name,
-                            'status': {
-                                'status': service_data.get('status', ''),
-                                'running': service_data.get('nodes', 0),
-                                'nodes': service_data.get('node', '').split(', ') if service_data.get('node') else [],
-                                'containers': service_data.get('container', '').split(', ')
-                                if service_data.get('container')
-                                else [],
-                            },
-                            'timestamp': get_timestamp(),
-                        }
-                        yield {'event': 'status', 'data': json.dumps(initial_data)}
-                        logger.debug('data: %s', initial_data)
-
-                for message in list(MESSAGES_LOG)[-50:]:
-                    yield {'event': 'log', 'data': json.dumps(message)}
-
-            # Stream updates
-            while True:
-                if await request.is_disconnected():
-                    break
-
-                try:
-                    event_data = await asyncio.wait_for(queue.get(), timeout=30)
-                    yield {
-                        'event': event_data['event'],
-                        'data': json.dumps(event_data['data'])
-                    }
-                except asyncio.TimeoutError:
-                    yield {
-                        'event': 'ping',
-                        'data': json.dumps({'timestamp': get_timestamp()}),
-                    }
-        finally:
-            async with client_id_lock:
-                sse_clients.pop(client_id, None)
-            logger.info(f'Service SSE client {client_id} disconnected. Remaining clients: {len(sse_clients)}')
-
-    return EventSourceResponse(event_generator())
-
-
-# Exception handlers
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc: HTTPException):
-    """Custom 404 handler"""
-    async with cache_lock:
-        context = {'services': service_states_cache.copy(), 'request': request}
-    return templates.TemplateResponse('status.html', context, status_code=404)
-
-
-@app.exception_handler(503)
-async def service_unavailable_handler(request: Request, exc: HTTPException):
-    """Custom 503 handler"""
-    async with cache_lock:
-        context = {'services': service_states_cache.copy(), 'request': request}
-    return templates.TemplateResponse('status.html', context, status_code=503)
-
-
-if __name__ == '__main__':
-    import uvicorn
-
-    uvicorn.run(app, host='0.0.0.0', port=8001, log_level='debug')

@@ -26,9 +26,10 @@ function wait {
 
 if ! [ -f /mnt/cluster/certificates/inv/ca/ca.crt ]
 then
-    wait "ca" "8080"
+    wait "manager" "8080"
 fi
 
+cd /usr/share/proxy
 . /venv/bin/activate
 
 
@@ -39,13 +40,7 @@ then
 fi
 
 
-# services page
-# =============
-cd /usr/share/services/
-python3 services.py 8001 &
-cd -
-
-send_message "Initial configuration" "localhost"
+send_message "Initial configuration"
 
 echo "
 
@@ -78,7 +73,11 @@ mkdir -p /var/run/haproxy/
 rm -rf /usr/local/etc/haproxy/certificates || :
 ln -s /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
 
-send_message "" "localhost"
+cd /usr/share/proxy
+python3 init.py
+cd -
+
+send_message ""
 
 haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
     -p /var/run/haproxy/haproxy.pid -4

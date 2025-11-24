@@ -1,4 +1,4 @@
-HTTP/1.0 404 Not Found
+HTTP/1.0 504 Gateway Time-out
 Cache-Control: no-cache
 Connection: close
 Content-Type: text/html
@@ -41,7 +41,7 @@ Content-Type: text/html
                 margin: 0;
             }
         </style>
-        <title>404</title>
+        <title>504</title>
     </head>
     <body>
         <main class="center">
@@ -66,7 +66,7 @@ Content-Type: text/html
                 <ellipse style="fill:#fff;stroke:#000;stroke-width:6.64195" id="path851" cx="53.434799" cy="51.201946" rx="40.191029" ry="40.882805"/>
                 <ellipse style="fill:#000;stroke:#000;stroke-width:6.6405" id="path999" cx="72.136505" cy="74.01577" rx="12.006441" ry="10.973491"/>
                 </svg>
-                <h1>404 Not found</h1>
+                <h1>504 Gateway Time-out</h1>
             </div>
         </main>
     </body>
