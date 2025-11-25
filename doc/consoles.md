@@ -1,16 +1,16 @@
-# Consoles 
+# Consoles
 
-To access the various consoles, navigate to `http://<FQDN>/services/status`
+To access the various consoles, navigate to `http://<FQDN>/status`
 
 ![consoles](consoles.png)
 
 ## proxy
-  
+
   * [HAProxy](https://github.com/haproxy/haproxy) offers a detailed, real-time overview of the status and statistics of the servers and services being managed. This console is particularly useful for monitoring connection performance, request handling, response times, and the health of backend servers.
 
     ![proxy-console](proxy-console.png)
-    
-    
+
+
 ## portainer
 
 * [Portainer](https://github.com/portainer/portainer) provides an easy-to-use interface for managing [Docker](https://github.com/docker) environments. It simplifies the process of deploying, managing, and troubleshooting containers within your infrastructure.
@@ -63,4 +63,15 @@ To access the various consoles, navigate to `http://<FQDN>/services/status`
 * [Filebrowser](https://github.com/filebrowser/filebrowser) offers a simple yet effective web interface for managing files, making it easier to upload, download, and organize files.
 
   ![datashare-console](datashare-console.png)
+
+
+## assistant
+
+* [Open WebUI](https://openwebui.com/) is and extensible AI interface for LLMs
+
+  ![assistant](assistant.png)
+
+## manager
+
+TODO
 
