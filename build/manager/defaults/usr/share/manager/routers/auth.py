@@ -2,10 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestFormStrict
 from pydantic import BaseModel
 import httpx
-from core.config import API_VERSION
-
-
-DJANGO_LOGIN_URL = "http://core:8080/rest-auth/login/"
+from core.config import API_VERSION, CORE_LOGIN_URL
 
 router_private = APIRouter(
     prefix=f"{API_VERSION}/private/auth",
@@ -21,7 +18,7 @@ class TokenResponse(BaseModel):
 async def login(form_data: OAuth2PasswordRequestFormStrict = Depends()):
     data = {"username": form_data.username, "password": form_data.password}
     async with httpx.AsyncClient() as client:
-        response = await client.post(DJANGO_LOGIN_URL, json=data)
+        response = await client.post(CORE_LOGIN_URL, json=data)
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

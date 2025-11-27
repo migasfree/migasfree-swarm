@@ -15,7 +15,7 @@ from core.security import (
     create_admin_cert,
     revoke_admin_cert
 )
-from core.models import TokenCreateResponse, TokenCreateRequest
+from core.models import TokenAdminResponse, TokenCreateRequest
 from core.utils import get_fqdn, get_host
 from core.auth import get_current_superuser
 
@@ -36,7 +36,7 @@ router_private = APIRouter(
 
 @router_private.post(
     '/admin-tokens',
-    response_model=TokenCreateResponse,
+    response_model=TokenAdminResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def create_token(
@@ -59,7 +59,7 @@ async def create_token(
 
     logger.info(f"Token created for CN={data.common_name} in stack={STACK}")
     host = get_host(STACK)
-    return TokenCreateResponse(url=f"https://{host}{ROOT_PATH}/v1/public/mtls/admin-requests/{token}")
+    return TokenAdminResponse(url=f"https://{host}{ROOT_PATH}/v1/public/mtls/admin-requests/{token}")
 
 
 @router_public.get("/admin-requests/{token}", response_class=HTMLResponse)

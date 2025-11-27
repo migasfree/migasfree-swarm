@@ -16,5 +16,23 @@ class TokenCreateRequest(BaseModel):
         return v
 
 
-class TokenCreateResponse(BaseModel):
+class TokenComputerRequest(BaseModel):
+    uuid: str
+    project_name: str
+    validity_days: int = VALIDITY_DAYS
+
+    @field_validator('validity_days')
+    @classmethod
+    def validate_validity_days(cls, v: int) -> int:
+        if not 1 <= v <= VALIDITY_DAYS:
+            raise ValueError(f'validity_days must be between 1 and {VALIDITY_DAYS}')
+        return v
+
+
+
+
+class TokenAdminResponse(BaseModel):
     url: str
+
+class TokenComputerResponse(BaseModel):
+    token: str

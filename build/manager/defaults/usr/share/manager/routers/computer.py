@@ -15,8 +15,10 @@ from core.security import (
     create_computer_cert,
     revoke_computer_cert
 )
-from core.models import TokenCreateResponse, TokenCreateRequest
+from core.models import TokenComputerResponse, TokenComputerRequest
 from core.utils import get_fqdn, get_host
+
+from core.core_client import get_project_info
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +35,13 @@ router_private = APIRouter(
 )
 
 
-@router_private.post(
+@router_public.post(
     '/computer-tokens',
-    response_model=TokenCreateResponse,
+    response_model=TokenComputerResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def create_token(
-    data: TokenCreateRequest
+    data: TokenComputerRequest
 ):
     """
     Create a token for the issuance of an mTLS certificate for an computer.
@@ -53,13 +55,22 @@ async def create_token(
 
     # Save common_name|validity_days
     token_file = stack_token_dir / token
-    content = f"{data.common_name}|{data.validity_days}"
-    token_file.write_text(content, encoding='utf-8')
 
-    logger.info(f"Token created for CN={data.common_name} in stack={STACK}")
-    host = get_host(STACK)
-    return TokenCreateResponse(url=f"https://{host}{ROOT_PATH}/v1/public/mtls/computer-requests/{token}")
+    project_info = await get_project_info(data.project_name)
+    logger.info(project_info)
 
+    if project_info["auto_register_computers"]:
+        project_id = project_info["id"]
+        common_name=f"{data.uuid}_{project_id}"
+
+        content = f"{common_name}|{data.validity_days}"
+        token_file.write_text(content, encoding='utf-8')
+
+        logger.info(f"Token created for CN={common_name} in stack={STACK}")
+        host = get_host(STACK)
+        return TokenComputerResponse(token=token)
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Disabled autoregister in project '{data.project_name}'")
 
 @router_public.get("/computer-requests/{token}", response_class=HTMLResponse)
 async def get_computer_cert_request_form(
@@ -102,7 +113,7 @@ async def get_computer_cert_request_form(
 @router_public.post("/computer-certificates")
 async def create_computer_certificate(
     token: str = Form(...),
-    email: EmailStr = Form(...),
+    email: Optional[str] = Form(None),
     password: Optional[str] = Form(None)
 ):
     """

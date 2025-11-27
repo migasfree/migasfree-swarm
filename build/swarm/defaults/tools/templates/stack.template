@@ -22,7 +22,9 @@ services:
         volumes:
             - migasfree-swarm:/mnt/cluster
             - /var/run/docker.sock:/var/run/docker.sock:ro
-
+        secrets:
+            - source: {{STACK}}_superadmin_name
+            - source: {{STACK}}_superadmin_pass
         networks:
             - infra_network
 

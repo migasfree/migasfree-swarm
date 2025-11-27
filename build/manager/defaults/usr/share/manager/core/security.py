@@ -134,7 +134,7 @@ def create_admin_cert(
             logger.error(f"create_cert_admin.sh failed: {result.stderr}")
             return False
 
-        logger.info(f"Certificate created for {email_clean} in stack {stack_clean}")
+        logger.info(f"Certificate {common_name_clean} created. Stack {stack_clean}. {email_clean}")
         return True
 
     except subprocess.TimeoutExpired:
@@ -219,7 +219,7 @@ def create_computer_cert(
             logger.error(f"create_cert_computer.sh failed: {result.stderr}")
             return False
 
-        logger.info(f"Certificate created for {email_clean} in stack {stack_clean}")
+        logger.info(f"Certificate {common_name_clean} created. Stack {stack_clean}. {email_clean}")
         return True
 
     except subprocess.TimeoutExpired:

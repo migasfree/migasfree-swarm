@@ -94,11 +94,11 @@
 
     <form action="{{root_path}}/v1/public/mtls/computer-certificates" method="POST" id="certForm">
       <input type="hidden" name="token" value="{{ token }}">
-      <input type="email" id="email" name="email" placeholder="Email" required />
-      <input type="password" id="password" name="password" placeholder="Password" required />
+      <input type="email" id="email" name="email" placeholder="Email" pattern=".*" />
+      <input type="password" id="password" name="password" placeholder="Password" pattern />
       <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" required />
       <span id="passwordError"></span>
-      <p>Please note: You will need this password when importing the admin certificate into your web browser.<p>
+      <p>Please note: You will need this password when importing the computer certificate in migasfree-client.<p>
       <button type="submit">Download</button>
     </form>
   </div>
