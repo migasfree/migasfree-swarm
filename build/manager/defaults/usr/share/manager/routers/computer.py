@@ -2,7 +2,7 @@ import logging
 import time
 import secrets
 
-from fastapi import APIRouter, Request, HTTPException, Form, Body, status
+from fastapi import APIRouter, Request, HTTPException, Form, Body, status, Depends
 from fastapi.responses import Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
@@ -17,7 +17,7 @@ from core.security import (
 )
 from core.models import TokenComputerResponse, TokenComputerRequest
 from core.utils import get_fqdn, get_host
-
+from core.auth import get_current_superuser
 from core.core_client import get_project_info
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,8 @@ async def create_computer_certificate(
 
 @router_private.delete("/computer-certificates", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_computer_certificate(
-    common_name: str = Body(..., embed=True)
+    common_name: str = Body(..., embed=True),
+    currentuser: dict = Depends(get_current_superuser)
 ):
     """
     mTLS Certificate Revocation for computers.
