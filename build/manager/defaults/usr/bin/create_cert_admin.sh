@@ -41,7 +41,7 @@ EOF
 openssl genrsa -aes256 -passout pass:$PASSWORD -out ${CERT_NAME}.key 2048
 
 # Generate CSR with private key
-openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=ADMINS"
+openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=ADMINS/O=${FQDN}"
 
 # Sign the CSR with the CA to create the client certificate
 openssl ca -config ${PATH_RESOURCE}/openssl.cnf -extensions v3_ext -extfile $CONFIG_EXT \

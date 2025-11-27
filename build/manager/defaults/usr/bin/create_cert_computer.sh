@@ -4,13 +4,11 @@
 FQDN="$1"
 HOST="$2"
 STACK="$3"
-UUID="$4"
+CERT_NAME="$4"  # "<UUID>_<PROJECT_ID>" example: D11EDBB7-3C9D-4406-A813-CEB6DD823C87_1
 PASSWORD="$5"
 DAYS_VALID="$6"
 EMAIL="$7"
 
-
-CERT_NAME="${UUID}"
 
 if [ -z "${DAYS_VALID}" ]; then
    DAYS_VALID="7305"
@@ -41,7 +39,7 @@ EOF
 openssl genrsa -aes256 -passout pass:$PASSWORD -out ${CERT_NAME}.key 2048
 
 # Generate CSR with private key
-openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=COMPUTERS"
+openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=COMPUTERS/O=${FQDN}"
 
 # Sign the CSR with the CA to create the client certificate
 openssl ca -config ${PATH_RESOURCE}/openssl.cnf -extensions v3_ext -extfile $CONFIG_EXT \
