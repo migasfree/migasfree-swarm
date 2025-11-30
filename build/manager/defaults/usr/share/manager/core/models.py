@@ -1,4 +1,5 @@
 from pydantic import BaseModel, field_validator
+from typing import Optional
 
 VALIDITY_DAYS = 7305
 
@@ -20,6 +21,8 @@ class TokenComputerRequest(BaseModel):
     uuid: str
     project_name: str
     validity_days: int = VALIDITY_DAYS
+    username: Optional[str] = None
+    password: Optional[str] = None
 
     @field_validator('validity_days')
     @classmethod
@@ -29,10 +32,16 @@ class TokenComputerRequest(BaseModel):
         return v
 
 
-
-
 class TokenAdminResponse(BaseModel):
     url: str
 
+
 class TokenComputerResponse(BaseModel):
     token: str
+
+
+# Force explicit rebuild. Important!
+TokenCreateRequest.model_rebuild()
+TokenComputerRequest.model_rebuild()
+TokenAdminResponse.model_rebuild()
+TokenComputerResponse.model_rebuild()

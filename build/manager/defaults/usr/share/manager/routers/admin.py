@@ -17,7 +17,7 @@ from core.security import (
 )
 from core.models import TokenAdminResponse, TokenCreateRequest
 from core.utils import get_fqdn, get_host
-from core.auth import get_current_superuser
+from core.core_client import get_current_superuser
 
 logger = logging.getLogger(__name__)
 

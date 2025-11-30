@@ -17,9 +17,19 @@ from core.security import (
 )
 from core.models import TokenComputerResponse, TokenComputerRequest
 from core.utils import get_fqdn, get_host
-from core.auth import get_current_superuser
-from core.core_client import get_project_info
+from core.core_client import (
+    get_current_superuser,
+    get_core_user,
+    get_token_user,
+    get_project_info,
+    user_has_permission
+)
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
@@ -57,9 +67,8 @@ async def create_token(
     token_file = stack_token_dir / token
 
     project_info = await get_project_info(data.project_name)
-    logger.info(project_info)
 
-    if project_info["auto_register_computers"]:
+    def do_it():
         project_id = project_info["id"]
         common_name=f"{data.uuid}_{project_id}"
 
@@ -69,8 +78,23 @@ async def create_token(
         logger.info(f"Token created for CN={common_name} in stack={STACK}")
         host = get_host(STACK)
         return TokenComputerResponse(token=token)
+
+    if project_info["auto_register_computers"]:
+        return do_it()
     else:
+        # Try with authentication
+        if data.username and data.password:
+            user_token = get_token_user(data.username, data.password)
+            user_data = await get_core_user(user_token)
+            if user_data:
+                if user_data.get("is_superuser", False):
+                    return do_it()
+                else:
+                    has_permission = await user_has_permission(user_data, "add_computer")
+                    if has_permission:
+                        return do_it()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Disabled autoregister in project '{data.project_name}'")
+
 
 @router_public.get("/computer-requests/{token}", response_class=HTMLResponse)
 async def get_computer_cert_request_form(
