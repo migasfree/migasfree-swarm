@@ -136,7 +136,7 @@ class ContextLoader:
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
-        self.default("POSTGRESQL_CONF","work_mem=64MB|max_connections=101")
+        self.default("POSTGRESQL_CONF","work_mem=32MB")
 
 
         # Redis (datastore)
@@ -276,7 +276,7 @@ class ContextLoader:
 
             "POSTGRESQL_CONF": f"""# {line}
 # POSTGRESQL_CONF
-#    The POSTGRES_CONF variable should be configured as a pipe-separated list of
+#    The POSTGRESQL_CONF variable should be configured as a pipe-separated list of
 #    PostgreSQL configuration parameters and their values, in the format:
 #        param1=value1|param2=value2|...
 #
