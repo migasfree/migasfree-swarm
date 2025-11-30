@@ -292,6 +292,7 @@ services:
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
+            - POSTGRESQL_CONF={{POSTGRESQL_CONF}}
             - BACKUP_CRON='{{BACKUP_CRON}}'
 
         {% if PORT_DATABASE %}  #  Expose PostgreSQL port to external access from the Swarm cluster

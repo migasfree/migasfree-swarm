@@ -136,6 +136,8 @@ class ContextLoader:
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
+        self.default("POSTGRESQL_CONF","work_mem=64MB|max_connections=101")
+
 
         # Redis (datastore)
         # =================
@@ -257,9 +259,7 @@ class ContextLoader:
 #     beyond standard credential checks.
 #     The default value is 'False', meaning client certificates are not required.
 #     Related commands:
-#         ./migasfree-swarm url-client-certificate
-#         ./migasfree-swarm revoke-client-certificate
-#         ./migasfree-swarm list-client-certificate
+#         ./migasfree-swarm url-admin-certificate
 # {line}
 """,
 
@@ -271,6 +271,22 @@ class ContextLoader:
 #        POSTGRES_HOST='database' and
 #        POSTGRES_PORT='5432' to connect internally.
 #    This ensures the service uses the internal Swarm network for better security.
+# {line}
+""",
+
+            "POSTGRESQL_CONF": f"""# {line}
+# POSTGRESQL_CONF
+#    The POSTGRES_CONF variable should be configured as a pipe-separated list of
+#    PostgreSQL configuration parameters and their values, in the format:
+#        param1=value1|param2=value2|...
+#
+#    Each parameter will be applied by updating or adding the corresponding setting
+#    in the postgresql.conf file, activating uncommented lines or adding new ones if missing.
+#
+#    File: /var/lib/docker/volumes/inv_database/_data/18/docker/postgresql.conf
+#
+#    Example:
+#    POSTGRES_CONF='work_mem=64MB|max_connections=100'
 # {line}
 """,
 

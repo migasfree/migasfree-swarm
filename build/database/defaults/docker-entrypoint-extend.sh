@@ -41,6 +41,25 @@ OWNER_GID=890
 sed -e "/^postgres/s=^postgres:x:[0-9]*:[0-9]*:=postgres:x:${OWNER_UID}:${OWNER_GID}:=" -i /etc/passwd
 sed -e "/^postgres/s=^postgres:x:[0-9]*:=postgres:x:${OWNER_GID}:=" -i /etc/group
 
+
+# Write parameters in postgresql.conf
+echo "Parameterization"
+echo "================"
+echo "$POSTGRESQL_CONF"
+echo
+CONFIG_FILE=/var/lib/postgresql/18/docker/postgresql.conf
+IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
+for param_value in "${PARAMS[@]}"; do
+  param=$(echo $param_value | cut -d= -f1)
+  value=$(echo $param_value | cut -d= -f2)
+  if grep -q "^#*\s*${param}\s*=" "$CONFIG_FILE"; then
+    sed -i "s|^#*\s*${param}\s*=.*|${param} = ${value}|" "$CONFIG_FILE"
+  else
+    echo "${param} = ${value}" >> "$CONFIG_FILE"
+  fi
+done
+
+
 send_message "starting ${SERVICE:(${#STACK})+1}"
 cron_init
 
