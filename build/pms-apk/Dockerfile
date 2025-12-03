@@ -1,7 +1,7 @@
 ARG TAG=latest
 FROM migasfree/core:${TAG} AS core
 
-FROM alpine:3.21
+FROM alpine:3.22
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 ARG TAG=latest
@@ -21,7 +21,7 @@ ENV TAG=${TAG} \
 RUN _BUILD_DEPENDS='python3-dev py3-setuptools py3-pip wget gcc musl-dev libffi-dev' && \
     _DEPENDS='gnupg apk-tools alpine-sdk gzip python3 py3-virtualenv netcat-openbsd curl tzdata bash' && \
     _PIP_DEPENDS='requests celery[redis]' && \
-    addgroup -g $_GID www-data && \
+    addgroup -g $_GID www-data || : && \
     adduser -D -u $_UID -G www-data -s /bin/bash www-data && \
     apk update && \
     apk upgrade && \

@@ -2,7 +2,7 @@
 VERSION=$(cat /VERSION)
 
 # migasfree images
-for _IMG in swarm proxy certbot datashare_console datastore datastore_console database database_console assistant core console public worker_console pms-apt pms-yum pms-pacman pms-wpt
+for _IMG in swarm proxy certbot datashare_console datastore datastore_console database database_console assistant core console public worker_console pms-apt pms-yum pms-pacman pms-apk pms-wpt
 do
     _IMAGE="migasfree/${_IMG}:${VERSION}"
     if docker image inspect "${_IMAGE}" > /dev/null 2>&1; then

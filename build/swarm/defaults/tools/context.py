@@ -147,7 +147,7 @@ class ContextLoader:
 
         # PMS
         # ===
-        # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-wpt")
+        # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-apk,pms-wpt")
         self.default("PMS_ENABLED", "pms-apt,pms-yum")
 
         for key in [
@@ -301,7 +301,7 @@ class ContextLoader:
             "PMS_ENABLED": f"""# {line}
 # PMS_ENABLED
 #     Enabled Package Management Systems. They allow working with deb, rpm, etc.
-#     The official PMS options you can set are: 'pms-apt', 'pms-yum', 'pms-pacman' and 'pms-wpt'
+#     The official PMS options you can set are: 'pms-apt', 'pms-yum', 'pms-pacman', 'pms-apk' and 'pms-wpt'
 #     The default value is 'pms-apt,pms-yum'
 # {line}
 """,
