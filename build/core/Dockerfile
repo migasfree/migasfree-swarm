@@ -47,9 +47,8 @@ RUN cd / && \
 RUN  cd / && \
     . /venv/bin/activate && \
     cd /migasfree-backend && \
-    pip install --no-cache-dir . && \
     pip install --no-cache-dir requests_toolbelt && \
-    pip install --no-cache-dir --no-build-isolation . && \
+    pip install --no-cache-dir . && \
     rm -rf /migasfree-backend
 
 RUN cd / && \
