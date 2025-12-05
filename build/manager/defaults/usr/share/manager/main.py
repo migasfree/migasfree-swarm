@@ -13,8 +13,7 @@ from routers.status import lifespan
 
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ app = FastAPI(
     version="1.0.0",
     description="API for Migasfree Manager",
     root_path=ROOT_PATH,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="manager-static")
@@ -41,13 +40,11 @@ app.include_router(status.router_private)
 app.include_router(status.router_public)
 app.include_router(extensions.router_private)
 
-@app.get('/v1/internal/health', tags=["status"])
+
+@app.get("/v1/internal/health", tags=["status"])
 async def health_check():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -61,11 +58,11 @@ async def root():
     return {
         "message": "Migasfree Manager API",
         "docs": f"{ROOT_PATH}/docs",
-        "health": f"{ROOT_PATH}/v1/internal/health"
+        "health": f"{ROOT_PATH}/v1/internal/health",
     }
 
 
-@app.get('/manifest')
+@app.get("/manifest")
 async def manifest():
     """Cache manifest"""
     template = """CACHE MANIFEST
@@ -74,7 +71,7 @@ async def manifest():
     """
     content = Template(template).render({})
 
-    return Response(content=content, media_type='text/cache-manifest')
+    return Response(content=content, media_type="text/cache-manifest")
 
 
 if __name__ == "__main__":
