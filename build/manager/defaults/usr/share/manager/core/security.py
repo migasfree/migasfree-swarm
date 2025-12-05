@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 
 from core.config import PATH_CERTIFICATES, MAX_TOKEN_AGE_HOURS
 
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -162,7 +165,7 @@ def revoke_admin_cert(common_name: str, stack: str) -> bool:
     cert_path = cert_dir / cert_file
 
     if not cert_path.is_file():
-        return False  # Certificado not exists
+        return False  # Certificate not exists
 
     try:
         resource_dir = PATH_CERTIFICATES / stack / "admin"
