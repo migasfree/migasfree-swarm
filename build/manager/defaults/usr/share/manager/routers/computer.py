@@ -5,16 +5,11 @@ import secrets
 from fastapi import APIRouter, Request, HTTPException, Form, Body, status, Depends
 from fastapi.responses import Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import EmailStr
 from datetime import datetime, timedelta
 from typing import Optional
 
 from core.config import ROOT_PATH, API_VERSION, STACK, PATH_CERTIFICATES
-from core.security import (
-    TokenValidator,
-    create_computer_cert,
-    revoke_computer_cert
-)
+from core.security import TokenValidator, create_computer_cert, revoke_computer_cert
 from core.models import TokenComputerResponse, TokenComputerRequest
 from core.utils import get_fqdn, get_host
 from core.core_client import (
@@ -22,37 +17,25 @@ from core.core_client import (
     get_core_user,
     get_token_user,
     get_project_info,
-    user_has_permission
+    user_has_permission,
 )
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
 
-router_public = APIRouter(
-    prefix=f"{API_VERSION}/public/mtls",
-    tags=["mtls-computer"]
-)
+router_public = APIRouter(prefix=f"{API_VERSION}/public/mtls", tags=["mtls-computer"])
 
-router_private = APIRouter(
-    prefix=f"{API_VERSION}/private/mtls",
-    tags=["mtls-computer"]
-)
+router_private = APIRouter(prefix=f"{API_VERSION}/private/mtls", tags=["mtls-computer"])
 
 
 @router_public.post(
-    '/computer-tokens',
+    "/computer-tokens",
     response_model=TokenComputerResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
-async def create_token(
-    data: TokenComputerRequest
-):
+async def create_token(data: TokenComputerRequest):
     """
     Create a token for the issuance of an mTLS certificate for an computer.
     """
@@ -70,13 +53,13 @@ async def create_token(
 
     def do_it():
         project_id = project_info["id"]
-        common_name=f"{data.uuid}_{project_id}"
+        common_name = f"{data.uuid}_{project_id}"
 
         content = f"{common_name}|{data.validity_days}"
-        token_file.write_text(content, encoding='utf-8')
+        token_file.write_text(content, encoding="utf-8")
 
         logger.info(f"Token created for CN={common_name} in stack={STACK}")
-        host = get_host(STACK)
+
         return TokenComputerResponse(token=token)
 
     if project_info["auto_register_computers"]:
@@ -90,17 +73,19 @@ async def create_token(
                 if user_data.get("is_superuser", False):
                     return do_it()
                 else:
-                    has_permission = await user_has_permission(user_data, "add_computer")
+                    has_permission = await user_has_permission(
+                        user_data, "add_computer"
+                    )
                     if has_permission:
                         return do_it()
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Disabled autoregister in project '{data.project_name}'")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Disabled autoregister in project '{data.project_name}'",
+        )
 
 
 @router_public.get("/computer-requests/{token}", response_class=HTMLResponse)
-async def get_computer_cert_request_form(
-    request: Request,
-    token: str
-):
+async def get_computer_cert_request_form(request: Request, token: str):
     """
     mTLS Certificate Issuance Form for computers.
     """
@@ -114,9 +99,9 @@ async def get_computer_cert_request_form(
         token_file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=404, detail="Token expired")
 
-    content = token_file_path.read_text(encoding='utf-8')
+    content = token_file_path.read_text(encoding="utf-8")
     try:
-        common_name, validity_days = content.split('|')
+        common_name, validity_days = content.split("|")
     except Exception:
         raise HTTPException(status_code=500, detail="Corrupted token file content")
 
@@ -129,8 +114,8 @@ async def get_computer_cert_request_form(
             "token": token,
             "fqdn": get_fqdn(STACK),
             "stack": STACK,
-            "root_path": ROOT_PATH
-        }
+            "root_path": ROOT_PATH,
+        },
     )
 
 
@@ -138,7 +123,7 @@ async def get_computer_cert_request_form(
 async def create_computer_certificate(
     token: str = Form(...),
     email: Optional[str] = Form(None),
-    password: Optional[str] = Form(None)
+    password: Optional[str] = Form(None),
 ):
     """
     mTLS Certificate Issuance for computers.
@@ -175,13 +160,13 @@ async def create_computer_certificate(
 
         return Response(
             content=content,
-            media_type='application/x-tar',
+            media_type="application/x-tar",
             headers={
-                'Content-Disposition': f'attachment; filename="{cert_name}_{FQDN}.tar"',
-                'Content-Length': str(len(content)),
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
-                'Pragma': 'no-cache'
-            }
+                "Content-Disposition": f'attachment; filename="{cert_name}_{FQDN}.tar"',
+                "Content-Length": str(len(content)),
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+            },
         )
     except Exception as e:
         logger.error(f"Error serving certificate: {e}")
@@ -191,7 +176,7 @@ async def create_computer_certificate(
 @router_private.delete("/computer-certificates", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_computer_certificate(
     common_name: str = Body(..., embed=True),
-    currentuser: dict = Depends(get_current_superuser)
+    currentuser: dict = Depends(get_current_superuser),
 ):
     """
     mTLS Certificate Revocation for computers.
@@ -200,12 +185,18 @@ async def revoke_computer_certificate(
     try:
         revoked = revoke_computer_cert(common_name, STACK)
         if not revoked:
-            logger.warning(f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}")
-            raise HTTPException(status_code=404, detail="Certificate not found or already revoked")
+            logger.warning(
+                f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}"
+            )
+            raise HTTPException(
+                status_code=404, detail="Certificate not found or already revoked"
+            )
 
         logger.info(f"Certificate revoked for {common_name} in stack {STACK}")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     except Exception as e:
-        logger.error(f"Error revoking certificate for {common_name} in stack {STACK}: {e}")
+        logger.error(
+            f"Error revoking certificate for {common_name} in stack {STACK}: {e}"
+        )
         raise HTTPException(status_code=500, detail="Error revoking certificate")
