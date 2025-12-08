@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width" />
@@ -64,7 +65,7 @@
       background: white;
       border-radius: 8px;
       padding: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       margin-bottom: 20px;
       display: flex;
       justify-content: center;
@@ -113,7 +114,7 @@
     .logs-section {
       background: white;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       overflow: hidden;
     }
 
@@ -180,7 +181,8 @@
       z-index: 10;
     }
 
-    th, td {
+    th,
+    td {
       border: 1px solid #ddd;
       padding: 10px;
       text-align: left;
@@ -198,7 +200,9 @@
       background-color: #fafafa;
     }
 
-    .loading, .error, .empty {
+    .loading,
+    .error,
+    .empty {
       padding: 40px;
       text-align: center;
       font-size: 1.2em;
@@ -214,15 +218,23 @@
         padding: 10px;
       }
 
-      th, td {
+      th,
+      td {
         padding: 6px;
         font-size: 0.9em;
       }
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
     }
 
     .loading {
@@ -230,6 +242,7 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Info Panel -->
   <div class="info-panel">
@@ -244,10 +257,10 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 60" id="main-svg">
       <defs>
         <filter id="glow">
-          <feGaussianBlur stdDeviation="0.3" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="0.3" result="coloredBlur" />
           <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
@@ -255,7 +268,8 @@
       <!-- Status message -->
       <g transform="translate(160, 100)">
         <a href="/manager/v1/private/logs" target="_blank">
-          <image id="mascot" href="/manager/static/img/mascot-welcome.svg" class="link" x="6" y="8" height="10" width="10" />
+          <image id="mascot" href="/manager/static/img/mascot-welcome.svg" class="link" x="6" y="8" height="10"
+            width="10" />
         </a>
         <text class="status-text" id="message_serv"></text>
         <text class="status-text" id="message" x="0" y="3">one moment, please</text>
@@ -266,7 +280,9 @@
         <image class="icon" href="/manager/static/img/portainer.svg" x="1" y="-12" />
         <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
         <a id="portainer_link_parent" target="_blank">
-          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7"><title>Portainer Console</title></circle>
+          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7">
+            <title>Portainer Console</title>
+          </circle>
         </a>
         <text x="3" y="2">portainer</text>
       </g>
@@ -275,7 +291,9 @@
         <image class="icon" href="/manager/static/img/proxy.svg" x="1" y="-12" />
         <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
         <a id="proxy_link_parent" target="_blank">
-          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7"><title>Proxy Statistics</title></circle>
+          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7">
+            <title>Proxy Statistics</title>
+          </circle>
         </a>
         <text x="4" y="2">proxy</text>
       </g>
@@ -284,7 +302,9 @@
         <image class="icon" href="/manager/static/img/manager.svg" x="2" y="-12" />
         <circle id="manager" class="node" r="1.5" filter="url(#glow)" />
         <a id="manager_link_parent" target="_blank">
-          <circle id="manager_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree Manager API</title></circle>
+          <circle id="manager_link" class="link" cx="7" cy="-7" r="7">
+            <title>Migasfree Manager API</title>
+          </circle>
         </a>
         <text x="3" y="2">manager</text>
       </g>
@@ -294,16 +314,32 @@
         <circle id="console" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_console" class="circle-text" x="0" y="1"></text>
         <a id="console_link_parent" target="_blank">
-          <circle id="console_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree Console</title></circle>
+          <circle id="console_link" class="link" cx="7" cy="-7" r="7">
+            <title>Migasfree Console</title>
+          </circle>
         </a>
         <text x="4" y="2">console</text>
+      </g>
+
+      <g id="tunnel-node" transform="translate(150, 74)">
+        <image class="icon" href="/manager/static/img/remote-session.svg" x="2" y="-12" />
+        <circle id="tunnel" class="node" r="1.5" filter="url(#glow)" />
+        <text id="nodes_tunnel" class="circle-text" x="0" y="1"></text>
+        <a id="tunnel_link_parent" target="_blank">
+          <circle id="tunnel_link" class="link" cx="7" cy="-7" r="7">
+            <title>Migasfree Remote Access</title>
+          </circle>
+        </a>
+        <text x="2" y="2">remote access</text>
       </g>
 
       <g id="public-node" transform="translate(70, 94)">
         <image class="icon" href="/manager/static/img/public.svg" x="2" y="-12" />
         <circle id="public" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_public" class="circle-text" x="0" y="1"></text>
-        <circle id="public_link" class="link" cx="7" cy="-7" r="7"><title>Public Files</title></circle>
+        <circle id="public_link" class="link" cx="7" cy="-7" r="7">
+          <title>Public Files</title>
+        </circle>
         <text x="4" y="2">public</text>
       </g>
 
@@ -326,7 +362,9 @@
         <circle id="core" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_core" class="circle-text" x="0" y="1"></text>
         <a id="core_link_parent" target="_blank">
-          <circle id="core_link" class="link" cx="7" cy="-7" r="7"><title>Migasfree API</title></circle>
+          <circle id="core_link" class="link" cx="7" cy="-7" r="7">
+            <title>Migasfree API</title>
+          </circle>
         </a>
         <text x="5" y="2">core</text>
       </g>
@@ -336,7 +374,9 @@
         <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
         <a id="worker_link_parent" target="_blank">
-          <circle id="worker_link" class="link" cx="7" cy="-7" r="7"><title>Worker Console</title></circle>
+          <circle id="worker_link" class="link" cx="7" cy="-7" r="7">
+            <title>Worker Console</title>
+          </circle>
         </a>
         <text x="4" y="2">worker</text>
       </g>
@@ -345,7 +385,9 @@
         <image class="icon" href="/manager/static/img/database.svg" x="2" y="-12" />
         <circle id="database" class="node" r="1.5" filter="url(#glow)" />
         <a id="database_link_parent" target="_blank">
-          <circle id="database_link" class="link" cx="7" cy="-7" r="7"><title>Database Console</title></circle>
+          <circle id="database_link" class="link" cx="7" cy="-7" r="7">
+            <title>Database Console</title>
+          </circle>
         </a>
         <text x="3" y="2">database</text>
       </g>
@@ -354,7 +396,9 @@
         <image class="icon" href="/manager/static/img/datastore.svg" x="2" y="-12" />
         <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
         <a id="datastore_link_parent" target="_blank">
-          <circle id="datastore_link" class="link" cx="7" cy="-7" r="7"><title>Datastore Console</title></circle>
+          <circle id="datastore_link" class="link" cx="7" cy="-7" r="7">
+            <title>Datastore Console</title>
+          </circle>
         </a>
         <text x="3" y="2">datastore</text>
       </g>
@@ -363,7 +407,9 @@
         <image class="icon" href="/manager/static/img/datashare.svg" x="2" y="-12" />
         <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
         <a id="datashare_console_link_parent" target="_blank">
-          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7"><title>Datashare Console</title></circle>
+          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7">
+            <title>Datashare Console</title>
+          </circle>
         </a>
         <text x="3" y="2">datashare</text>
       </g>
@@ -378,7 +424,9 @@
         <image class="icon" href="/manager/static/img/assistant.svg" x="2" y="-12" />
         <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
         <a id="assistant_link_parent" target="_blank">
-          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7"><title>Assistant</title></circle>
+          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7">
+            <title>Assistant</title>
+          </circle>
         </a>
         <text x="3" y="2">assistant</text>
       </g>
@@ -405,7 +453,7 @@
   </div>
 
   <script>
-    (function() {
+    (function () {
       'use strict';
 
       // Configuration
@@ -421,14 +469,14 @@
           'console', 'public', 'pms',
           'beat', 'core', 'worker',
           'database', 'datastore', 'datashare_console',
-          'certbot', 'assistant', 'mcp-server'
+          'certbot', 'assistant', 'mcp-server', 'tunnel'
         ],
         consoleServices: [
           'portainer', 'proxy', 'manager',
           'console',
           'core', 'worker',
           'database', 'datastore', 'datashare_console',
-          'assistant'
+          'assistant', 'tunnel'
         ],
         infoData: null,
       };
@@ -546,7 +594,8 @@
           database_link_parent: `https://database-${host}`,
           datastore_link_parent: `https://datastore-${host}`,
           datashare_console_link_parent: `https://datashare-${host}`,
-          assistant_link_parent: `https://assistant-${host}`
+          assistant_link_parent: `https://assistant-${host}`,
+          tunnel_link_parent: `https://${host}/manager/v1/public/tunnel/console`,
         };
 
         Object.entries(links).forEach(([id, href]) => {
@@ -716,8 +765,8 @@
         }
 
         let key = (sprite === 0 && (prefix === 'mascot-disconnect' || prefix === 'mascot-welcome'))
-               ? prefix
-               : `${prefix}-${sprite}`;
+          ? prefix
+          : `${prefix}-${sprite}`;
         if (mascotImages[key]) {
           // Use preloaded image src to avoid new fetch
           dom.mascot.setAttribute('href', mascotImages[key].src);
@@ -981,4 +1030,5 @@
     })();
   </script>
 </body>
+
 </html>

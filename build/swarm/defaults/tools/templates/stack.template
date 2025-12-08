@@ -478,6 +478,30 @@ services:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
 
+
+    tunnel:
+        image: migasfree/tunnel:{{TAG}}
+        environment:
+            - TZ={{TZ}}
+            - FQDN={{FQDN}}
+            - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
+            - TUNNEL_CONNECTIONS={{TUNNEL_CONNECTIONS}}
+        deploy:
+            replicas: {{REPLICAS_tunnel}}
+            restart_policy:
+                condition: any
+                delay: 5s
+                max_attempts: 0
+                window: 180s
+        networks:
+            - {{STACK}}_network
+            - infra_network
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+
+
 {% if GOOGLE_API_KEY %}
     assistant:
         image: migasfree/assistant:{{TAG}}

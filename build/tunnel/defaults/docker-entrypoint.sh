@@ -1,8 +1,5 @@
 #!/bin/sh
 
-MIGASFREE_SECRET_DIR='/var/run/secrets'
-export REDIS_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
-
 set -e
 
 wait_for_service() {
@@ -26,11 +23,18 @@ wait_for_service() {
     exit 1
 }
 
-# send_message "Starting Certificate Authority"
 
-/usr/bin/create_local_ca.sh ${STACK}
-
+send_message "waiting datastore"
 wait_for_service "datastore" "6379"
+
+send_message "Starting Tunnelnode"
+
+
+MIGASFREE_SECRET_DIR='/var/run/secrets'
+export REDIS_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
+
+
+
 
 echo "
 
@@ -47,16 +51,13 @@ echo "
 
 
         $SERVICE ($TAG)
-        Uvicorn: $(uvicorn --version)
+        $(python --version)
         Container: $HOSTNAME
         Time zome: $TZ $(date)
         Processes: $(nproc)
 
 "
 
-/usr/sbin/crond &
-/usr/bin/renew_crl
+send_message ""
 
-# send_message ""
-
-uvicorn main:app --host "0.0.0.0" --port 8080 --log-level info
+exec python3 -u main.py

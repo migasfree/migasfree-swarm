@@ -82,6 +82,7 @@ listen stats
     monitor-uri /health
     monitor fail if FALSE
 
+
 frontend http
     bind *:80
 
@@ -163,6 +164,13 @@ frontend http
     acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
 
 
+    # TUNNEL WebSocket
+    # ================
+    acl url_tunnel path_beg /tunnel
+    acl url_tunnel_ws hdr(Connection) -i upgrade
+    acl url_tunnel_ws hdr(Upgrade) -i websocket
+
+
     # MANAGER
     # =======
     acl url_manager path     /manager/
@@ -235,6 +243,7 @@ frontend http
     acl url_no_mTLS_get   path_beg /token-refresh/
     acl url_no_mTLS_get   path     /favicon.ico
     acl url_no_mTLS_get   path     /  # Checks if it is active
+    acl url_no_mTLS_get   path_beg /tunnel  # WebSocket tunnel relay
 
 
     # migasfree-play 5.0 -> https://github.com/migasfree/migasfree-play/blob/master/src/config/app.conf.js
@@ -276,6 +285,9 @@ frontend http
     # Warning: The order is important !!!
     # ===================================
 
+    # Tunnel WebSocket (must be before other backends)
+    # Allow WebSocket connections to /tunnel path
+    use_backend tunnel if url_tunnel hdr_connection_upgrade hdr_upgrade_websocket
 
     use_backend manager if network_mng url_manager
 
@@ -388,6 +400,23 @@ backend manager
     balance leastconn
     http-response set-header Cache-Control public,max-age=604800,immutable if url_manager_cache || url_status
         server-template manager- 1 tasks.manager:8080 resolvers docker check init-addr none
+
+backend tunnel
+    mode http
+    timeout connect 10s
+    timeout server 1h
+    timeout tunnel 1h
+    
+    # Sticky sessions based on X-Agent-ID header
+    # This ensures all connections for the same agent go to the same relay instance
+    stick-table type string len 64 size 100k expire 30m
+    stick on hdr(X-Agent-ID)
+    
+    # Use roundrobin for initial distribution when no X-Agent-ID is present
+    balance roundrobin
+    
+    server-template tunnel 10 tasks.tunnel:8080 resolvers docker init-addr none check
+
 
 
 

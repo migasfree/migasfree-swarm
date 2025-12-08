@@ -8,7 +8,9 @@ PATH_DATASHARES = Path('/mnt/cluster/datashares')
 
 MAX_TOKEN_AGE_HOURS = 72
 
+FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
+
 
 CORE_URL = "http://core:8080"
 CORE_LOGIN_URL = f"{CORE_URL}/rest-auth/login/"

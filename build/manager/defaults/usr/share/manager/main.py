@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from core.config import ROOT_PATH
-from routers import admin, computer, crl, auth, status, extensions
+from routers import admin, computer, crl, auth, status, extensions, tunnel
 from routers.status import lifespan
 
 
@@ -39,6 +39,7 @@ app.include_router(status.router_internal)
 app.include_router(status.router_private)
 app.include_router(status.router_public)
 app.include_router(extensions.router_private)
+app.include_router(tunnel.router)
 
 
 @app.get("/v1/internal/health", tags=["status"])

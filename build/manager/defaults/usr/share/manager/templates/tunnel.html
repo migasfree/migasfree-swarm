@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Access</title>
+
+    <!-- Xterm.js for terminal emulation -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+
+    <link rel="stylesheet" href="/manager/static/css/tunnel.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Migasfree Remote Access Console</h1>
+                <div class="header-info">
+                    <span class="status-badge" id="connection-status">Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar - Agent List -->
+            <aside class="sidebar" id="sidebar">
+                <div class="search-box">
+                    <input type="text" id="search-agents" placeholder="🔍 Search agents..." />
+                    <button class="btn-refresh" id="refresh-agents" title="Refresh">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+                            <path
+                                d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="agents-list" id="agents-list">
+                    <div class="loading">Loading agents...</div>
+                </div>
+            </aside>
+
+            <!-- Main Panel - Terminal/VNC/RDP -->
+            <main class="main-panel">
+                <!-- Welcome Screen -->
+                <div class="welcome-screen" id="welcome-screen">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <img src="/manager/static/img/remote-session.svg" alt="Remote Session" />
+                        </div>
+                        <p>Select an agent from the sidebar to start a remote session</p>
+                    </div>
+                </div>
+
+                <!-- Connection Panel -->
+                <div class="connection-panel hidden" id="connection-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="agent-name" id="current-agent-name">Agent</span>
+                            <span class="service-badge" id="current-service">SSH</span>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn-action" id="btn-disconnect" title="Disconnect">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path
+                                        d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.58 26.58 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.933.933 0 0 1-.765.935c-.845.147-2.34.346-4.235.346-1.895 0-3.39-.2-4.235-.346A.933.933 0 0 1 3 9.219V8.062Zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a24.767 24.767 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25.286 25.286 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135Z" />
+                                </svg>
+                            </button>
+                            <button class="btn-action" id="btn-fullscreen" title="Fullscreen">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path
+                                        d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Container -->
+                    <div class="terminal-container" id="terminal-container">
+                        <div id="terminal"></div>
+                    </div>
+
+                    <!-- VNC/RDP Container (future) -->
+                    <div class="vnc-container hidden" id="vnc-container">
+                        <canvas id="vnc-canvas"></canvas>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Agent Details Modal -->
+    <div class="modal hidden" id="agent-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect to Agent</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="agent-info" id="agent-info">
+                    <!-- Agent details will be inserted here -->
+                </div>
+                <div class="service-selector">
+                    <label>Select Service:</label>
+                    <div class="service-options">
+                        <button class="service-btn active" data-service="ssh">
+                            <span class="service-icon">🖥️</span>
+                            <span>SSH</span>
+                        </button>
+                        <button class="service-btn" data-service="vnc">
+                            <span class="service-icon">🖼️</span>
+                            <span>VNC</span>
+                        </button>
+                        <button class="service-btn" data-service="rdp">
+                            <span class="service-icon">🪟</span>
+                            <span>RDP</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SSH Username Input -->
+                <div class="username-input" id="username-input">
+                    <label for="ssh-username">SSH Username:</label>
+                    <input type="text" id="ssh-username" placeholder="Enter username (e.g., root, ubuntu, admin)"
+                        value="root" />
+                    <small class="input-hint">The user account to connect with on the remote system</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="modal-connect">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/manager/static/js/tunnel.js"></script>
+</body>
+
+</html>

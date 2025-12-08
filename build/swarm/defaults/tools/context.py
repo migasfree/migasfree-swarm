@@ -153,9 +153,15 @@ class ContextLoader:
         for key in [
             "REPLICAS_console", "REPLICAS_core", "REPLICAS_public",
             "REPLICAS_worker", "REPLICAS_database_console",
-            "REPLICAS_datastore_console", "REPLICAS_worker_console"
+            "REPLICAS_datastore_console", "REPLICAS_worker_console",
+            "REPLICAS_tunnel"
         ]:
             self.default(key, "1")
+
+        # TUNNEL
+        # ======
+        self.default("TUNNEL_CONNECTIONS", "50000")
+
 
         # BACKUP
         # ======
@@ -165,6 +171,7 @@ class ContextLoader:
         # =========
         self.default("GOOGLE_API_KEY", "")
         self.default("OLLAMA_BASE_URL", "")
+
 
         self.save_stack()
 
@@ -355,6 +362,22 @@ class ContextLoader:
 #     Sets the number worker_console instances that will run when deploying the stack.
 #     The default value is '1' for development
 #     Set 0 for production
+# {line}
+""",
+
+            "REPLICAS_tunnel": f"""# {line}
+# REPLICAS_tunnel
+#     Sets the number tunnel nodes instances that will run when deploying the stack.
+#     The default value is '1'
+# {line}
+""",
+
+            "TUNNEL_CONNECTIONS": f"""# {line}
+# TUNNEL_CONNECTIONS
+#     Maximum number of concurrent connections for the Multi-Protocol Tunnel Relay Server
+#     Handles WebSocket agents, TCP tunnels (SSH/VNC/RDP), and clients simultaneously
+#     Default: 50000 (adjust based on available file descriptors and memory)
+#     Recommended: 10000-65000 for production with ulimit nofile=524288
 # {line}
 """,
 
