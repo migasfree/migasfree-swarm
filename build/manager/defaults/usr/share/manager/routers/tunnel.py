@@ -339,7 +339,6 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
             # SSH command
             ssh_cmd = [
                 'ssh',
-                '-v',
                 '-tt',  # Force pseudo-terminal usage
                 '-o', 'StrictHostKeyChecking=no',
                 '-o', 'UserKnownHostsFile=/dev/null',
