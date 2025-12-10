@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -30,7 +30,11 @@ async def get_redis():
     if not REDIS_URL:
         logger.error("REDIS_URL environment variable is not set")
         raise Exception("REDIS_URL not configured")
-    return redis.from_url(REDIS_URL, decode_responses=True)
+    client = redis.from_url(REDIS_URL, decode_responses=True)
+    try:
+        yield client
+    finally:
+        await client.close()
 
 
 @router.get("/console", response_class=HTMLResponse)
@@ -45,13 +49,7 @@ class AgentRegister(BaseModel):
     info: Dict
 
 @router.post("/register")
-async def register_agent(agent: AgentRegister):
-    try:
-        r = await get_redis()
-    except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
-        raise HTTPException(status_code=503, detail="Service Unavailable (Redis)")
-
+async def register_agent(agent: AgentRegister, r: redis.Redis = Depends(get_redis)):
     # Determine Relay URL
     relay_public = None
     try:
@@ -98,20 +96,13 @@ async def register_agent(agent: AgentRegister):
     # Expiration? Maybe agents should send heartbeats.
     # For now, we just set it.
     await r.set(f"agent:{agent.agent_id}", json.dumps(agent_data))
-    await r.close()
 
     logger.info(f"Agent registered: {agent.agent_id} -> {relay_public}")
 
     return {"relay_url": relay_public}
 
-async def _list_agents(page: int = 1, limit: int = 2, search: str = None) -> Dict:
+async def _list_agents(r: redis.Redis, page: int = 1, limit: int = 2, search: str = None) -> Dict:
     """Lists connected agents from Redis with pagination"""
-    try:
-        r = await get_redis()
-    except Exception as e:
-        logger.error(f"Failed to connect to Redis: {e}")
-        return {'error': str(e), 'agents': [], 'total': 0}
-
     try:
         # Get all keys first (keys are small, efficient enough for 100k)
         # For production with >1M agents, a secondary index (Redis Search) is recommended.
@@ -170,12 +161,10 @@ async def _list_agents(page: int = 1, limit: int = 2, search: str = None) -> Dic
     except Exception as e:
         logger.error(f"Error listing agents: {e}")
         return {'error': str(e), 'agents': [], 'total': 0}
-    finally:
-        await r.close()
 
 @router.get("/agents", response_model=Dict)
-async def list_agents_endpoint(page: int = 1, limit: int = 2, q: Optional[str] = None):
-    result = await _list_agents(page=page, limit=limit, search=q)
+async def list_agents_endpoint(page: int = 1, limit: int = 2, q: Optional[str] = None, r: redis.Redis = Depends(get_redis)):
+    result = await _list_agents(r, page=page, limit=limit, search=q)
     if 'error' in result:
         # Log the error detail
         logger.error(f"Returning 503 due to error: {result['error']}")
@@ -183,12 +172,7 @@ async def list_agents_endpoint(page: int = 1, limit: int = 2, q: Optional[str] =
     return result
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str):
-    try:
-        r = await get_redis()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail="Service Unavailable (Redis)")
-
+async def get_agent(agent_id: str, r: redis.Redis = Depends(get_redis)):
     try:
         data = await r.get(f"agent:{agent_id}")
         if not data:
@@ -199,13 +183,11 @@ async def get_agent(agent_id: str):
     except Exception as e:
         logger.error(f"Error getting agent {agent_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        await r.close()
 
 @router.get("/health")
-async def health_check():
+async def health_check(r: redis.Redis = Depends(get_redis)):
     try:
-        result = await _list_agents()
+        result = await _list_agents(r)
         redis_ok = 'error' not in result
         return {
             "status": "healthy" if redis_ok else "degraded",
@@ -223,6 +205,7 @@ async def health_check():
         }
 
 @router.websocket("/ws/agents/{agent_id}")
+@router.websocket("/ws/agents/{agent_id}")
 async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh', username: str = None):
     """WebSocket endpoint for interactive SSH terminal sessions through tunnel with PTY"""
     await websocket.accept()
@@ -236,21 +219,24 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
     if not username:
         username = 'root'  # Default username
 
-    try:
-        r = await get_redis()
-    except Exception as e:
-        logger.error(f"WS: Redis connection failed: {e}")
-        await websocket.send_json({'error': 'Internal Service Error (Redis)'})
-        await websocket.close()
-        return
-
     ssh_process = None
     local_server = None
     tunnel_task = None
 
     try:
-        # 1. Get agent info from Redis
-        agent_json = await r.get(f"agent:{agent_id}")
+        # 1. Get agent info from Redis (Short-lived connection)
+        try:
+             client = redis.from_url(REDIS_URL, decode_responses=True)
+             try:
+                 agent_json = await client.get(f"agent:{agent_id}")
+             finally:
+                 await client.close()
+        except Exception as e:
+            logger.error(f"WS: Redis connection failed: {e}")
+            await websocket.send_json({'error': 'Internal Service Error (Redis)'})
+            await websocket.close()
+            return
+            
         if not agent_json:
             await websocket.send_json({'error': 'Agent not found'})
             await websocket.close()
@@ -305,7 +291,6 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
             import socket
             import pty
             import subprocess
-            import select
             import termios
             import struct
             import fcntl
@@ -434,26 +419,41 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
 
             # 6. Proxy PTY I/O to browser WebSocket
             async def pty_to_browser():
-                """Read from PTY and send to browser"""
+                """Read from PTY and send to browser using non-blocking add_reader"""
                 loop = asyncio.get_event_loop()
+                queue = asyncio.Queue()
+                
+                def reader():
+                    try:
+                        data = os.read(master_fd, 4096)
+                        if data:
+                            queue.put_nowait(data)
+                        else:
+                            # EOF
+                            queue.put_nowait(None)
+                    except Exception as e:
+                        # Log error but don't crash, queue None to signal exit
+                        logger.debug(f"PTY read error: {e}")
+                        queue.put_nowait(None)
+
+                # Register reader
+                loop.add_reader(master_fd, reader)
+
                 try:
-                    while ssh_process.poll() is None:
-                        # Use select to wait for data
-                        ready, _, _ = select.select([master_fd], [], [], 0.1)
-                        if ready:
-                            try:
-                                data = os.read(master_fd, 4096)
-                                if data:
-                                    hex_data = data.hex()
-                                    await websocket.send_json({
-                                        'type': 'data',
-                                        'data': hex_data
-                                    })
-                            except OSError:
-                                break
-                        await asyncio.sleep(0.01)
+                    while True:
+                        data = await queue.get()
+                        if data is None:
+                            break
+                        
+                        hex_data = data.hex()
+                        await websocket.send_json({
+                            'type': 'data',
+                            'data': hex_data
+                        })
                 except Exception as e:
                     logger.debug(f"PTY to browser closed: {e}")
+                finally:
+                    loop.remove_reader(master_fd)
 
             async def browser_to_pty():
                 """Read from browser and write to PTY"""
@@ -489,13 +489,41 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
                 except Exception as e:
                     logger.debug(f"Browser to PTY closed: {e}")
 
-            # Run all tasks concurrently
-            await asyncio.gather(
-                accept_and_bridge(),
-                pty_to_browser(),
-                browser_to_pty(),
-                return_exceptions=True
-            )
+            # Run tasks and ensure proper cancellation
+            try:
+                # Create tasks for each component
+                # 1. Bridge local SSH client <-> Tunnel WebSocket
+                bridge_task = asyncio.create_task(accept_and_bridge())
+                
+                # 2. PTY -> Browser WebSocket
+                pty_reader_task = asyncio.create_task(pty_to_browser())
+                
+                # 3. Browser WebSocket -> PTY (This is our "main" task that detects disconnection)
+                browser_writer_task = asyncio.create_task(browser_to_pty())
+
+                # Wait for ANY task to complete (usually browser_writer_task when user disconnects)
+                done, pending = await asyncio.wait(
+                    [bridge_task, pty_reader_task, browser_writer_task],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+
+                # Cancel all other pending tasks immediately
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                
+                # Check for exceptions in completed tasks
+                for task in done:
+                    try:
+                        await task
+                    except Exception as e:
+                        logger.error(f"Task failed: {e}")
+
+            except Exception as e:
+                logger.error(f"Error in connection loop: {e}")
 
     except Exception as e:
         logger.error(f"SSH WebSocket error: {e}", exc_info=True)
