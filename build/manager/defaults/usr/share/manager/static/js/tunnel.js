@@ -458,6 +458,12 @@ class TunnelClient {
         if (agentList) agentList.style.display = 'none'; // ✅ OCULTAR agent-list   
         if (header) header.style.display = 'none'; // ✅ OCULTAR header    
 
+        // Update Connection Panel Header
+        const agentNameEl = document.getElementById('current-agent-name');
+        const serviceEl = document.getElementById('current-service');
+        if (agentNameEl) agentNameEl.textContent = this.currentAgent.hostname;
+        if (serviceEl) serviceEl.textContent = this.currentService.toUpperCase();
+
         const termDiv = document.getElementById('terminal');
         const vncDiv = document.getElementById('vnc-container');
 
@@ -540,12 +546,6 @@ class TunnelClient {
 
 
         setTimeout(() => this.term.focus(), 50);
-
-        // Actualizar headers SOLO si existen
-        const agentNameEl = document.getElementById('current-agent-name');
-        const serviceEl = document.getElementById('current-service');
-        if (agentNameEl) agentNameEl.textContent = this.currentAgent.hostname;
-        if (serviceEl) serviceEl.textContent = this.currentService.toUpperCase();
 
         document.title = `${this.currentAgent.hostname} - Remote Access Console`;
 
