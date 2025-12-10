@@ -527,14 +527,21 @@ body {
     color: var(--text-muted);
 }
 
+.hostname-text {
+    font-size: 1.25rem;
+}
+
 .service-selector {
     margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .service-selector label {
-    display: block;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+    white-space: nowrap;
 }
 
 .service-options {

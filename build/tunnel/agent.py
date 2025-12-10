@@ -28,24 +28,41 @@ class MultiProtocolAgent:
         
         self.services = services or {
             'ssh': 22,
-            'vnc': 5900,
-            'rdp': 3389,
-            'http': 80,
-            'https': 443
+            'vnc': 5900
         }
         
         self.tcp_tunnels = {}
         self.websocket = None
+    def is_port_open(self, port):
+        """Checks if a port is open on localhost"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            result = sock.connect_ex(('127.0.0.1', port))
+            sock.close()
+            return result == 0
+        except:
+            return False
+
     def get_system_info(self):
-        """Gets system information"""
+        """Gets system information and active services"""
+        # Filter services based on active ports
+        active_services = []
+        active_ports = {}
+        
+        for name, port in self.services.items():
+            if self.is_port_open(port):
+                active_services.append(name)
+                active_ports[name] = port
+
         return {
             'system': platform.system(),
             'version': platform.version(),
             'architecture': platform.machine(),
             'processor': platform.processor(),
             'python': sys.version,
-            'available_services': list(self.services.keys()),
-            'ports': self.services,
+            'available_services': active_services,
+            'ports': active_ports,
             'project': self.project
         }
     async def register(self):
@@ -229,8 +246,7 @@ async def main():
     # Customize services
     SERVICES = {
         'ssh': 22,
-        'vnc': 5900,
-        'rdp': 3389
+        'vnc': 5900
     }
     agent = MultiProtocolAgent(MANAGER_URL, services=SERVICES, agent_id=AGENT_ID, project=PROJECT)
     await agent.connect()

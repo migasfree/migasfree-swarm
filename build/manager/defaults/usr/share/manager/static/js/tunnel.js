@@ -148,42 +148,13 @@ class TunnelClient {
         const modalConnect = document.getElementById('modal-connect');
         if (modalConnect) modalConnect.addEventListener('click', () => this.connectToAgent());
 
-        document.querySelectorAll('.service-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
-                e.currentTarget.classList.add('active');
-                this.currentService = e.currentTarget.dataset.service;
-
-                const usernameInput = document.getElementById('username-input');
-                if (usernameInput) {
-                    const inputField = document.getElementById('ssh-username');
-                    const label = document.querySelector('label[for="ssh-username"]');
-                    const hint = document.querySelector('.input-hint');
-
-                    if (this.currentService === 'ssh' || this.currentService === 'rdp') {
-                        usernameInput.classList.remove('hidden');
-                        if (inputField) {
-                            inputField.placeholder = "Enter username (e.g., root)";
-                            inputField.type = "text";
-                            if (inputField.value === '') inputField.value = 'root';
-                        }
-                        if (label) label.textContent = "SSH Username:";
-                        if (hint) hint.classList.remove('hidden');
-                    } else if (this.currentService === 'vnc') {
-                        usernameInput.classList.remove('hidden');
-                        if (inputField) {
-                            inputField.placeholder = "Enter VNC Password";
-                            inputField.type = "password";
-                            if (inputField.value === 'root') inputField.value = ''; // Clear default
-                        }
-                        if (label) label.textContent = "VNC Password:";
-                        if (hint) hint.classList.add('hidden');
-                    } else {
-                        usernameInput.classList.add('hidden');
-                    }
-                }
+        const serviceSelect = document.getElementById('service-select');
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', (e) => {
+                this.currentService = e.target.value;
+                this.updateInputFields();
             });
-        });
+        }
 
         const disconnectBtn = document.getElementById('btn-disconnect');
         if (disconnectBtn) disconnectBtn.addEventListener('click', () => this.disconnect());
@@ -313,27 +284,101 @@ class TunnelClient {
         const infoContainer = document.getElementById('agent-info');
         if (!infoContainer) return;
 
+        // Clean hostname (remove [AgentID] suffix if present)
+        const cleanHostname = agent.hostname.split(' [')[0];
+
+        // Update Modal Title
+        const modalTitle = document.getElementById('modal-title');
+        if (modalTitle) modalTitle.textContent = `Connect to ${agent.agent_id}`;
+
         infoContainer.innerHTML = `
             <div class="info-row">
                 <span class="info-label">Hostname:</span>
-                <span>${agent.hostname}</span>
+                <span><strong class="hostname-text">${cleanHostname}</strong></span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Agent ID:</span>
-                <span>${agent.agent_id}</span>
+             <div class="info-row">
+                <span class="info-label">Project:</span>
+                <span>${agent.info?.project || 'Unknown'}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">OS:</span>
                 <span>${agent.info?.system || 'Unknown'} ${agent.info?.architecture || ''}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Services:</span>
-                <span>${(agent.info?.available_services || []).join(', ')}</span>
-            </div>
         `;
 
         const modal = document.getElementById('agent-modal');
-        if (modal) modal.classList.remove('hidden');
+        if (modal) {
+            modal.classList.remove('hidden');
+
+            const select = document.getElementById('service-select');
+            if (select) {
+                select.innerHTML = '';
+                const availableServices = (agent.info?.available_services || []).map(s => s.toLowerCase());
+
+                availableServices.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service;
+                    option.textContent = service.toUpperCase();
+                    if (service === 'ssh') {
+                        option.textContent += ' (Console)';
+                    } else if (service === 'vnc') {
+                        option.textContent += ' (Desktop)';
+                    }
+                    select.appendChild(option);
+                });
+
+                if (availableServices.length > 0) {
+                    this.currentService = availableServices[0];
+                    select.value = this.currentService;
+                    this.updateInputFields();
+                }
+            }
+
+            // Set focus to Connect button by default
+            const connectBtn = document.getElementById('modal-connect');
+            if (connectBtn) {
+                setTimeout(() => connectBtn.focus(), 50);
+            }
+        }
+    }
+
+    updateInputFields() {
+        const usernameInput = document.getElementById('username-input');
+
+        if (usernameInput) {
+            const inputField = document.getElementById('ssh-username');
+            const hint = document.querySelector('.input-hint');
+
+            // Reset input value to prevent password leakage when switching
+            if (inputField) {
+                if (this.currentService === 'ssh' || this.currentService === 'rdp') {
+                    // Default to root for SSH, do NOT keep VNC password
+                    inputField.value = 'root';
+                } else {
+                    // Start empty for VNC
+                    inputField.value = '';
+                }
+            }
+
+            if (this.currentService === 'ssh' || this.currentService === 'rdp') {
+                usernameInput.classList.remove('hidden');
+                if (inputField) {
+                    inputField.placeholder = "Enter username (e.g., root)";
+                    inputField.type = "text";
+                }
+                if (hint) hint.classList.remove('hidden');
+            } else if (this.currentService === 'vnc') {
+                usernameInput.classList.remove('hidden');
+                if (inputField) {
+                    inputField.placeholder = "Enter VNC Password";
+                    inputField.type = "password";
+                    if (inputField.value === 'root') inputField.value = ''; // Clear default
+                }
+                if (hint) hint.classList.add('hidden');
+            } else {
+                usernameInput.classList.add('hidden');
+            }
+        }
     }
 
     closeModal() {
