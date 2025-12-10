@@ -414,6 +414,7 @@ backend tunnel
     
     # Use roundrobin for initial distribution when no X-Agent-ID is present
     balance roundrobin
+    option redispatch 1
     
     server-template tunnel 10 tasks.tunnel:8080 resolvers docker init-addr none check
 

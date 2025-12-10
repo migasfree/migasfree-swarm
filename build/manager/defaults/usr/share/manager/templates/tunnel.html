@@ -19,11 +19,12 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <div class="header-content">
-                <h1>Migasfree Remote Access Console</h1>
-                <div class="header-info">
-                    <span class="status-badge" id="connection-status">Disconnected</span>
-                </div>
+            <div class="header-content" id="header-content">
+                <h1>
+                    <img src="/manager/static/img/remote-session.svg" alt="" width="32" height="32"
+                        style="vertical-align: top;">
+                    Migasfree Remote Access Console
+                </h1>
             </div>
         </header>
 
@@ -42,24 +43,16 @@
                     </button>
                 </div>
 
-                <div class="agents-list" id="agents-list">
-                    <div class="loading">Loading agents...</div>
-                </div>
+
             </aside>
 
             <!-- Main Panel - Terminal/VNC/RDP -->
             <main class="main-panel">
-                <!-- Welcome Screen -->
-                <div class="welcome-screen" id="welcome-screen">
-                    <div class="welcome-content">
-                        <div class="welcome-icon">
-                            <img src="/manager/static/img/remote-session.svg" alt="Remote Session" />
-                        </div>
-                        <p>Select an agent from the sidebar to start a remote session</p>
-                    </div>
+
+                <div class="agents-list" id="agents-list">
+                    <div class="loading">Loading agents...</div>
                 </div>
 
-                <!-- Connection Panel -->
                 <div class="connection-panel hidden" id="connection-panel">
                     <div class="panel-header">
                         <div class="panel-title">

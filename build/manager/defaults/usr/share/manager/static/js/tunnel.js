@@ -17,21 +17,16 @@ class TunnelClient {
         this.init();
     }
 
-    init() {
-        // Initialize terminal
+    async init() {
         this.initTerminal();
-
-        // Setup event listeners
         this.setupEventListeners();
 
-        // Initial load and auto-connect check
-        this.fetchAgents().then(() => {
-            this.checkAutoConnect();
-        });
+        // Await agents load BEFORE auto-connect check
+        await this.fetchAgents();
+        this.checkAutoConnect();
     }
 
     initTerminal() {
-        // Create xterm.js terminal
         this.term = new Terminal({
             cursorBlink: true,
             fontSize: 14,
@@ -60,24 +55,19 @@ class TunnelClient {
             allowProposedApi: true
         });
 
-        // Add fit addon
         this.fitAddon = new FitAddon.FitAddon();
         this.term.loadAddon(this.fitAddon);
 
-        // Add web links addon
         const webLinksAddon = new WebLinksAddon.WebLinksAddon();
         this.term.loadAddon(webLinksAddon);
 
-        // Mount terminal
         this.term.open(document.getElementById('terminal'));
         this.fitAddon.fit();
 
-        // Handle resize
         const handleResize = () => {
             try {
                 this.fitAddon.fit();
                 const dims = { cols: this.term.cols, rows: this.term.rows };
-                // Send resize to server
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify({
                         type: 'resize',
@@ -90,11 +80,8 @@ class TunnelClient {
         };
 
         window.addEventListener('resize', handleResize);
-
-        // Initial resize after a short delay to ensure DOM is ready
         setTimeout(handleResize, 100);
 
-        // Also listen to term resize events directly if fitAddon triggers them
         this.term.onResize((size) => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({
@@ -104,6 +91,7 @@ class TunnelClient {
                 }));
             }
         });
+
         // Welcome message
         this.term.writeln('\x1b[1;36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
         this.term.writeln('\x1b[1;36m║\x1b[0m         \x1b[1;33mRemote Access Console - WebSocket Tunnel\x1b[0m         \x1b[1;36m║\x1b[0m');
@@ -114,89 +102,63 @@ class TunnelClient {
     }
 
     setupEventListeners() {
-        // Refresh agents button
-        document.getElementById('refresh-agents').addEventListener('click', () => {
-            this.resetAndReload();
-        });
+        // Solo configurar listeners si los elementos existen (página principal)
+        const refreshBtn = document.getElementById('refresh-agents');
+        if (refreshBtn) refreshBtn.addEventListener('click', () => this.resetAndReload());
 
-        // Search agents
-        let debounceTimer;
-        document.getElementById('search-agents').addEventListener('input', (e) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                // For now, client-side filter due to API limitations or reload
-                // Since we changed to server-side pagination, real search should hit API
-                // But for simplicity/demo, let's keep it simple or trigger API search
-                // this.filterAgents(e.target.value); 
-                // Currently filterAgents only filters DOM which is empty if paginated.
-                // NOTE: Proper implementation requires backend search support.
-                // For this step, we will just Reload with query if we wanted to be correct, 
-                // but let's stick to simple reload for now.
-                this.resetAndReload();
-            }, 500);
-        });
+        const searchInput = document.getElementById('search-agents');
+        if (searchInput) {
+            let debounceTimer;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => this.resetAndReload(), 500);
+            });
+        }
 
-        // Infinite Scroll
-        document.getElementById('agents-list').addEventListener('scroll', (e) => {
-            this.handleScroll(e);
-        });
+        const agentsList = document.getElementById('agents-list');
+        if (agentsList) {
+            agentsList.addEventListener('scroll', (e) => this.handleScroll(e));
+            agentsList.addEventListener('click', (e) => this.handleAgentClick(e));
+        }
 
-        // Agent List Delegation
-        document.getElementById('agents-list').addEventListener('click', (e) => {
-            this.handleAgentClick(e);
-        });
+        const modalClose = document.getElementById('modal-close');
+        if (modalClose) modalClose.addEventListener('click', () => this.closeModal());
 
-        // Modal controls
-        document.getElementById('modal-close').addEventListener('click', () => {
-            this.closeModal();
-        });
+        const modalCancel = document.getElementById('modal-cancel');
+        if (modalCancel) modalCancel.addEventListener('click', () => this.closeModal());
 
-        document.getElementById('modal-cancel').addEventListener('click', () => {
-            this.closeModal();
-        });
+        const modalConnect = document.getElementById('modal-connect');
+        if (modalConnect) modalConnect.addEventListener('click', () => this.connectToAgent());
 
-        document.getElementById('modal-connect').addEventListener('click', () => {
-            this.connectToAgent();
-        });
-
-        // Service selector
         document.querySelectorAll('.service-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 this.currentService = e.currentTarget.dataset.service;
 
-                // Show/hide username input based on service
                 const usernameInput = document.getElementById('username-input');
-                if (this.currentService === 'ssh' || this.currentService === 'rdp') {
-                    usernameInput.classList.remove('hidden');
-                } else {
-                    usernameInput.classList.add('hidden');
+                if (usernameInput) {
+                    if (this.currentService === 'ssh' || this.currentService === 'rdp') {
+                        usernameInput.classList.remove('hidden');
+                    } else {
+                        usernameInput.classList.add('hidden');
+                    }
                 }
             });
         });
 
-        // Disconnect button
-        document.getElementById('btn-disconnect').addEventListener('click', () => {
-            this.disconnect();
-        });
+        const disconnectBtn = document.getElementById('btn-disconnect');
+        if (disconnectBtn) disconnectBtn.addEventListener('click', () => this.disconnect());
 
-        // Fullscreen button
-        document.getElementById('btn-fullscreen').addEventListener('click', () => {
-            this.toggleFullscreen();
-        });
+        const fullscreenBtn = document.getElementById('btn-fullscreen');
+        if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
 
-        // Terminal input
         this.term.onData(data => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                // Convert terminal input to hex and send
                 const hexData = Array.from(data)
                     .map(char => char.charCodeAt(0).toString(16).padStart(2, '0'))
                     .join('');
-
-                this.ws.send(JSON.stringify({
-                    data: hexData
-                }));
+                this.ws.send(JSON.stringify({ data: hexData }));
             }
         });
     }
@@ -206,19 +168,16 @@ class TunnelClient {
 
         this.isLoading = true;
         const container = document.getElementById('agents-list');
-        const search = document.getElementById('search-agents').value;
+        const search = document.getElementById('search-agents')?.value || '';
         const limit = 50;
 
         try {
-            // Add loading indicator if first page
-            if (this.currentPage === 1) {
+            if (this.currentPage === 1 && container) {
                 container.innerHTML = '<div class="loading">Loading agents...</div>';
             }
 
             let url = `/manager/v1/public/tunnel/agents?page=${this.currentPage}&limit=${limit}`;
-            if (search) {
-                url += `&q=${encodeURIComponent(search)}`;
-            }
+            if (search) url += `&q=${encodeURIComponent(search)}`;
 
             const response = await fetch(url);
             const data = await response.json();
@@ -226,7 +185,7 @@ class TunnelClient {
 
             if (this.currentPage === 1) {
                 this.agents = newAgents;
-                container.innerHTML = ''; // Clear loading
+                if (container) container.innerHTML = '';
             } else {
                 this.agents = [...this.agents, ...newAgents];
             }
@@ -236,13 +195,13 @@ class TunnelClient {
 
             this.appendAgents(newAgents, container);
 
-            if (this.agents.length === 0) {
+            if (this.agents.length === 0 && container) {
                 container.innerHTML = '<div class="loading">No agents available</div>';
             }
 
         } catch (error) {
             console.error('Error loading agents:', error);
-            if (this.currentPage === 1) {
+            if (this.currentPage === 1 && container) {
                 this.showError('Failed to load agents');
                 container.innerHTML = '<div class="loading">Error loading data</div>';
             }
@@ -260,44 +219,33 @@ class TunnelClient {
 
     handleScroll(e) {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
-        // Load more when scrolled to bottom (with 100px buffer)
         if (scrollTop + clientHeight >= scrollHeight - 100) {
             this.fetchAgents();
         }
     }
 
     appendAgents(agents, container) {
-        if (!agents || agents.length === 0) return;
+        if (!agents || agents.length === 0 || !container) return;
 
         const html = agents.map(agent => {
             const services = agent.info?.available_services || [];
-            const os = agent.info?.system || 'Unknown';
-            const arch = agent.info?.architecture || '';
-
+            const project = agent.info?.project || 'Unknown';
             return `
                 <div class="agent-card" data-agent-id="${agent.agent_id}">
                     <div class="agent-header">
                         <span class="agent-name">${agent.hostname}</span>
                         <span class="agent-status"></span>
                     </div>
-                    <div class="agent-info-text">
-                        ${os} ${arch}
-                    </div>
-                    <div class="agent-info-text">
-                        ID: ${agent.agent_id.substring(0, 12)}...
-                    </div>
                     <div class="agent-services">
-                        ${services.map(s => `<span class="service-tag">${s.toUpperCase()}</span>`).join('')}
+                        ${project} ${services.map(s => `<span class="service-tag">${s.toUpperCase()}</span>`).join('')}
                     </div>
                 </div>
             `;
         }).join('');
 
-        // Append HTML
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // Helper for delegation
     handleAgentClick(e) {
         const card = e.target.closest('.agent-card');
         if (card) {
@@ -312,8 +260,9 @@ class TunnelClient {
 
         this.currentAgent = agent;
 
-        // Populate agent info
         const infoContainer = document.getElementById('agent-info');
+        if (!infoContainer) return;
+
         infoContainer.innerHTML = `
             <div class="info-row">
                 <span class="info-label">Hostname:</span>
@@ -333,12 +282,13 @@ class TunnelClient {
             </div>
         `;
 
-        // Show modal
-        document.getElementById('agent-modal').classList.remove('hidden');
+        const modal = document.getElementById('agent-modal');
+        if (modal) modal.classList.remove('hidden');
     }
 
     closeModal() {
-        document.getElementById('agent-modal').classList.add('hidden');
+        const modal = document.getElementById('agent-modal');
+        if (modal) modal.classList.add('hidden');
     }
 
     connectToAgent() {
@@ -348,14 +298,10 @@ class TunnelClient {
             return;
         }
 
-        // Get username for SSH/RDP
         let username = null;
         if (this.currentService === 'ssh' || this.currentService === 'rdp') {
             const input = document.getElementById('ssh-username');
-            if (input) {
-                username = input.value.trim();
-            }
-
+            if (input) username = input.value.trim();
             if (!username) {
                 alert('Please enter a username');
                 return;
@@ -364,83 +310,95 @@ class TunnelClient {
 
         this.closeModal();
 
-        // Open in new tab
         const params = new URLSearchParams();
         params.append('agent', this.currentAgent.agent_id);
         params.append('service', this.currentService);
-        if (username) {
-            params.append('user', username);
-        }
+        if (username) params.append('user', username);
 
         const url = `${window.location.pathname}?${params.toString()}`;
         console.log('Opening session URL:', url);
 
         const win = window.open(url, '_blank');
         if (!win) {
-            alert('Connection failed: Pop-up blocked. Please allow pop-ups for this site to open the remote session.');
+            alert('Pop-up blocked. Please allow pop-ups to open remote sessions.');
         }
     }
 
-    checkAutoConnect() {
+    async checkAutoConnect(retries = 10) {
+        console.log('Checking for auto-connect...');
         const params = new URLSearchParams(window.location.search);
         const agentId = params.get('agent');
 
         if (!agentId) return;
 
-        const agent = this.agents.find(a => a.agent_id === agentId);
-        if (agent) {
-            this.currentAgent = agent;
-            this.currentService = params.get('service') || 'ssh';
-            const username = params.get('user');
+        console.log(`Auto-connect: Looking for agent ${agentId}`);
 
-            this.startSession(username);
-        } else {
-            console.error('Agent not found:', agentId);
-            this.showError('Agent not found. It may be offline.');
+        for (let i = 0; i < retries; i++) {
+            const agent = this.agents.find(a => a.agent_id === agentId);
+            if (agent) {
+                console.log(`✅ Agent found: ${agent.hostname}`);
+                this.currentAgent = agent;
+                this.currentService = params.get('service') || 'ssh';
+                const username = params.get('user');
+                await this.startSession(username);
+                return;
+            }
+
+            if (i === retries - 1) {
+                console.error('❌ Agent not found after retries');
+                this.showError(`Agent ${agentId} not found. It may be offline.`);
+                return;
+            }
+
+            console.log(`Retry ${i + 1}/${retries}: Agent not loaded yet...`);
+            await new Promise(r => setTimeout(r, 500));
         }
     }
 
     async startSession(username) {
-        // Show connection panel
-        document.getElementById('welcome-screen').classList.add('hidden');
-        document.getElementById('connection-panel').classList.remove('hidden');
+        console.log('Starting session for:', this.currentAgent?.hostname);
 
-        // Hide sidebar
-        document.getElementById('sidebar').classList.add('hidden');
+        // ✅ Ocultar TODOS los elementos de la UI cuando se conecta
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const connectionPanel = document.getElementById('connection-panel');
+        const sidebar = document.getElementById('sidebar');
+        const agentList = document.getElementById('agents-list'); // ✅ AGENT-LIST OCULTO
+        const header = document.getElementById('header-content'); // ✅ Header OCULTO
 
-        // Focus terminal
+
+        // ✅ Ocultar los elementos
+        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (connectionPanel) connectionPanel.classList.remove('hidden');
+        if (sidebar) sidebar.classList.add('hidden');
+        if (agentList) agentList.style.display = 'none'; // ✅ OCULTAR agent-list   
+        if (header) header.style.display = 'none'; // ✅ OCULTAR header    
+
+
         setTimeout(() => this.term.focus(), 50);
 
-        // Update header - ONLY Hostname
-        const headerText = this.currentAgent.hostname;
+        // Actualizar headers SOLO si existen
+        const agentNameEl = document.getElementById('current-agent-name');
+        const serviceEl = document.getElementById('current-service');
+        if (agentNameEl) agentNameEl.textContent = this.currentAgent.hostname;
+        if (serviceEl) serviceEl.textContent = this.currentService.toUpperCase();
 
-        document.getElementById('current-agent-name').textContent = headerText;
-        document.getElementById('current-service').textContent = this.currentService.toUpperCase();
+        document.title = `${this.currentAgent.hostname} - Remote Access Console`;
 
-        // Update page title
-        document.title = `${headerText} - Remote Access Console`;
-
-        // Clear terminal
         this.term.clear();
         const connMsg = username ?
             `→ Connecting to ${username}@${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...` :
             `→ Connecting to ${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...`;
         this.term.writeln(`\x1b[1;32m${connMsg}\x1b[0m`);
 
-        // Get WebSocket URL with parameters
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let wsUrl = `${protocol}//${window.location.host}/manager/v1/public/tunnel/ws/agents/${this.currentAgent.agent_id}`;
 
-        // Add query parameters
         const params = new URLSearchParams();
         params.append('service', this.currentService);
-        if (username) {
-            params.append('username', username);
-        }
+        if (username) params.append('username', username);
         wsUrl += `?${params.toString()}`;
 
         try {
-            // Create WebSocket connection
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
@@ -453,14 +411,11 @@ class TunnelClient {
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-
                     if (message.type === 'data' && message.data) {
-                        // Convert hex data to Uint8Array
                         const hexData = message.data;
                         const match = hexData.match(/.{1,2}/g);
                         if (match) {
                             const bytes = new Uint8Array(match.map(byte => parseInt(byte, 16)));
-                            // Use TextDecoder to handle UTF-8 properly
                             const text = new TextDecoder("utf-8").decode(bytes);
                             this.term.write(text);
                         }
@@ -499,58 +454,61 @@ class TunnelClient {
             this.ws = null;
         }
 
-        // If we are in a dedicated session (url params present), close the tab
         const params = new URLSearchParams(window.location.search);
         if (params.has('agent')) {
             window.close();
-            // If window.close() fails (e.g. not opened by script), fallback to UI update
-            // but return to avoid flashing UI if it does close.
-            // However, we continue just in case close() is blocked.
         }
 
-        // Show welcome screen
-        document.getElementById('connection-panel').classList.add('hidden');
-        document.getElementById('welcome-screen').classList.remove('hidden');
-        document.getElementById('sidebar').classList.remove('hidden');
+        // ✅ Restaurar TODOS los elementos de la UI
+        const connectionPanel = document.getElementById('connection-panel');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const sidebar = document.getElementById('sidebar');
+        const agentList = document.getElementById('agents-list'); // ✅ AGENT-LIST VISIBLE
+        const header = document.getElementById('header-content'); // ✅ Header VISIBLE
 
-        // Restore page title
+        if (connectionPanel) connectionPanel.classList.add('hidden');
+        if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+        if (sidebar) sidebar.classList.remove('hidden');
+        if (agentList) agentList.style.display = ''; // ✅ MOSTRAR agent-list
+        if (header) header.classList.remove('hidden'); // ✅ MOSTRAR header
+
         document.title = this.originalTitle;
-
-        // Clear terminal
         this.term.clear();
         this.term.writeln('\x1b[1;36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
         this.term.writeln('\x1b[1;36m║\x1b[0m         \x1b[1;33mRemote Access Console - WebSocket Tunnel\x1b[0m         \x1b[1;36m║\x1b[0m');
         this.term.writeln('\x1b[1;36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
         this.term.writeln('');
-        this.term.writeln('\x1b[90mSelect an agent from the sidebar to start a session...\x1b[0m');
-        this.term.writeln('');
-
+        this.term.writeln('\x1b[90mSession disconnected. Close this tab or refresh for new connection.\x1b[0m');
         this.updateConnectionStatus(false);
     }
 
     toggleFullscreen() {
         const panel = document.getElementById('connection-panel');
-        if (!document.fullscreenElement) {
-            panel.requestFullscreen();
-        } else {
-            document.exitFullscreen();
+        if (panel) {
+            if (!document.fullscreenElement) {
+                panel.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
         }
     }
 
     updateConnectionStatus(connected) {
         const badge = document.getElementById('connection-status');
-        if (connected) {
-            badge.textContent = 'Connected';
-            badge.classList.add('connected');
-        } else {
-            badge.textContent = 'Disconnected';
-            badge.classList.remove('connected');
+        if (badge) {
+            if (connected) {
+                badge.textContent = 'Connected';
+                badge.classList.add('connected');
+            } else {
+                badge.textContent = 'Disconnected';
+                badge.classList.remove('connected');
+            }
         }
     }
 
     showError(message) {
         console.error(message);
-        // You could add a toast notification here
+        this.term.writeln(`\r\n\x1b[1;31m✗ ${message}\x1b[0m`);
     }
 }
 

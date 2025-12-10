@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # agent.py - Multi-protocol TCP Tunnel (SSH, VNC, RDP, etc.)
+from http.client import PROCESSING
 import asyncio
 import websockets
 import json
@@ -18,10 +19,11 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 
 class MultiProtocolAgent:
-    def __init__(self, manager_url, agent_id=None, services=None):
+    def __init__(self, manager_url, agent_id=None, project=None, services=None):
         self.manager_url = manager_url.rstrip('/')
         self.server_url = None
         self.agent_id = agent_id or str(uuid.uuid4())
+        self.project = project or 'Unknown'
         self.hostname = socket.gethostname()
         
         self.services = services or {
@@ -43,14 +45,15 @@ class MultiProtocolAgent:
             'processor': platform.processor(),
             'python': sys.version,
             'available_services': list(self.services.keys()),
-            'ports': self.services
+            'ports': self.services,
+            'project': self.project
         }
     async def register(self):
         """Registers the agent with the server via WebSocket"""
         message = {
             'type': 'register_agent',
             'agent_id': self.agent_id,
-            'hostname': self.hostname,
+            'hostname': f'{self.hostname} [{self.agent_id}]',
             'info': self.get_system_info(),
             'mode': 'tcp_tunnel'
         }
@@ -220,19 +223,20 @@ async def main():
   
     with open('/usr/share/migasfree-client/events.d/.json', 'r') as archivo:
         TRAITS = json.load(archivo)
-        AGENT_ID= f'CID-{TRAITS["after"]["CID"][0]}'
+        AGENT_ID = f'CID-{TRAITS["after"]["CID"][0]}'
+        PROJECT = f'{TRAITS["after"]["PRJ"][0]}'   
     
-   
     # Customize services
     SERVICES = {
         'ssh': 22,
         'vnc': 5900,
         'rdp': 3389
     }
-    agent = MultiProtocolAgent(MANAGER_URL, services=SERVICES, agent_id=AGENT_ID)
+    agent = MultiProtocolAgent(MANAGER_URL, services=SERVICES, agent_id=AGENT_ID, project=PROJECT)
     await agent.connect()
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n✅ Agent stopped")
+    

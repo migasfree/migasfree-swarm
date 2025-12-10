@@ -12,6 +12,7 @@ import resource
 import uuid
 import socket
 import logging
+from urllib.parse import urlparse
 
 class IgnoreHandshakeErrorFilter(logging.Filter):
     def filter(self, record):
@@ -66,6 +67,27 @@ class MultiProtocolServer:
         self.server_id = str(uuid.uuid4())
 
         self._configure_limits()
+
+    def get_ip(self):
+        """Detects the real outbound IP address of the container using Redis connection"""
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Use Redis URL to determine the correct interface (internal overlay network)
+            if self.redis_url:
+                parsed = urlparse(self.redis_url)
+                host = parsed.hostname or 'redis'
+                port = parsed.port or 6379
+                s.connect((host, port))
+                IP = s.getsockname()[0]
+            else:
+                # Fallback
+                s.connect(('10.255.255.255', 1))
+                IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
 
     async def _init_redis(self):
         if not self.redis:
@@ -143,7 +165,8 @@ class MultiProtocolServer:
             'relay_url': self.server_url,       # Public URL for clients to connect
             'tunnel_url': self.server_url,      # Legacy compatibility
             'tunnel_id': self.server_id,
-            'server_ip': socket.gethostbyname(socket.gethostname())
+            'tunnel_id': self.server_id,
+            'server_ip': self.get_ip()
         }
 
         self.connected_agents[agent_id] = {
