@@ -23,6 +23,24 @@ class TunnelClient {
 
         // Await agents load BEFORE auto-connect check
         await this.fetchAgents();
+
+        // Check for VNC DOM container
+        if (!document.getElementById('vnc-container')) {
+            const vncDiv = document.createElement('div');
+            vncDiv.id = 'vnc-container';
+            vncDiv.className = 'vnc-container hidden';
+            document.getElementById('terminal').parentNode.appendChild(vncDiv);
+
+            // Add Styles for VNC
+            const style = document.createElement('style');
+            style.textContent = `
+                .vnc-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #222; overflow: auto; }
+                .vnc-container.hidden { display: none; }
+                #terminal.hidden { display: none; }
+            `;
+            document.head.appendChild(style);
+        }
+
         this.checkAutoConnect();
     }
 
@@ -138,8 +156,28 @@ class TunnelClient {
 
                 const usernameInput = document.getElementById('username-input');
                 if (usernameInput) {
+                    const inputField = document.getElementById('ssh-username');
+                    const label = document.querySelector('label[for="ssh-username"]');
+                    const hint = document.querySelector('.input-hint');
+
                     if (this.currentService === 'ssh' || this.currentService === 'rdp') {
                         usernameInput.classList.remove('hidden');
+                        if (inputField) {
+                            inputField.placeholder = "Enter username (e.g., root)";
+                            inputField.type = "text";
+                            if (inputField.value === '') inputField.value = 'root';
+                        }
+                        if (label) label.textContent = "SSH Username:";
+                        if (hint) hint.classList.remove('hidden');
+                    } else if (this.currentService === 'vnc') {
+                        usernameInput.classList.remove('hidden');
+                        if (inputField) {
+                            inputField.placeholder = "Enter VNC Password";
+                            inputField.type = "password";
+                            if (inputField.value === 'root') inputField.value = ''; // Clear default
+                        }
+                        if (label) label.textContent = "VNC Password:";
+                        if (hint) hint.classList.add('hidden');
                     } else {
                         usernameInput.classList.add('hidden');
                     }
@@ -152,6 +190,18 @@ class TunnelClient {
 
         const fullscreenBtn = document.getElementById('btn-fullscreen');
         if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+
+        // HIDE HEADER ON FULLSCREEN
+        document.addEventListener('fullscreenchange', () => {
+            const header = document.querySelector('.panel-header');
+            if (header) {
+                if (document.fullscreenElement) {
+                    header.style.display = 'none';
+                } else {
+                    header.style.display = '';
+                }
+            }
+        });
 
         this.term.onData(data => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -299,11 +349,19 @@ class TunnelClient {
         }
 
         let username = null;
+        const input = document.getElementById('ssh-username');
+
         if (this.currentService === 'ssh' || this.currentService === 'rdp') {
-            const input = document.getElementById('ssh-username');
             if (input) username = input.value.trim();
             if (!username) {
                 alert('Please enter a username');
+                return;
+            }
+        } else if (this.currentService === 'vnc') {
+            // Re-use username variable for password in VNC context
+            if (input) username = input.value.trim();
+            if (!username) {
+                alert('Please enter a VNC password');
                 return;
             }
         }
@@ -313,9 +371,20 @@ class TunnelClient {
         const params = new URLSearchParams();
         params.append('agent', this.currentAgent.agent_id);
         params.append('service', this.currentService);
-        if (username) params.append('user', username);
 
-        const url = `${window.location.pathname}?${params.toString()}`;
+        let hashParams = '';
+        if (username) {
+            if (this.currentService === 'vnc') {
+                // For VNC, pass password in HASH to avoid server logs/history visibility
+                // URL params are NOT encrypted in GET requests logs, but fragments (#) are not sent to server.
+                hashParams = `#password=${encodeURIComponent(username)}`;
+            } else {
+                // For SSH/RDP, 'user' can be in URL
+                params.append('user', username);
+            }
+        }
+
+        const url = `${window.location.pathname}?${params.toString()}${hashParams}`;
         console.log('Opening session URL:', url);
 
         const win = window.open(url, '_blank');
@@ -339,8 +408,24 @@ class TunnelClient {
                 console.log(`✅ Agent found: ${agent.hostname}`);
                 this.currentAgent = agent;
                 this.currentService = params.get('service') || 'ssh';
+                this.currentAgent = agent;
+                this.currentService = params.get('service') || 'ssh';
                 const username = params.get('user');
-                await this.startSession(username);
+
+                // Try to get password from URL parameters OR Hash
+                let password = params.get('password'); // Legacy support
+                if (!password && window.location.hash) {
+                    const hash = window.location.hash.substring(1); // remove #
+                    const hashSearchParams = new URLSearchParams(hash);
+                    password = hashSearchParams.get('password');
+
+                    // Clear the hash from address bar for security/aesthetics
+                    if (password) {
+                        history.replaceState(null, null, window.location.pathname + window.location.search);
+                    }
+                }
+
+                await this.startSession(username || password); // Pass password if VNC
                 return;
             }
 
@@ -372,6 +457,86 @@ class TunnelClient {
         if (sidebar) sidebar.classList.add('hidden');
         if (agentList) agentList.style.display = 'none'; // ✅ OCULTAR agent-list   
         if (header) header.style.display = 'none'; // ✅ OCULTAR header    
+
+        const termDiv = document.getElementById('terminal');
+        const vncDiv = document.getElementById('vnc-container');
+
+        if (this.currentService === 'vnc' || this.currentService === 'rdp') {
+            if (termDiv) termDiv.classList.add('hidden');
+            if (vncDiv) vncDiv.classList.remove('hidden');
+            this.startVNC(username);
+        } else {
+            if (termDiv) termDiv.classList.remove('hidden');
+            if (vncDiv) vncDiv.classList.add('hidden');
+            this.startSSH(username);
+        }
+    }
+
+    async startVNC(username) {
+        document.title = `${this.currentAgent.hostname} - VNC Remote`;
+        const vncDiv = document.getElementById('vnc-container');
+        vncDiv.innerHTML = ''; // Clean previous
+        vncDiv.classList.add('scaling-active'); // Enable scaling CSS
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/public/tunnel/ws/agents/${this.currentAgent.agent_id}`;
+        const params = new URLSearchParams();
+        params.append('service', 'vnc'); // or this.currentService
+        wsUrl += `?${params.toString()}`;
+
+        try {
+            // Wait for library if not yet loaded (race condition with module script)
+            if (!window.RFB) {
+                console.log("Waiting for noVNC library...");
+                for (let i = 0; i < 10; i++) {
+                    if (window.RFB) break;
+                    await new Promise(r => setTimeout(r, 200));
+                }
+            }
+            // Fallback: Try dynamic import if still missing
+            if (!window.RFB) {
+                console.log("Attempting dynamic import of noVNC...");
+                const module = await import('/manager/static/novnc/core/rfb.js');
+                window.RFB = module.default;
+            }
+
+            if (!window.RFB) throw new Error('noVNC library not loaded');
+
+            // ✅ Ensure DOM is laid out BEFORE initializing RFB
+            // This is critical for scaleViewport to calculate dimensions correctly
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+            this.rfb = new window.RFB(vncDiv, wsUrl, {
+                credentials: { password: username } // if needed, often ignored for tunnel
+            });
+
+            this.rfb.addEventListener("connect", () => {
+                this.updateConnectionStatus(true);
+                this.rfb.focus();
+
+                // Set scaling options AFTER connection or init
+                this.rfb.scaleViewport = true;
+                this.rfb.resizeSession = false; // Disable remote resizing support
+            });
+
+            this.rfb.addEventListener("disconnect", (e) => {
+                this.updateConnectionStatus(false);
+                if (e.detail.clean) {
+                    this.disconnect();
+                } else {
+                    console.error("VNC Disconnect", e);
+                    this.disconnect();
+                }
+            });
+
+        } catch (e) {
+            console.error(e);
+            alert("Error starting VNC: " + e.message);
+            this.disconnect();
+        }
+    }
+
+    async startSSH(username) {
 
 
         setTimeout(() => this.term.focus(), 50);
@@ -453,10 +618,14 @@ class TunnelClient {
             this.ws.close();
             this.ws = null;
         }
+        if (this.rfb) {
+            this.rfb.disconnect();
+            this.rfb = null;
+        }
 
         const params = new URLSearchParams(window.location.search);
         if (params.has('agent')) {
-            window.close();
+            // window.close(); // Keep open for debugging
         }
 
         // ✅ Restaurar TODOS los elementos de la UI

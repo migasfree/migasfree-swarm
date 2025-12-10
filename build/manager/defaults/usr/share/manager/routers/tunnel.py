@@ -206,23 +206,21 @@ async def health_check(r: redis.Redis = Depends(get_redis)):
 
 @router.websocket("/ws/agents/{agent_id}")
 @router.websocket("/ws/agents/{agent_id}")
-async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh', username: str = None):
-    """WebSocket endpoint for interactive SSH terminal sessions through tunnel with PTY"""
+async def service_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh', username: str = None):
+    """WebSocket endpoint for generic TCP tunneling (SSH/VNC/RDP)"""
     await websocket.accept()
     
-    # Only SSH is supported for now
-    if service != 'ssh':
-        await websocket.send_json({'error': f'Service {service} not yet supported in web console'})
+    if service not in ['ssh', 'vnc', 'rdp']:
+        await websocket.send_json({'error': f'Service {service} not supported'})
         await websocket.close()
         return
     
-    if not username:
+    if service == 'ssh' and not username:
         username = 'root'  # Default username
 
     ssh_process = None
     local_server = None
-    tunnel_task = None
-
+    
     try:
         # 1. Get agent info from Redis (Short-lived connection)
         try:
@@ -260,11 +258,10 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
             await websocket.close()
             return
 
-        logger.info(f"SSH Web Console: {username}@{hostname} (agent: {agent_id})")
+        logger.info(f"Web Console ({service.upper()}): {username if username else 'N/A'}@{hostname} (agent: {agent_id})")
         logger.info(f"Attempting to connect to relay at: {target_url}")
 
-        # 2. Connect to tunnel relay and establish TCP tunnel
-        # Added timeouts to fail faster and clearer logs
+        # 2. Connect to tunnel relay
         async with websockets.connect(target_url, open_timeout=10, ping_interval=None) as ws_server:
             logger.info(f"Successfully connected to relay: {target_url}")
             
@@ -273,13 +270,13 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
             resp_ident = await ws_server.recv()
             logger.debug(f"Relay identification response: {resp_ident}")
 
-            # Start TCP tunnel to SSH port
+            # Start TCP tunnel
             tunnel_id = f"web-{uuid.uuid4()}"
             await ws_server.send(json.dumps({
                 'type': 'start_tcp_tunnel',
                 'agent_id': agent_id,
                 'tunnel_id': tunnel_id,
-                'service': 'ssh'
+                'service': service
             }))
 
             resp = json.loads(await ws_server.recv())
@@ -287,269 +284,222 @@ async def ssh_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh
                 await websocket.send_json({'error': resp.get('message', 'Failed to start tunnel')})
                 return
 
-            # 3. Create local TCP server that bridges to WebSocket tunnel
-            import socket
-            import pty
-            import subprocess
-            import termios
-            import struct
-            import fcntl
-
-            # Create a local TCP server on random port
-            local_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            local_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            local_sock.bind(('127.0.0.1', 0))
-            local_sock.listen(1)
-            local_port = local_sock.getsockname()[1]
-            
-            logger.info(f"Local SSH proxy listening on port {local_port}")
-
-            # 4. Start SSH client process with PTY
-            import os
-            master_fd, slave_fd = pty.openpty()
-            
-            # Helper function to set controlling terminal
-            def make_controlling_tty():
-                # TIOCSCTTY = 0x540E
-                try:
-                    # Setsid is already called by start_new_session=True, 
-                    # but we need to acquire the PTY as controlling terminal.
-                    # On Linux, the first TTY opened by a session leader becomes its ctty,
-                    # but since we inherit fds, we might need to force it.
-                    # FD 0 is already the slave PTY because of Popen's stdin argument
-                    fcntl.ioctl(0, termios.TIOCSCTTY, 1)
-                except Exception:
-                    pass
-
-            # SSH command
-            ssh_cmd = [
-                'ssh',
-                '-tt',  # Force pseudo-terminal usage
-                '-o', 'StrictHostKeyChecking=no',
-                '-o', 'UserKnownHostsFile=/dev/null',
-                '-o', 'PreferredAuthentications=password,keyboard-interactive,publickey',
-                '-o', 'ServerAliveInterval=30',
-                '-o', 'ServerAliveCountMax=3',
-                '-p', str(local_port),
-                f'{username}@127.0.0.1'
-            ]
-            
-            # Prepare environment with TERM and Locale settings
-            ssh_env = os.environ.copy()
-            ssh_env['TERM'] = 'xterm-256color'
-            ssh_env['LANG'] = 'C.UTF-8'
-            ssh_env['LC_ALL'] = 'C.UTF-8'
-
-            # Start SSH process in background
-            ssh_process = subprocess.Popen(
-                ssh_cmd,
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-                start_new_session=True, # Setsid
-                preexec_fn=make_controlling_tty, # Force CTTY
-                close_fds=True,
-                env=ssh_env
-            )
-            
-            os.close(slave_fd)  # Close slave in parent
-            
-            # Set master to non-blocking
-            fcntl.fcntl(master_fd, fcntl.F_SETFL, os.O_NONBLOCK)
-
-            # Send connection established
-            await websocket.send_json({'status': 'connected', 'tunnel_id': tunnel_id})
-
-            # 5. Accept SSH connection and bridge to WebSocket tunnel
-            async def accept_and_bridge():
-                """Accept local SSH connection and bridge to WebSocket tunnel"""
-                loop = asyncio.get_event_loop()
+            if service == 'ssh':
+                # --- SSH SPECIFIC LOGIC (PTY + Local Proxy) ---
                 
-                # Wait for SSH to connect
-                client_sock, _ = await loop.sock_accept(local_sock)
-                logger.info("SSH client connected to local proxy")
+                # ... (Existing SSH logic here, reusing local_server and ssh_process vars) ...
+                # Re-implementing explicitly to ensure scope matching
                 
-                async def local_to_tunnel():
-                    """Forward data from local SSH client to WebSocket tunnel"""
+                import socket
+                import pty
+                import subprocess
+                import termios
+                import struct
+                import fcntl
+
+                # Create a local TCP server on random port
+                local_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                local_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                local_sock.bind(('127.0.0.1', 0))
+                local_sock.listen(1)
+                local_port = local_sock.getsockname()[1]
+                local_server = local_sock # Keep ref for cleanup
+                
+                logger.info(f"Local SSH proxy listening on port {local_port}")
+
+                master_fd, slave_fd = pty.openpty()
+                
+                def make_controlling_tty():
+                    try:
+                        fcntl.ioctl(0, termios.TIOCSCTTY, 1)
+                    except Exception:
+                        pass
+
+                ssh_cmd = [
+                    'ssh', '-tt', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
+                    '-o', 'PreferredAuthentications=password,keyboard-interactive,publickey',
+                    '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=3',
+                    '-p', str(local_port), f'{username}@127.0.0.1'
+                ]
+                
+                ssh_env = os.environ.copy()
+                ssh_env['TERM'] = 'xterm-256color'
+                ssh_env['LANG'] = 'C.UTF-8'
+                ssh_env['LC_ALL'] = 'C.UTF-8'
+
+                ssh_process = subprocess.Popen(
+                    ssh_cmd, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+                    start_new_session=True, preexec_fn=make_controlling_tty, close_fds=True, env=ssh_env
+                )
+                
+                os.close(slave_fd)
+                fcntl.fcntl(master_fd, fcntl.F_SETFL, os.O_NONBLOCK)
+
+                await websocket.send_json({'status': 'connected', 'tunnel_id': tunnel_id})
+
+                async def accept_and_bridge():
+                    loop = asyncio.get_event_loop()
+                    client_sock, _ = await loop.sock_accept(local_sock)
+                    
+                    async def local_to_tunnel():
+                        try:
+                            while True:
+                                data = await loop.sock_recv(client_sock, 4096)
+                                if not data: break
+                                await ws_server.send(json.dumps({
+                                    'type': 'tunnel_data', 'tunnel_id': tunnel_id, 'data': data.hex()
+                                }))
+                        except Exception: pass
+                        finally:
+                           try: client_sock.close()
+                           except: pass
+
+                    async def tunnel_to_local():
+                        try:
+                            async for msg in ws_server:
+                                msg_json = json.loads(msg)
+                                if msg_json.get('type') == 'tunnel_data':
+                                    data = bytes.fromhex(msg_json.get('data', ''))
+                                    await loop.sock_sendall(client_sock, data)
+                                elif msg_json.get('type') == 'tunnel_closed':
+                                    break
+                        except Exception: pass
+                        finally:
+                           try: client_sock.close()
+                           except: pass
+
+                    await asyncio.gather(local_to_tunnel(), tunnel_to_local(), return_exceptions=True)
+
+                async def pty_to_browser():
+                    loop = asyncio.get_event_loop()
+                    queue = asyncio.Queue()
+                    def reader():
+                        try:
+                            data = os.read(master_fd, 4096)
+                            if data: queue.put_nowait(data)
+                            else: queue.put_nowait(None)
+                        except Exception: queue.put_nowait(None)
+                    
+                    loop.add_reader(master_fd, reader)
                     try:
                         while True:
-                            data = await loop.sock_recv(client_sock, 4096)
-                            if not data:
-                                break
-                            
-                            hex_data = data.hex()
-                            await ws_server.send(json.dumps({
-                                'type': 'tunnel_data',
-                                'tunnel_id': tunnel_id,
-                                'data': hex_data
-                            }))
-                    except Exception as e:
-                        logger.debug(f"Local to tunnel closed: {e}")
-                    finally:
-                        try:
-                            client_sock.close()
-                        except:
-                            pass
+                            data = await queue.get()
+                            if data is None: break
+                            await websocket.send_json({'type': 'data', 'data': data.hex()})
+                    except Exception: pass
+                    finally: loop.remove_reader(master_fd)
 
-                async def tunnel_to_local():
-                    """Forward data from WebSocket tunnel to local SSH client"""
+                async def browser_to_pty():
                     try:
-                        async for msg in ws_server:
-                            msg_json = json.loads(msg)
+                        while ssh_process.poll() is None:
+                            data = await websocket.receive_json()
+                            if data.get('type') == 'resize':
+                                try:
+                                    winsize = struct.pack("HHHH", data.get('rows', 24), data.get('cols', 80), 0, 0)
+                                    fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
+                                except Exception: pass
+                                continue
                             
-                            if msg_json.get('type') == 'tunnel_data':
-                                hex_data = msg_json.get('data', '')
-                                data = bytes.fromhex(hex_data)
-                                await loop.sock_sendall(client_sock, data)
-                            elif msg_json.get('type') == 'tunnel_closed':
-                                break
-                    except Exception as e:
-                        logger.debug(f"Tunnel to local closed: {e}")
-                    finally:
-                        try:
-                            client_sock.close()
-                        except:
-                            pass
+                            hex_data = data.get('data')
+                            if hex_data:
+                                try: os.write(master_fd, bytes.fromhex(hex_data))
+                                except OSError: break
+                    except Exception: pass
 
-                await asyncio.gather(
-                    local_to_tunnel(),
-                    tunnel_to_local(),
-                    return_exceptions=True
-                )
-
-            # 6. Proxy PTY I/O to browser WebSocket
-            async def pty_to_browser():
-                """Read from PTY and send to browser using non-blocking add_reader"""
-                loop = asyncio.get_event_loop()
-                queue = asyncio.Queue()
-                
-                def reader():
-                    try:
-                        data = os.read(master_fd, 4096)
-                        if data:
-                            queue.put_nowait(data)
-                        else:
-                            # EOF
-                            queue.put_nowait(None)
-                    except Exception as e:
-                        # Log error but don't crash, queue None to signal exit
-                        logger.debug(f"PTY read error: {e}")
-                        queue.put_nowait(None)
-
-                # Register reader
-                loop.add_reader(master_fd, reader)
-
-                try:
-                    while True:
-                        data = await queue.get()
-                        if data is None:
-                            break
-                        
-                        hex_data = data.hex()
-                        await websocket.send_json({
-                            'type': 'data',
-                            'data': hex_data
-                        })
-                except Exception as e:
-                    logger.debug(f"PTY to browser closed: {e}")
-                finally:
-                    loop.remove_reader(master_fd)
-
-            async def browser_to_pty():
-                """Read from browser and write to PTY"""
-                try:
-                    while ssh_process.poll() is None:
-                        data = await websocket.receive_json()
-                        
-                        # Handle resize events
-                        if data.get('type') == 'resize':
-                            try:
-                                cols = data.get('cols', 80)
-                                rows = data.get('rows', 24)
-                                # TIOCSWINSZ = 0x5414
-                                import fcntl
-                                import struct
-                                import termios
-                                winsize = struct.pack("HHHH", rows, cols, 0, 0)
-                                fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
-                                # Also update SSH client window size if possible? 
-                                # The PTY resize should propagate to SSH client automatically via SIGWINCH
-                            except Exception as e:
-                                logger.error(f"Error resizing PTY: {e}")
-                            continue
-
-                        # Handle data events
-                        hex_data = data.get('data')
-                        if hex_data:
-                            try:
-                                bytes_data = bytes.fromhex(hex_data)
-                                os.write(master_fd, bytes_data)
-                            except OSError:
-                                break
-                except Exception as e:
-                    logger.debug(f"Browser to PTY closed: {e}")
-
-            # Run tasks and ensure proper cancellation
-            try:
-                # Create tasks for each component
-                # 1. Bridge local SSH client <-> Tunnel WebSocket
+                # Execute SSH tasks
                 bridge_task = asyncio.create_task(accept_and_bridge())
-                
-                # 2. PTY -> Browser WebSocket
                 pty_reader_task = asyncio.create_task(pty_to_browser())
-                
-                # 3. Browser WebSocket -> PTY (This is our "main" task that detects disconnection)
                 browser_writer_task = asyncio.create_task(browser_to_pty())
 
-                # Wait for ANY task to complete (usually browser_writer_task when user disconnects)
                 done, pending = await asyncio.wait(
                     [bridge_task, pty_reader_task, browser_writer_task],
                     return_when=asyncio.FIRST_COMPLETED
                 )
+                for task in pending: task.cancel()
 
-                # Cancel all other pending tasks immediately
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
+            else:
+                # --- GENERIC TCP PROXY (VNC/RDP) ---
+                # Direct bridge: Browser (Binary/JSON) <-> Relay (JSON with hex)
                 
-                # Check for exceptions in completed tasks
-                for task in done:
+                # Notify client connected
+                await websocket.send_json({'status': 'connected', 'tunnel_id': tunnel_id})
+                
+                async def browser_to_tunnel():
+                    """Browser WebSocket -> Tunnel Relay"""
                     try:
-                        await task
-                    except Exception as e:
-                        logger.error(f"Task failed: {e}")
+                        while True:
+                            # We accept both text (JSON) and binary (Raw protocol)
+                            # noVNC sends binary arraybuffers.
+                            message = await websocket.receive()
+                            
+                            data_to_send = None
+                            
+                            if "bytes" in message:
+                                data = message["bytes"]
+                                if data:
+                                    data_to_send = data.hex()
+                            
+                            elif "text" in message:
+                                # Sometimes clients might send JSON control messages
+                                try:
+                                    text_data = message["text"]
+                                    json_data = json.loads(text_data)
+                                    if 'data' in json_data:
+                                        data_to_send = json_data['data'] # Already hex?
+                                except:
+                                    pass
 
-            except Exception as e:
-                logger.error(f"Error in connection loop: {e}")
+                            if data_to_send:
+                                await ws_server.send(json.dumps({
+                                    'type': 'tunnel_data',
+                                    'tunnel_id': tunnel_id,
+                                    'data': data_to_send
+                                }))
+                            
+                    except Exception as e:
+                        logger.debug(f"Browser to tunnel error: {e}")
+
+                async def tunnel_to_browser():
+                    """Tunnel Relay -> Browser WebSocket"""
+                    try:
+                        async for msg in ws_server:
+                            try:
+                                msg_json = json.loads(msg)
+                                if msg_json.get('type') == 'tunnel_data':
+                                    hex_data = msg_json.get('data', '')
+                                    if hex_data:
+                                        data = bytes.fromhex(hex_data)
+                                        await websocket.send_bytes(data)
+                                elif msg_json.get('type') == 'tunnel_closed':
+                                    break
+                            except Exception as e:
+                                logger.warning(f"Error forwarding to browser: {e}")
+                    except Exception as e:
+                        logger.debug(f"Tunnel to browser error: {e}")
+
+                # Run VNC tasks
+                t_up = asyncio.create_task(browser_to_tunnel())
+                t_down = asyncio.create_task(tunnel_to_browser())
+                
+                done, pending = await asyncio.wait(
+                    [t_up, t_down],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in pending: task.cancel()
 
     except Exception as e:
-        logger.error(f"SSH WebSocket error: {e}", exc_info=True)
-        try:
-            await websocket.send_json({'error': str(e)})
-        except:
-            pass
+        logger.error(f"Service WebSocket error: {e}", exc_info=True)
+        try: await websocket.send_json({'error': str(e)})
+        except: pass
     finally:
         # Cleanup
         if ssh_process:
-            try:
-                ssh_process.terminate()
-                ssh_process.wait(timeout=2)
-            except:
-                try:
-                    ssh_process.kill()
-                except:
-                    pass
+            try: ssh_process.terminate(); ssh_process.wait(timeout=2)
+            except: pass
         if local_server:
-            try:
-                local_server.close()
-            except:
-                pass
-        try:
-            await websocket.close()
-        except:
-            pass
-        logger.info(f"SSH Web Console session ended: {username}@{hostname}")
+            try: local_server.close()
+            except: pass
+        try: await websocket.close()
+        except: pass
+        logger.info(f"Session ended: {username if username else service}@{hostname}")
 
