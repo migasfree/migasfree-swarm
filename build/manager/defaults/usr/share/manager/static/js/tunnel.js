@@ -529,6 +529,10 @@ class TunnelClient {
         vncDiv.innerHTML = ''; // Clean previous
         vncDiv.classList.add('scaling-active'); // Enable scaling CSS
 
+        // Show VNC Menu Button
+        const vncBtn = document.getElementById('btn-vnc-menu');
+        if (vncBtn) vncBtn.style.display = 'inline-flex';
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let wsUrl = `${protocol}//${window.location.host}/manager/v1/public/tunnel/ws/agents/${this.currentAgent.agent_id}`;
         const params = new URLSearchParams();
@@ -687,6 +691,11 @@ class TunnelClient {
         document.title = `${this.currentAgent.hostname} - Remote Access Console`;
 
         this.term.clear();
+
+        // Hide VNC Menu Button (if switching or lingering)
+        const vncBtn = document.getElementById('btn-vnc-menu');
+        if (vncBtn) vncBtn.style.display = 'none';
+
         const connMsg = username ?
             `→ Connecting to ${username}@${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...` :
             `→ Connecting to ${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...`;
