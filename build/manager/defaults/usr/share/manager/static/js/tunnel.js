@@ -311,8 +311,8 @@ class TunnelClient {
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) {
             modalTitle.textContent = serviceType
-                ? `Connect to ${cleanHostname} via ${serviceType.toUpperCase()}`
-                : `Connect to ${cleanHostname}`;
+                ? `${serviceType.toUpperCase()} to ${agent.agent_id}`
+                : `${agent.agent_id}`;
         }
 
         infoContainer.innerHTML = `
@@ -323,10 +323,6 @@ class TunnelClient {
              <div class="info-row">
                 <span class="info-label">Project:</span>
                 <span>${agent.info?.project || 'Unknown'}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">OS:</span>
-                <span>${agent.info?.system || 'Unknown'} ${agent.info?.architecture || ''}</span>
             </div>
         `;
 
