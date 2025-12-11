@@ -236,8 +236,14 @@ body {
     border-radius: 0.25rem;
     font-size: 0.625rem;
     font-weight: 600;
-    pointer-events: none;
-    /* Allow clicks to bubble to agent card */
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.service-tag:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
 }
 
 .agent-card.active .service-tag {

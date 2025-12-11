@@ -66,7 +66,14 @@
                                         d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
                                 </svg>
                             </button>
+                            <button class="btn-action" id="btn-vnc-menu" title="VNC Menu (F8)">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z" />
+                                </svg>
+                            </button>
                             <button class="btn-action" id="btn-fullscreen" title="F11 - Fullscreen">
+
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                                     <path
                                         d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z" />
@@ -100,12 +107,8 @@
                 <div class="agent-info" id="agent-info">
                     <!-- Agent details will be inserted here -->
                 </div>
-                <div class="service-selector">
-                    <label>Select Service:</label>
-                    <select id="service-select" class="service-select">
-                        <!-- Options populated dynamically -->
-                    </select>
-                </div>
+                <!-- Service Selector REMOVED as per request -->
+
 
                 <!-- SSH Username Input -->
                 <div class="username-input" id="username-input">
@@ -119,6 +122,45 @@
             </div>
         </div>
     </div>
+
+    <!-- VNC Tools Modal -->
+    <div class="modal hidden" id="vnc-tools-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>VNC Tools</h3>
+                <button class="modal-close" id="vnc-tools-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="service-options" style="grid-template-columns: 1fr; gap: 10px;">
+                    <button class="service-btn" id="btn-cad">
+                        Send Ctrl + Alt + Del
+                    </button>
+                    <button class="service-btn" id="btn-win-key">
+                        Send Windows Key
+                    </button>
+                    <button class="service-btn" id="btn-scaling">
+                        Toggle Scaling (Fit/Original)
+                    </button>
+
+                    <div class="clipboard-section"
+                        style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="vnc-clipboard-input" placeholder="text to send to clipboard..."
+                                style="flex: 1; padding: 5px; background: #333; border: 1px solid #444; color: white; border-radius: 4px;">
+                            <button class="btn btn-primary" id="btn-send-clipboard"
+                                style="padding: 5px 10px;">Send</button>
+                        </div>
+                    </div>
+
+                    <button class="service-btn" id="btn-disconnect-vnc"
+                        style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import RFB from '/manager/static/novnc/core/rfb.js';

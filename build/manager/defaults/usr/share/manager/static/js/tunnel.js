@@ -148,18 +148,17 @@ class TunnelClient {
         const modalConnect = document.getElementById('modal-connect');
         if (modalConnect) modalConnect.addEventListener('click', () => this.connectToAgent());
 
-        const serviceSelect = document.getElementById('service-select');
-        if (serviceSelect) {
-            serviceSelect.addEventListener('change', (e) => {
-                this.currentService = e.target.value;
-                this.updateInputFields();
-            });
-        }
+        // Service select listener REMOVED
+
 
         const disconnectBtn = document.getElementById('btn-disconnect');
         if (disconnectBtn) disconnectBtn.addEventListener('click', () => this.disconnect());
 
+        const vncMenuBtn = document.getElementById('btn-vnc-menu');
+        if (vncMenuBtn) vncMenuBtn.addEventListener('click', () => this.toggleVNCMenu());
+
         const fullscreenBtn = document.getElementById('btn-fullscreen');
+
         if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
 
         // HIDE HEADER ON FULLSCREEN
@@ -254,11 +253,13 @@ class TunnelClient {
             return `
                 <div class="agent-card" data-agent-id="${agent.agent_id}">
                     <div class="agent-header">
-                        <span class="agent-name">${agent.hostname}</span>
+                        <a href="/computers/results/${agent.agent_id.substring(4)}" class="agent-name-link" target="_blank" title="View Computer">
+                            <span class="agent-name">${agent.hostname}</span>
+                        </a>
                         <span class="agent-status"></span>
                     </div>
                     <div class="agent-services">
-                        ${project} ${services.map(s => `<span class="service-tag">${s.toUpperCase()}</span>`).join('')}
+                        ${project} ${services.map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
                     </div>
                 </div>
             `;
@@ -268,18 +269,37 @@ class TunnelClient {
     }
 
     handleAgentClick(e) {
+        // Check if clicked ON a service tag
+        const serviceTag = e.target.closest('.service-tag');
         const card = e.target.closest('.agent-card');
-        if (card) {
+
+        if (serviceTag && card) {
+            e.preventDefault(); // Prevent bubbling usually
             const agentId = card.dataset.agentId;
-            this.showAgentModal(agentId);
+            const service = serviceTag.dataset.service;
+            this.showAgentModal(agentId, service);
         }
+        // Explicitly DO NOTHING if clicked on the card generally
     }
 
-    showAgentModal(agentId) {
+    showAgentModal(agentId, serviceType = null) {
         const agent = this.agents.find(a => a.agent_id === agentId);
         if (!agent) return;
 
         this.currentAgent = agent;
+
+        // Determine service: use passed type, or default to SSH, or first available
+        const availableServices = (agent.info?.available_services || []).map(s => s.toLowerCase());
+
+        if (serviceType && availableServices.includes(serviceType)) {
+            this.currentService = serviceType;
+        } else if (availableServices.includes('ssh')) {
+            this.currentService = 'ssh';
+        } else if (availableServices.length > 0) {
+            this.currentService = availableServices[0];
+        } else {
+            this.currentService = 'ssh'; // Fallback
+        }
 
         const infoContainer = document.getElementById('agent-info');
         if (!infoContainer) return;
@@ -289,7 +309,11 @@ class TunnelClient {
 
         // Update Modal Title
         const modalTitle = document.getElementById('modal-title');
-        if (modalTitle) modalTitle.textContent = `Connect to ${agent.agent_id}`;
+        if (modalTitle) {
+            modalTitle.textContent = serviceType
+                ? `Connect to ${cleanHostname} via ${serviceType.toUpperCase()}`
+                : `Connect to ${cleanHostname}`;
+        }
 
         infoContainer.innerHTML = `
             <div class="info-row">
@@ -310,29 +334,9 @@ class TunnelClient {
         if (modal) {
             modal.classList.remove('hidden');
 
-            const select = document.getElementById('service-select');
-            if (select) {
-                select.innerHTML = '';
-                const availableServices = (agent.info?.available_services || []).map(s => s.toLowerCase());
+            // Removed Select Logic population here
 
-                availableServices.forEach(service => {
-                    const option = document.createElement('option');
-                    option.value = service;
-                    option.textContent = service.toUpperCase();
-                    if (service === 'ssh') {
-                        option.textContent += ' (Console)';
-                    } else if (service === 'vnc') {
-                        option.textContent += ' (Desktop)';
-                    }
-                    select.appendChild(option);
-                });
-
-                if (availableServices.length > 0) {
-                    this.currentService = availableServices[0];
-                    select.value = this.currentService;
-                    this.updateInputFields();
-                }
-            }
+            this.updateInputFields();
 
             // Set focus to Connect button by default
             const connectBtn = document.getElementById('modal-connect');
@@ -568,6 +572,9 @@ class TunnelClient {
                 // Set scaling options AFTER connection or init
                 this.rfb.scaleViewport = true;
                 this.rfb.resizeSession = false; // Disable remote resizing support
+
+                // Add Focus Listener to capture keyboard
+                this.rfb.focus();
             });
 
             this.rfb.addEventListener("disconnect", (e) => {
@@ -580,10 +587,99 @@ class TunnelClient {
                 }
             });
 
+            // Clean previous listeners if any (though instance is new)
+            this.setupVNCTools();
+
         } catch (e) {
             console.error(e);
             alert("Error starting VNC: " + e.message);
             this.disconnect();
+        }
+    }
+
+    setupVNCTools() {
+        // Remove existing listener to prevent duplicates if any
+        document.removeEventListener('keydown', this._vncKeyHandler);
+
+        this._vncKeyHandler = (e) => {
+            if (!this.rfb) return;
+
+            // F8 Key to toggle menu
+            if (e.code === 'F8') {
+                console.log('F8 Pressed - Toggling Menu');
+                e.preventDefault();
+                e.stopPropagation(); // Stop noVNC from processing it
+                this.toggleVNCMenu();
+            }
+        };
+
+        // Use capture phase to intercept before noVNC
+        document.addEventListener('keydown', this._vncKeyHandler, true);
+
+        // Setup Menu Buttons
+        const btnCad = document.getElementById('btn-cad');
+        if (btnCad) {
+            btnCad.replaceWith(btnCad.cloneNode(true)); // remove old listeners
+            document.getElementById('btn-cad').addEventListener('click', () => {
+                this.rfb.sendCtrlAltDel();
+                this.toggleVNCMenu();
+            });
+        }
+
+        const btnWin = document.getElementById('btn-win-key');
+        if (btnWin) {
+            btnWin.replaceWith(btnWin.cloneNode(true));
+            document.getElementById('btn-win-key').addEventListener('click', () => {
+                // 0xFFEB is XK_Super_L (Left Windows Key)
+                this.rfb.sendKey(0xFFEB);
+                this.toggleVNCMenu();
+            });
+        }
+
+        const btnScaling = document.getElementById('btn-scaling');
+        if (btnScaling) {
+            btnScaling.replaceWith(btnScaling.cloneNode(true));
+            document.getElementById('btn-scaling').addEventListener('click', () => {
+                this.rfb.scaleViewport = !this.rfb.scaleViewport;
+                this.toggleVNCMenu();
+            });
+        }
+
+        const btnClipboard = document.getElementById('btn-send-clipboard');
+        if (btnClipboard) {
+            btnClipboard.replaceWith(btnClipboard.cloneNode(true));
+            document.getElementById('btn-send-clipboard').addEventListener('click', () => {
+                const input = document.getElementById('vnc-clipboard-input');
+                if (input && input.value) {
+                    this.rfb.clipboardPasteFrom(input.value);
+                    input.value = ''; // Clear after sending
+                    this.toggleVNCMenu();
+                }
+            });
+        }
+
+        const btnClose = document.getElementById('vnc-tools-close');
+        if (btnClose) {
+            btnClose.replaceWith(btnClose.cloneNode(true));
+            document.getElementById('vnc-tools-close').addEventListener('click', () => this.toggleVNCMenu());
+        }
+
+        const btnDisc = document.getElementById('btn-disconnect-vnc');
+        if (btnDisc) {
+            btnDisc.replaceWith(btnDisc.cloneNode(true));
+            document.getElementById('btn-disconnect-vnc').addEventListener('click', () => this.disconnect());
+        }
+    }
+
+    toggleVNCMenu() {
+        const modal = document.getElementById('vnc-tools-modal');
+        if (modal) {
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+                if (this.rfb) this.rfb.focus(); // Return focus to VNC
+            }
         }
     }
 
@@ -666,6 +762,10 @@ class TunnelClient {
         if (this.rfb) {
             this.rfb.disconnect();
             this.rfb = null;
+        }
+        if (this._vncKeyHandler) {
+            document.removeEventListener('keydown', this._vncKeyHandler);
+            this._vncKeyHandler = null;
         }
 
         const params = new URLSearchParams(window.location.search);
