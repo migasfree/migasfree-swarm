@@ -670,7 +670,7 @@ class TunnelClient {
 
         const params = new URLSearchParams(window.location.search);
         if (params.has('agent')) {
-            // window.close(); // Keep open for debugging
+            window.close(); // Auto-close tab on disconnect
         }
 
         // ✅ Restaurar TODOS los elementos de la UI
