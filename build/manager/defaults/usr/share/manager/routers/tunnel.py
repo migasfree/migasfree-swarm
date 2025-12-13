@@ -16,7 +16,7 @@ from core.config import API_VERSION, FQDN
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix=f"{API_VERSION}/public/tunnel",  # TODO private
+    prefix=f"{API_VERSION}/private/tunnel",
     tags=["tunnel"]
 )
 
