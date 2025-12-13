@@ -511,14 +511,22 @@ class TunnelClient {
 
         const termDiv = document.getElementById('terminal');
         const vncDiv = document.getElementById('vnc-container');
+        const rdpDiv = document.getElementById('rdp-container');
 
-        if (this.currentService === 'vnc' || this.currentService === 'rdp') {
+        if (this.currentService === 'vnc') {
             if (termDiv) termDiv.classList.add('hidden');
             if (vncDiv) vncDiv.classList.remove('hidden');
+            if (rdpDiv) rdpDiv.classList.add('hidden');
             this.startVNC(username);
+        } else if (this.currentService === 'rdp') {
+            if (termDiv) termDiv.classList.add('hidden');
+            if (vncDiv) vncDiv.classList.add('hidden');
+            if (rdpDiv) rdpDiv.classList.remove('hidden');
+            this.startRDP(username);
         } else {
             if (termDiv) termDiv.classList.remove('hidden');
             if (vncDiv) vncDiv.classList.add('hidden');
+            if (rdpDiv) rdpDiv.classList.add('hidden');
             this.startSSH(username);
         }
     }
@@ -594,6 +602,42 @@ class TunnelClient {
             console.error(e);
             alert("Error starting VNC: " + e.message);
             this.disconnect();
+        }
+    }
+
+    startRDP(username) {
+        document.title = `${this.currentAgent.hostname} - RDP Info`;
+
+        const cmdCode = document.getElementById('rdp-command');
+        // Command format: python3 client.py <user> -t rdp -a <agent_id> -m <manager_url>
+        // We use window.location.origin for manager url
+        const managerUrl = window.location.origin;
+        const userPart = username ? `${username} ` : '';
+        const command = `python3 client.py ${userPart}-t rdp -a ${this.currentAgent.agent_id} -m ${managerUrl}`;
+
+        if (cmdCode) cmdCode.textContent = command;
+
+        // Hide VNC menu button just in case
+        const vncBtn = document.getElementById('btn-vnc-menu');
+        if (vncBtn) vncBtn.style.display = 'none';
+
+        // Setup Copy Button logic here (lazy bind or idempotent)
+        const btnCopy = document.getElementById('btn-copy-rdp');
+        if (btnCopy) {
+            // Remove old listener to avoid duplicates if re-entering
+            const newBtn = btnCopy.cloneNode(true);
+            btnCopy.parentNode.replaceChild(newBtn, btnCopy);
+
+            newBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(command).then(() => {
+                    const originalText = newBtn.textContent;
+                    newBtn.textContent = 'Copied!';
+                    setTimeout(() => newBtn.textContent = originalText, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    alert('Failed to copy to clipboard');
+                });
+            });
         }
     }
 

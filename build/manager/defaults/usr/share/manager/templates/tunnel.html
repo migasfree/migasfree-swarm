@@ -91,6 +91,33 @@
                     <div class="vnc-container hidden" id="vnc-container">
                         <canvas id="vnc-canvas"></canvas>
                     </div>
+
+                    <!-- RDP Instruction Container -->
+                    <div class="rdp-container hidden" id="rdp-container"
+                        style="color: #e0e0e0; text-align: center; padding: 2rem; width: 100%; height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h2 style="margin-bottom: 1.5rem; color: #ffffff; font-size: 1.8rem; font-weight: 600;">RDP
+                            Connection</h2>
+                        <div
+                            style="background: #2a2a2a; padding: 2rem; border-radius: 12px; text-align: left; max-width: 900px; width: 90%; margin: 0 auto; border: 1px solid #444; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <p style="margin-bottom: 15px; font-size: 1.1rem; color: #ffffff;">Run this command in your
+                                local terminal:</p>
+                            <div style="display: flex; gap: 15px; align-items: stretch; margin-bottom: 1.5rem;">
+                                <code id="rdp-command"
+                                    style="flex: 1; background: #000; padding: 16px; border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 1rem; color: #4CAF50; overflow-x: auto; white-space: nowrap; border: 1px solid #555;">Generating command...</code>
+                                <button class="btn btn-secondary" id="btn-copy-rdp" title="Copy to Clipboard"
+                                    style="padding: 0 25px; font-weight: bold; font-size: 1rem; cursor: pointer;">
+                                    Copy
+                                </button>
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.95rem; color: #bbbbbb; line-height: 1.5;">
+                                <strong style="color: #fff;">Note:</strong> This requires the <span
+                                    style="color: #fff; background: #444; padding: 2px 6px; border-radius: 4px;">client.py</span>
+                                script and <span
+                                    style="color: #fff; background: #444; padding: 2px 6px; border-radius: 4px;">xfreerdp</span>
+                                installed on your machine.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>

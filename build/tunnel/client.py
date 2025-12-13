@@ -42,7 +42,9 @@ class MultiProtocolTunnel:
         """Selects an agent from the manager"""
         print(f"📋 Querying Manager at {self.manager_url}...")
         try:
-            resp = requests.get(f"{self.manager_url}/manager/v1/public/tunnel/agents", timeout=5)
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            resp = requests.get(f"{self.manager_url}/manager/v1/public/tunnel/agents", timeout=5, verify=False)
             resp.raise_for_status()
             data = resp.json()
             agents = data.get('agents', [])
@@ -54,6 +56,16 @@ class MultiProtocolTunnel:
             print("❌ No agents available")
             return None
 
+        # If an agent was specified, search for it immediately
+        if self.target_agent_id:
+            for agent in agents:
+                if self.target_agent_id in agent['agent_id']:
+                    print(f"\n✅ Agent selected: {agent['hostname']}")
+                    return agent
+            print(f"❌ Agent {self.target_agent_id} not found in current list")
+            # Note: If pagination is active on server, we might miss it.
+            return None
+
         print(f"\n📊 Available Agents ({len(agents)}):")
         for idx, agent in enumerate(agents, 1):
             info = agent.get('info', {})
@@ -62,15 +74,6 @@ class MultiProtocolTunnel:
             print(f"   [{idx}] {agent['hostname']}{services_str}")
             print(f"       ID: {agent['agent_id'][:24]}...")
             print(f"       OS: {info.get('system', 'N/A')} {info.get('architecture', '')}")
-
-        # If an agent was specified, search for it
-        if self.target_agent_id:
-            for agent in agents:
-                if self.target_agent_id in agent['agent_id']:
-                    print(f"\n✅ Agent selected: {agent['hostname']}")
-                    return agent
-            print(f"❌ Agent {self.target_agent_id} not found")
-            return None
 
         # If there is only one agent, use it automatically
         if len(agents) == 1:
@@ -308,7 +311,8 @@ class MultiProtocolTunnel:
             print(f"\n🖥️  Connecting VNC...")
             
         elif self.service == 'rdp':
-            cmd = ['xfreerdp', f'/v:localhost:{self.local_port}', '/cert-ignore']
+            # Modern xfreerdp arguments: /v:server /u:user ...
+            cmd = ['xfreerdp', f'/v:localhost:{self.local_port}', '/cert-ignore', '/clipboard', '/sound']
             if self.user:
                 cmd.append(f'/u:{self.user}')
             print(f"\n🖥️  Connecting RDP...")
@@ -338,6 +342,10 @@ class MultiProtocolTunnel:
             return 1
         except FileNotFoundError:
             print(f"❌ Client {self.service.upper()} not found")
+            if self.service == 'vnc':
+                print("   👉 Please install a VNC viewer: sudo apt install xtightvncviewer")
+            elif self.service == 'rdp':
+                print("   👉 Please install FreeRDP: sudo apt install freerdp2-x11")
             return 1
 
     async def connect(self, extra_command: list = None):

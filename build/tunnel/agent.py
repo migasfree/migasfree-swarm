@@ -246,7 +246,8 @@ async def main():
     # Customize services
     SERVICES = {
         'ssh': 22,
-        'vnc': 5900
+        'vnc': 5900,
+        'rdp': 3389
     }
     agent = MultiProtocolAgent(MANAGER_URL, services=SERVICES, agent_id=AGENT_ID, project=PROJECT)
     await agent.connect()
