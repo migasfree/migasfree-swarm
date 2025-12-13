@@ -11,8 +11,29 @@ mkdir -p $PATH_CA
 if ! [ -f ${PATH_CA}/ca.key ]
 then
     cd ${PATH_CA}
+    
+    # Create config file for CA with correct extensions
+    echo "[ req ]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_ca
+prompt = no
+
+[ req_distinguished_name ]
+C = ES
+ST = ZARAGOZA
+L = ZARAGOZA
+O = migasfree
+CN = ${FQDN} Root CA
+
+[ v3_ca ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+" > ca_openssl.cnf
+
     # Create the CA certificate and key:
-    openssl req -new -x509 -nodes -newkey rsa:4096 -extensions v3_ca -sha256 -days $DAYS -subj "/C=ES/ST=ZARAGOZA/L=ZARAGOZA/O=migasfree/CN=${FQDN} Root CA" -keyout ca.key -out ca.crt
+    openssl req -new -x509 -nodes -newkey rsa:4096 -config ca_openssl.cnf -sha256 -days $DAYS -keyout ca.key -out ca.crt
     chmod 600 ca.key
 fi
 
