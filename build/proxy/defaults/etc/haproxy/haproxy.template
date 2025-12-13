@@ -108,6 +108,7 @@ frontend http
     http-response return  status 404  default-errorfiles  if { status 404 }
 
     http-request add-header X-Forwarded-Proto https
+    http-request set-header X-SSL-Client-CN %[ssl_c_s_dn]
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}}" "*"
