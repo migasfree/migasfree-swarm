@@ -196,7 +196,7 @@ class TunnelClient {
                 container.innerHTML = '<div class="loading">Loading agents...</div>';
             }
 
-            let url = `/manager/v1/public/tunnel/agents?page=${this.currentPage}&limit=${limit}`;
+            let url = `/manager/v1/private/tunnel/agents?page=${this.currentPage}&limit=${limit}`;
             if (search) url += `&q=${encodeURIComponent(search)}`;
 
             const response = await fetch(url);
@@ -542,7 +542,7 @@ class TunnelClient {
         if (vncBtn) vncBtn.style.display = 'inline-flex';
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsUrl = `${protocol}//${window.location.host}/manager/v1/public/tunnel/ws/agents/${this.currentAgent.agent_id}`;
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.agent_id}`;
         const params = new URLSearchParams();
         params.append('service', 'vnc'); // or this.currentService
         wsUrl += `?${params.toString()}`;
@@ -746,7 +746,7 @@ class TunnelClient {
         this.term.writeln(`\x1b[1;32m${connMsg}\x1b[0m`);
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsUrl = `${protocol}//${window.location.host}/manager/v1/public/tunnel/ws/agents/${this.currentAgent.agent_id}`;
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.agent_id}`;
 
         const params = new URLSearchParams();
         params.append('service', this.currentService);
