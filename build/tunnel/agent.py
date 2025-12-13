@@ -9,14 +9,57 @@ import platform
 import uuid
 import sys
 import requests
-
 import ssl
 
 
-# Create SSL context that doesn't verify certificates (for testing only!)
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+try:
+    from migasfree_client import settings
+    from migasfree_client.utils import get_config
+    FQDN = get_config(settings.CONF_FILE, 'client').get('server', 'localhost')
+    CERT_PATH = settings.CERT_PATH
+    MTLS_KEY_FILE = settings.MTLS_KEY_FILE
+    MTLS_CERT_FILE = settings.MTLS_CERT_FILE
+    CA_CERT_FILE = f"{CERT_PATH}/ca.pem"
+except Exception as e:
+    print(f"❌ migasfree-client not found") 
+    exit(0)
+
+
+# =======================================================================
+# TODO Remove this when migasfree-client is updated
+import os
+if not os.path.exists(CA_CERT_FILE):
+    # Download CA certificate
+    response = requests.get("https://inv.org/manager/v1/public/ca", verify=False)
+    if response.status_code == 200:
+        with open(CA_CERT_FILE, 'wb') as f:
+            f.write(response.content)
+        print(f"✅ CA certificate downloaded to: {CA_CERT_FILE}")
+    else:
+        print(f"❌ Failed to download CA certificate")
+        exit(0)
+# =======================================================================
+    
+
+# Create SSL context (verifies certificates using system CA store)
+ssl_context = ssl.create_default_context()
+
+try:
+    ssl_context.load_verify_locations(cafile=CA_CERT_FILE) 
+    print(f"✅ CA certificate loaded from: {CA_CERT_FILE}")
+except Exception as e:
+    print(f"❌ Failed to load CA certificate: {e}")
+
+try:
+    ssl_context.load_cert_chain(
+        certfile=MTLS_CERT_FILE,
+        keyfile=MTLS_KEY_FILE
+    )
+    print("🔐 mTLS certificate loaded for WebSocket")
+except Exception as e:
+    print(f"⚠️ Failed to load mTLS certificate: {e}")
+
+
 
 class MultiProtocolAgent:
     def __init__(self, manager_url, agent_id=None, project=None, services=None):
@@ -130,6 +173,7 @@ class MultiProtocolAgent:
                 writer.close()
                 await writer.wait_closed()
                 del self.tcp_tunnels[tunnel_id]
+                print(f"⛔ Tunnel closed: {tunnel_id}")
                 
                 if self.websocket and self.websocket.open:
                     await self.websocket.send(json.dumps({
@@ -168,7 +212,9 @@ class MultiProtocolAgent:
                         return requests.post(
                             f"{self.manager_url}/register", 
                             json=msg, 
-                            timeout=5
+                            timeout=5,
+                            cert=(MTLS_CERT_FILE, MTLS_KEY_FILE),
+                            verify=CA_CERT_FILE
                         )
                     try:
                         # Python 3.8 compatible: use run_in_executor instead of asyncio.to_thread
@@ -226,17 +272,10 @@ class MultiProtocolAgent:
                 self.server_url = None
                 await asyncio.sleep(5)
 async def main():
-    # UPDATED URL: Point to the specific API endpoint
 
-    try:
-        from migasfree_client import settings
-        from migasfree_client.utils import get_config
-        FQDN = get_config(settings.CONF_FILE, 'client').get('server', 'localhost')
-    except Exception as e:
-        print(f"❌ migasfree-client not found") 
-        exit(0)
 
-    MANAGER_URL = f"http://{FQDN}/manager/v1/public/tunnel"
+
+    MANAGER_URL = f"https://{FQDN}/manager/v1/private/tunnel"
   
     with open('/usr/share/migasfree-client/events.d/.json', 'r') as archivo:
         TRAITS = json.load(archivo)
