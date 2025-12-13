@@ -117,14 +117,25 @@ frontend http
 
 
     # ROLES
-    acl is_role_admin    ssl_c_s_dn -m reg "/OU=ADMINS/"
-    acl is_role_computer ssl_c_s_dn -m reg "/OU=COMPUTERS/"
+    acl is_role_admin    ssl_c_s_dn -i -m sub 'OU=ADMINS'
+    acl is_role_computer ssl_c_s_dn -i -m sub 'OU=COMPUTERS'
+    
+    
+    # DEBUG ROLES - TEMPORARY. Capture variables for logging (will appear in braces {} in the log)
+    # =======================
+    http-request set-var(txn.role_admin) str("1") if is_role_admin
+    http-request set-var(txn.role_admin) str("0") if !is_role_admin
+    http-request set-var(txn.role_computer) str("1") if is_role_computer
+    http-request set-var(txn.role_computer) str("0") if !is_role_computer
+    http-request capture var(txn.role_admin) len 1
+    http-request capture var(txn.role_computer) len 1
+    http-request capture ssl_c_s_dn len 128
+    http-request capture ssl_c_used len 1
+    http-request capture ssl_c_verify len 10
 
-    # DEBUG is_role_admin
-    #http-request set-var(txn.role_admin) str("1") if is_role_admin
-    #http-request set-var(txn.role_admin) str("0") if !is_role_admin
-    #log-format "role_admin=%[var(txn.role_admin)] %r"
-
+    
+    
+    
     # Stats HAProxy
     acl is_stats path_beg /stats
 
@@ -236,14 +247,19 @@ frontend http
     acl url_no_mTLS_get   path_beg /api/v1/public/
     acl url_no_mTLS_post  path_beg /api/v1/public/
     acl url_no_mTLS_get   path_beg /api/public/
-    acl url_no_mTLS_post  path_beg /api/v1/safe/
     acl url_no_mTLS_get   path_beg /rest-auth/
     acl url_no_mTLS_get   path_beg /token-auth-jwt/
     acl url_no_mTLS_get   path_beg /token-auth/
     acl url_no_mTLS_get   path_beg /token-refresh/
     acl url_no_mTLS_get   path     /favicon.ico
     acl url_no_mTLS_get   path     /  # Checks if it is active
-    acl url_no_mTLS_get   path_beg /tunnel  # WebSocket tunnel relay
+    
+
+
+    # urls allowed for Computers (mTLS)
+    acl url_role_computer_post path_beg /api/v1/safe/   # migasfree-client
+    acl url_role_computer_get path_beg /tunnel  # WebSocket tunnel relay  (migasfree-agent)
+    acl url_role_computer_post path    /manager/v1/private/tunnel/register
 
 
     # migasfree-play 5.0 -> https://github.com/migasfree/migasfree-play/blob/master/src/config/app.conf.js
@@ -261,20 +277,34 @@ frontend http
 
 
 
-    # Deny certifificate present and not verified
+    # -------------------------------------------------------
+    # SECURITY RULES
+    # -------------------------------------------------------
+
+    # 1. Invalid Certificates
     http-request deny deny_status 403 if client_cert_present !client_cert_verified
 
-    # Deny all except Urls without mTLS
-    http-request deny deny_status 403 if is_GET   !url_no_mTLS_get   !client_cert_present
-    http-request deny deny_status 403 if is_POST  !url_no_mTLS_post  !client_cert_present
-    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch !client_cert_present
-    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH  !client_cert_present
+    # 2. Public Access (No mTLS required)
+    http-request allow if is_GET   url_no_mTLS_get
+    http-request allow if is_POST  url_no_mTLS_post
+    http-request allow if is_PATCH url_no_mTLS_patch
 
-    # Deny Administrative Console to users no admins
-    http-request deny deny_status 403 if is_GET   !url_no_mTLS_get   !is_role_admin
-    http-request deny deny_status 403 if is_POST  !url_no_mTLS_post  !is_role_admin
-    http-request deny deny_status 403 if is_PATCH !url_no_mTLS_patch !is_role_admin
-    http-request deny deny_status 403 if !is_GET !is_POST !is_PATCH  !is_role_admin
+    # 3. Enforce Certificate Presence (for anything not Public)
+    http-request deny deny_status 403 if !client_cert_present
+
+    # 4. Role: Computer
+    # Allow computers to access their specific safe endpoints
+    http-request allow if is_POST is_role_computer url_role_computer_post
+    http-request allow if is_GET is_role_computer url_role_computer_get    
+
+    # 5. Role: Admin
+    # Allow admins to access everything
+    http-request allow if is_role_admin
+
+    # 6. Default Deny
+    # If not Public, and no appropriate Role permissions -> Deny
+    http-request deny deny_status 403
+
 
 
 {% endif %}
