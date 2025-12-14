@@ -612,8 +612,8 @@ class TunnelClient {
         // Command format: python3 client.py <user> -t rdp -a <agent_id> -m <manager_url>
         // We use window.location.origin for manager url
         const managerUrl = window.location.origin;
-        const userPart = username ? `${username} ` : '';
-        const command = `python3 client.py ${userPart}-t rdp -a ${this.currentAgent.agent_id} -m ${managerUrl}`;
+        const userPart = username ? ` ${username}` : '';
+        const command = `migasfree-connect -t rdp -a ${this.currentAgent.agent_id} -m ${managerUrl} ${userPart}`;
 
         if (cmdCode) cmdCode.textContent = command;
 
