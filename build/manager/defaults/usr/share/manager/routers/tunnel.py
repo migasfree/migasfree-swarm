@@ -49,7 +49,13 @@ class AgentRegister(BaseModel):
     info: Dict
 
 @router.post("/register")
-async def register_agent(agent: AgentRegister, r: redis.Redis = Depends(get_redis)):
+async def register_agent(agent: AgentRegister, request: Request, r: redis.Redis = Depends(get_redis)):
+    # Verify Client Certificate CN is in COMPUTERS OU   
+    client_cn = request.headers.get("X-SSL-Client-CN", "")
+    if "OU=COMPUTERS" not in client_cn:
+        logger.warning(f"Registration rejected for agent {agent.agent_id}: Invalid CN '{client_cn}'")
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid Client Certificate")
+
     # Determine Relay URL
     relay_public = None
     try:
@@ -205,9 +211,21 @@ async def health_check(r: redis.Redis = Depends(get_redis)):
         }
 
 @router.websocket("/ws/agents/{agent_id}")
-@router.websocket("/ws/agents/{agent_id}")
 async def service_websocket(websocket: WebSocket, agent_id: str, service: str = 'ssh', username: str = None):
     """WebSocket endpoint for generic TCP tunneling (SSH/VNC/RDP)"""
+    # Verify Client Certificate CN is in ADMINS OU  
+    client_dn = websocket.headers.get("X-SSL-Client-CN", "")
+    if "OU=ADMINS" not in client_dn:
+        logger.warning(f"WebConsole access rejected for {agent_id}: Invalid CN '{client_dn}'")
+        # 1008 = Policy Violation
+        await websocket.close(code=1008)
+        return
+    
+    # Extract just the CN value for logging/display
+    import re
+    match = re.search(r"CN=([^/,]+)", client_dn)
+    client_cn = match.group(1).strip() if match else client_dn
+
     await websocket.accept()
     
     if service not in ['ssh', 'vnc', 'rdp']:
@@ -276,7 +294,8 @@ async def service_websocket(websocket: WebSocket, agent_id: str, service: str = 
                 'type': 'start_tcp_tunnel',
                 'agent_id': agent_id,
                 'tunnel_id': tunnel_id,
-                'service': service
+                'service': service,
+                'client_cn': client_cn
             }))
 
             resp = json.loads(await ws_server.recv())
