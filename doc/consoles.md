@@ -75,3 +75,13 @@ To access the various consoles, navigate to `http://<FQDN>/status`
 
 TODO
 
+## remote access
+
+* Migasfree Remote Access provides a unified interface for connecting to your devices securely. Identify yourself with your client certificate to gain access (mTLS).
+
+  It supports the following protocols:
+    - **SSH**: Full web-based terminal access.
+    - **VNC**: Remote desktop access directly in your browser.
+    - **RDP**: Generates the necessary command to connect via a native RDP client through the secure tunnel.
+
+  ![remote-access-console](remote-access-console.png)
