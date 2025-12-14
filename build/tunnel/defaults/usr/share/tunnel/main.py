@@ -202,6 +202,22 @@ class MultiProtocolServer:
         agent_id = message.get('agent_id')
         tunnel_id = message.get('tunnel_id')
         service = message.get('service', 'ssh')  # Default SSH
+        client_cn = message.get('client_cn')
+        if not client_cn:
+            try:
+                if hasattr(websocket, 'request_headers'):
+                    headers = websocket.request_headers
+                    # Case-insensitive lookup
+                    for k, v in headers.items():
+                        if k.lower() == 'x-ssl-client-cn':
+                            client_cn = v
+                            break
+                    
+                    if not client_cn:
+                        # Debug info if still not found
+                        print(f"❌ X-SSL-Client-CN not found (case-insensitive). Available: {list(headers.keys())}")
+            except Exception as e:
+                print(f"❌ Error extracting headers: {e}")
 
         if agent_id in self.connected_agents:
             # Local agent
@@ -218,7 +234,8 @@ class MultiProtocolServer:
             await agent_ws.send(json.dumps({
                 'type': 'start_tcp_tunnel',
                 'tunnel_id': tunnel_id,
-                'service': service
+                'service': service,
+                'client_cn': client_cn
             }))
 
             # Confirm to client
@@ -374,6 +391,14 @@ class MultiProtocolServer:
                 ]
                 for tid in tunnels_to_close:
                     await self.close_tcp_tunnel(tid)
+            
+            # Clean up tunnels where this socket is the client
+            tunnels_to_close_client = [
+                tid for tid, data in self.tcp_tunnels.items()
+                if data.get('client_ws') == websocket
+            ]
+            for tid in tunnels_to_close_client:
+                await self.close_tcp_tunnel(tid)
 
     async def monitor_stats(self):
         """Monitors server statistics and updates Redis TTL"""
