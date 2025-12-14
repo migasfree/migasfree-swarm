@@ -12,8 +12,33 @@ import os
 import ssl
 import getpass
 from pathlib import Path
+import uuid
 
 from urllib.parse import urlparse
+
+def extract_cn_from_cert(cert_path):
+    """Extracts the Common Name (CN) from the certificate"""
+    if not cert_path or not os.path.exists(cert_path):
+        return None
+    try:
+        # openssl x509 -in cert.pem -noout -subject
+        # Output example: subject= /O=inv.org/OU=ADMINS/CN=agacias
+        cmd = ["openssl", "x509", "-in", cert_path, "-noout", "-subject"] 
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        subject = result.stdout.strip()
+        
+        # Extract CN=... value
+        import re
+        match = re.search(r"CN\s*=\s*([^/,]+)", subject)
+        if match:
+            return match.group(1).strip()
+            
+        # Fallback: return full subject if parsing fails
+        if subject.startswith("subject="):
+            return subject[8:].strip()
+        return subject
+    except Exception:
+        return None
 
 def check_credentials(manager_url):
     """Checks for mTLS credentials or extracts them from a .p12 file"""
@@ -105,6 +130,7 @@ class MultiProtocolTunnel:
         self.cert = msg_cert
         self.key = msg_key
         self.ca = msg_ca
+        self.client_cn = extract_cn_from_cert(self.cert) if self.cert else None
 
     def _find_free_port(self):
         """Finds a free port automatically"""
@@ -186,8 +212,9 @@ class MultiProtocolTunnel:
 
     async def handle_tcp_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Handles the TCP tunnel"""
-        addr = writer.get_extra_info('peername')
-        tunnel_id = f"{addr[0]}:{addr[1]}"
+        # addr = writer.get_extra_info('peername')
+        # tunnel_id = f"{addr[0]}:{addr[1]}"
+        tunnel_id = f"cli-{uuid.uuid4()}"
 
         print(f"🔗 Tunnel established: {tunnel_id}")
 
@@ -276,7 +303,8 @@ class MultiProtocolTunnel:
                 'type': 'start_tcp_tunnel',
                 'agent_id': agent_id,
                 'tunnel_id': tunnel_id,
-                'service': self.service
+                'service': self.service,
+                'client_cn': self.client_cn
             }))
 
             resp = await asyncio.wait_for(ws.recv(), timeout=10)
