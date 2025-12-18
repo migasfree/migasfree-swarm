@@ -14,26 +14,30 @@ import socket
 import logging
 from urllib.parse import urlparse
 
+
 class IgnoreHandshakeErrorFilter(logging.Filter):
     def filter(self, record):
         msg = record.getMessage()
         # Ignora errores específicos de healthcheck/HAProxy probes
-        if any(error in msg for error in [
-            "did not receive a valid HTTP request",
-            "line without CRLF",
-            "connection closed while reading HTTP request line",
-            "opening handshake failed",
-            "InvalidMessage"
-        ]):
+        if any(
+            error in msg
+            for error in [
+                "did not receive a valid HTTP request",
+                "line without CRLF",
+                "connection closed while reading HTTP request line",
+                "opening handshake failed",
+                "InvalidMessage",
+            ]
+        ):
             return False
         return True
+
 
 for logger_name in [
     "websockets",
     "websockets.server",
     "websockets.protocol",
     "websockets.http11",
-    "websockets.server"
 ]:
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
@@ -47,7 +51,13 @@ TUNNEL_CONNECTIONS = int(os.environ["TUNNEL_CONNECTIONS"])
 
 
 class MultiProtocolServer:
-    def __init__(self, host='0.0.0.0', port=8080, max_connections=TUNNEL_CONNECTIONS, redis_url='redis://localhost'):
+    def __init__(
+        self,
+        host="0.0.0.0",
+        port=8080,
+        max_connections=TUNNEL_CONNECTIONS,
+        redis_url="redis://localhost",
+    ):
         self.host = host
         self.port = port
         self.max_connections = max_connections
@@ -59,7 +69,7 @@ class MultiProtocolServer:
 
         # Public URL (through HAProxy) for clients
         self.server_url = f"wss://{FQDN}/tunnel"
-        
+
         # Internal URL (direct to container) for agents
         # This allows proper load balancing across multiple relay instances
         self.server_internal_url = f"ws://{socket.gethostname()}:{self.port}"
@@ -75,16 +85,16 @@ class MultiProtocolServer:
             # Use Redis URL to determine the correct interface (internal overlay network)
             if self.redis_url:
                 parsed = urlparse(self.redis_url)
-                host = parsed.hostname or 'redis'
+                host = parsed.hostname or "redis"
                 port = parsed.port or 6379
                 s.connect((host, port))
                 IP = s.getsockname()[0]
             else:
                 # Fallback
-                s.connect(('10.255.255.255', 1))
+                s.connect(("10.255.255.255", 1))
                 IP = s.getsockname()[0]
         except Exception:
-            IP = '127.0.0.1'
+            IP = "127.0.0.1"
         finally:
             s.close()
         return IP
@@ -94,7 +104,7 @@ class MultiProtocolServer:
             try:
                 self.redis = redis.from_url(self.redis_url, decode_responses=True)
                 await self.redis.ping()
-                print(f"✅ Connected to Redis")
+                print("✅ Connected to Redis")
             except Exception as e:
                 # Only print error once or if verbose
                 print(f"⚠️  Redis not available: {e}")
@@ -128,15 +138,17 @@ class MultiProtocolServer:
             if self.redis:
                 try:
                     data = {
-                        'id': self.server_id,
-                        'url': self.server_url,              # Public URL for clients
-                        'internal_url': self.server_internal_url,  # Internal URL for agents
-                        'load': self.active_connections,
-                        'max_connections': self.max_connections,
-                        'hostname': socket.gethostname()
+                        "id": self.server_id,
+                        "url": self.server_url,  # Public URL for clients
+                        "internal_url": self.server_internal_url,  # Internal URL for agents
+                        "load": self.active_connections,
+                        "max_connections": self.max_connections,
+                        "hostname": socket.gethostname(),
                     }
                     # Set with TTL of 10 seconds
-                    await self.redis.set(f"tunnel:{self.server_id}", json.dumps(data), ex=10)
+                    await self.redis.set(
+                        f"tunnel:{self.server_id}", json.dumps(data), ex=10
+                    )
                 except Exception as e:
                     print(f"⚠️  Redis heartbeat error: {e}")
             await asyncio.sleep(5)
@@ -144,35 +156,30 @@ class MultiProtocolServer:
     async def register_agent(self, websocket, message):
         """Registers a new agent with connection limit"""
         if self.active_connections >= self.max_connections:
-            await websocket.send(json.dumps({
-                'type': 'error',
-                'message': f'Connection limit reached ({self.max_connections})'
-            }))
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Connection limit reached ({self.max_connections})",
+                    }
+                )
+            )
             await websocket.close()
             return False
 
-        agent_id = message.get('agent_id')
-        hostname = message.get('hostname')
-
-        agent_info = message.get('info', {})
+        agent_id = message.get("id")
+        hostname = message.get("name")
 
         agent_data = {
-            'agent_id': agent_id,
-            'hostname': hostname,
-            'info': agent_info,
-            'timestamp': asyncio.get_event_loop().time(),
-            'mode': message.get('mode', 'tcp_tunnel'),
-            'relay_url': self.server_url,       # Public URL for clients to connect
-            'tunnel_url': self.server_url,      # Legacy compatibility
-            'tunnel_id': self.server_id,
-            'tunnel_id': self.server_id,
-            'server_ip': self.get_ip()
+            "id": agent_id,
+            "name": hostname,
+            "services": message.get("services", []),
+            "mode": message.get("mode", "tcp_tunnel"),
+            "relay": self.server_url,
+            "server_ip": self.get_ip(),
         }
 
-        self.connected_agents[agent_id] = {
-            'websocket': websocket,
-            'data': agent_data
-        }
+        self.connected_agents[agent_id] = {"websocket": websocket, "data": agent_data}
 
         self.active_connections += 1
 
@@ -180,85 +187,104 @@ class MultiProtocolServer:
         await self._init_redis()
         if self.redis:
             try:
-                await self.redis.set(f"agent:{agent_id}", json.dumps(agent_data), ex=300) # 5 min TTL
+                await self.redis.set(
+                    f"agent:{agent_id}", json.dumps(agent_data), ex=300
+                )  # 5 min TTL
             except Exception as e:
                 print(f"⚠️  Redis error: {e}")
 
         # Show available services if they exist
-        services = agent_info.get('available_services', [])
+        services = agent_data.get("services", [])
         services_str = f" [{', '.join(services)}]" if services else ""
 
-        print(f"✅ Agent {self.active_connections}/{self.max_connections}: {hostname} ({agent_id}){services_str}")
+        print(
+            f"✅ Agent {self.active_connections}/{self.max_connections}: {hostname} ({agent_id}){services_str}"
+        )
 
-        await websocket.send(json.dumps({
-            'type': 'registration_ok',
-            'message': 'Agent registered successfully'
-        }))
+        await websocket.send(
+            json.dumps(
+                {"type": "registration_ok", "message": "Agent registered successfully"}
+            )
+        )
 
         return True
 
     async def start_tcp_tunnel(self, websocket, message):
         """Starts a transparent TCP tunnel for any protocol"""
-        agent_id = message.get('agent_id')
-        tunnel_id = message.get('tunnel_id')
-        service = message.get('service', 'ssh')  # Default SSH
-        client_cn = message.get('client_cn')
+        agent_id = message.get("id")
+        tunnel_id = message.get("tunnel_id")
+        service = message.get("service", "ssh")  # Default SSH
+        client_cn = message.get("client_cn")
         if not client_cn:
             try:
-                if hasattr(websocket, 'request_headers'):
+                if hasattr(websocket, "request_headers"):
                     headers = websocket.request_headers
                     # Case-insensitive lookup
                     for k, v in headers.items():
-                        if k.lower() == 'x-ssl-client-cn':
+                        if k.lower() == "x-ssl-client-cn":
                             client_cn = v
                             break
-                    
+
                     if not client_cn:
                         # Debug info if still not found
-                        print(f"❌ X-SSL-Client-CN not found (case-insensitive). Available: {list(headers.keys())}")
+                        print(
+                            f"❌ X-SSL-Client-CN not found (case-insensitive). Available: {list(headers.keys())}"
+                        )
             except Exception as e:
                 print(f"❌ Error extracting headers: {e}")
 
         if agent_id in self.connected_agents:
             # Local agent
             self.tcp_tunnels[tunnel_id] = {
-                'type': 'local',
-                'agent_id': agent_id,
-                'client_ws': websocket,
-                'agent_ws': self.connected_agents[agent_id]['websocket'],
-                'service': service
+                "type": "local",
+                "agent_id": agent_id,
+                "client_ws": websocket,
+                "agent_ws": self.connected_agents[agent_id]["websocket"],
+                "service": service,
             }
 
             # Notify agent
-            agent_ws = self.connected_agents[agent_id]['websocket']
-            await agent_ws.send(json.dumps({
-                'type': 'start_tcp_tunnel',
-                'tunnel_id': tunnel_id,
-                'service': service,
-                'client_cn': client_cn
-            }))
+            agent_ws = self.connected_agents[agent_id]["websocket"]
+            await agent_ws.send(
+                json.dumps(
+                    {
+                        "type": "start_tcp_tunnel",
+                        "tunnel_id": tunnel_id,
+                        "service": service,
+                        "client_cn": client_cn,
+                    }
+                )
+            )
 
             # Confirm to client
-            await websocket.send(json.dumps({
-                'type': 'tunnel_started',
-                'tunnel_id': tunnel_id,
-                'agent_id': agent_id,
-                'service': service
-            }))
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "tunnel_started",
+                        "tunnel_id": tunnel_id,
+                        "id": agent_id,
+                        "service": service,
+                    }
+                )
+            )
 
             print(f"🔗 Local Tunnel {service.upper()} started: {tunnel_id}")
 
         else:
             # Agent not found locally
-            await websocket.send(json.dumps({
-                'type': 'error',
-                'message': f'Agent {agent_id} not found on this server'
-            }))
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Agent {agent_id} not found on this server",
+                    }
+                )
+            )
 
     async def forward_tunnel_data(self, message):
         """Forwards TCP tunnel data between client and agent"""
-        tunnel_id = message.get('tunnel_id')
-        origin = message.get('origin', 'client')
+        tunnel_id = message.get("tunnel_id")
+        origin = message.get("origin", "client")
 
         if tunnel_id not in self.tcp_tunnels:
             return
@@ -266,12 +292,12 @@ class MultiProtocolServer:
         tunnel = self.tcp_tunnels[tunnel_id]
 
         try:
-            if origin == 'client':
+            if origin == "client":
                 # Client -> Agent
-                await tunnel['agent_ws'].send(json.dumps(message))
+                await tunnel["agent_ws"].send(json.dumps(message))
             else:
                 # Agent -> Client
-                await tunnel['client_ws'].send(json.dumps(message))
+                await tunnel["client_ws"].send(json.dumps(message))
 
         except Exception as e:
             print(f"❌ Error forwarding tunnel data {tunnel_id}: {e}")
@@ -283,21 +309,21 @@ class MultiProtocolServer:
             tunnel = self.tcp_tunnels[tunnel_id]
 
             # Notify local websockets
-            if 'client_ws' in tunnel:
+            if "client_ws" in tunnel:
                 try:
-                    await tunnel['client_ws'].send(json.dumps({
-                        'type': 'tunnel_closed',
-                        'tunnel_id': tunnel_id
-                    }))
-                except: pass
+                    await tunnel["client_ws"].send(
+                        json.dumps({"type": "tunnel_closed", "tunnel_id": tunnel_id})
+                    )
+                except Exception:
+                    pass
 
-            if 'agent_ws' in tunnel:
+            if "agent_ws" in tunnel:
                 try:
-                    await tunnel['agent_ws'].send(json.dumps({
-                        'type': 'close_tcp_tunnel',
-                        'tunnel_id': tunnel_id
-                    }))
-                except: pass
+                    await tunnel["agent_ws"].send(
+                        json.dumps({"type": "close_tcp_tunnel", "tunnel_id": tunnel_id})
+                    )
+                except Exception:
+                    pass
 
             del self.tcp_tunnels[tunnel_id]
             print(f"🔌 TCP tunnel closed: {tunnel_id}")
@@ -315,16 +341,14 @@ class MultiProtocolServer:
                 print(f"⚠️  Error fetching agents from Redis: {e}")
                 # Fallback to local agents
                 for agent_id, data in self.connected_agents.items():
-                    agents.append(data['data'])
+                    agents.append(data["data"])
         else:
             for agent_id, data in self.connected_agents.items():
-                agents.append(data['data'])
+                agents.append(data["data"])
 
-        await websocket.send(json.dumps({
-            'type': 'agent_list',
-            'agents': agents,
-            'total': len(agents)
-        }))
+        await websocket.send(
+            json.dumps({"type": "agent_list", "agents": agents, "total": len(agents)})
+        )
 
     async def handle_connection(self, websocket):
         """Handles WebSocket connections"""
@@ -335,32 +359,33 @@ class MultiProtocolServer:
             async for message_raw in websocket:
                 try:
                     message = json.loads(message_raw)
-                    msg_type = message.get('type')
+                    msg_type = message.get("type")
 
-                    if msg_type == 'register_agent':
-                        connection_type = 'agent'
-                        agent_id = message.get('agent_id')
+                    if msg_type == "register_agent":
+                        connection_type = "agent"
+                        agent_id = message.get("id")
                         if not await self.register_agent(websocket, message):
                             return
 
-                    elif msg_type == 'connect_client':
-                        connection_type = 'client'
-                        await websocket.send(json.dumps({
-                            'type': 'connection_ok',
-                            'message': 'Client connected'
-                        }))
+                    elif msg_type == "connect_client":
+                        connection_type = "client"
+                        await websocket.send(
+                            json.dumps(
+                                {"type": "connection_ok", "message": "Client connected"}
+                            )
+                        )
 
-                    elif msg_type == 'list_agents':
+                    elif msg_type == "list_agents":
                         await self.list_agents(websocket)
 
-                    elif msg_type == 'start_tcp_tunnel':
+                    elif msg_type == "start_tcp_tunnel":
                         await self.start_tcp_tunnel(websocket, message)
 
-                    elif msg_type == 'tunnel_data':
+                    elif msg_type == "tunnel_data":
                         await self.forward_tunnel_data(message)
 
-                    elif msg_type == 'close_tunnel':
-                        tunnel_id = message.get('tunnel_id')
+                    elif msg_type == "close_tunnel":
+                        tunnel_id = message.get("tunnel_id")
                         await self.close_tcp_tunnel(tunnel_id)
 
                 except json.JSONDecodeError:
@@ -371,7 +396,7 @@ class MultiProtocolServer:
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
-            if connection_type == 'agent' and agent_id:
+            if connection_type == "agent" and agent_id:
                 if agent_id in self.connected_agents:
                     del self.connected_agents[agent_id]
                     self.active_connections -= 1
@@ -381,21 +406,23 @@ class MultiProtocolServer:
                     if self.redis:
                         try:
                             await self.redis.delete(f"agent:{agent_id}")
-                        except:
+                        except Exception:
                             pass
 
                 # Clean up TCP tunnels associated with disconnected agent
                 tunnels_to_close = [
-                    tid for tid, data in self.tcp_tunnels.items()
-                    if data['agent_id'] == agent_id
+                    tid
+                    for tid, data in self.tcp_tunnels.items()
+                    if data["agent_id"] == agent_id
                 ]
                 for tid in tunnels_to_close:
                     await self.close_tcp_tunnel(tid)
-            
+
             # Clean up tunnels where this socket is the client
             tunnels_to_close_client = [
-                tid for tid, data in self.tcp_tunnels.items()
-                if data.get('client_ws') == websocket
+                tid
+                for tid, data in self.tcp_tunnels.items()
+                if data.get("client_ws") == websocket
             ]
             for tid in tunnels_to_close_client:
                 await self.close_tcp_tunnel(tid)
@@ -404,8 +431,10 @@ class MultiProtocolServer:
         """Monitors server statistics and updates Redis TTL"""
         while True:
             await asyncio.sleep(30)
-            print(f"\n📊 Stats: {self.active_connections} agents, "
-                  f"{len(self.tcp_tunnels)} active TCP tunnels")
+            print(
+                f"\n📊 Stats: {self.active_connections} agents, "
+                f"{len(self.tcp_tunnels)} active TCP tunnels"
+            )
 
             # Update Redis TTL for all connected agents
             if self.redis and self.connected_agents:
@@ -428,13 +457,13 @@ class MultiProtocolServer:
 
     async def start(self):
         """Starts the server"""
-        print("="*70)
+        print("=" * 70)
         print("🚀 Multi-Protocol Tunnel Relay Server")
-        print("="*70)
+        print("=" * 70)
         print(f"🔗 Public URL: {self.server_url}")
         print(f"📦 websockets: {websockets.__version__}")
         print(f"📢 Max connections: {self.max_connections}")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         await self._init_redis()
         asyncio.create_task(self.monitor_stats())
@@ -447,18 +476,20 @@ class MultiProtocolServer:
             bound_handler,
             self.host,
             self.port,
-            ping_interval=30,        # Send ping every 30 seconds
-            ping_timeout=60,         # Wait up to 60 seconds for pong
-            close_timeout=10,        # Wait up to 10 seconds for close handshake
-            max_size=10**7,          # 10MB for binary data
+            ping_interval=30,  # Send ping every 30 seconds
+            ping_timeout=60,  # Wait up to 60 seconds for pong
+            close_timeout=10,  # Wait up to 10 seconds for close handshake
+            max_size=10**7,  # 10MB for binary data
             max_queue=100,
-            process_request=self.process_request
+            process_request=self.process_request,
         ):
             await asyncio.Future()
 
-if __name__ == "__main__":
 
-    server = MultiProtocolServer(max_connections=TUNNEL_CONNECTIONS, redis_url=REDIS_URL)
+if __name__ == "__main__":
+    server = MultiProtocolServer(
+        max_connections=TUNNEL_CONNECTIONS, redis_url=REDIS_URL
+    )
 
     try:
         asyncio.run(server.start())

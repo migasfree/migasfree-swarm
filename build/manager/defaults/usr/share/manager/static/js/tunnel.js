@@ -248,18 +248,20 @@ class TunnelClient {
         if (!agents || agents.length === 0 || !container) return;
 
         const html = agents.map(agent => {
-            const services = agent.info?.available_services || [];
-            const project = agent.info?.project || 'Unknown';
+            const services = agent.services || [];
+            // project info was removed in backend refactor, removing unknown display or keep hardcoded?
+            // User removed 'info' dict. So info.project is gone.
+            // I will remove project display from the card.
             return `
-                <div class="agent-card" data-agent-id="${agent.agent_id}">
+                <div class="agent-card" data-agent-id="${agent.id}">
                     <div class="agent-header">
-                        <a href="/computers/results/${agent.agent_id.substring(4)}" class="agent-name-link" target="_blank" title="View Computer">
-                            <span class="agent-name">${agent.hostname}</span>
+                        <a href="/computers/results/${agent.id}" class="agent-name-link" target="_blank" title="View Computer">
+                            <span class="agent-name">${agent.name}</span>
                         </a>
                         <span class="agent-status"></span>
                     </div>
                     <div class="agent-services">
-                        ${project} ${services.map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
+                        ${services.map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
                     </div>
                 </div>
             `;
@@ -283,13 +285,13 @@ class TunnelClient {
     }
 
     showAgentModal(agentId, serviceType = null) {
-        const agent = this.agents.find(a => a.agent_id === agentId);
+        const agent = this.agents.find(a => a.id == agentId);
         if (!agent) return;
 
         this.currentAgent = agent;
 
         // Determine service: use passed type, or default to SSH, or first available
-        const availableServices = (agent.info?.available_services || []).map(s => s.toLowerCase());
+        const availableServices = (agent.services || []).map(s => s.toLowerCase());
 
         if (serviceType && availableServices.includes(serviceType)) {
             this.currentService = serviceType;
@@ -305,14 +307,14 @@ class TunnelClient {
         if (!infoContainer) return;
 
         // Clean hostname (remove [AgentID] suffix if present)
-        const cleanHostname = agent.hostname.split(' [')[0];
+        const cleanHostname = agent.name.split(' [')[0];
 
         // Update Modal Title
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) {
             modalTitle.textContent = serviceType
-                ? `${serviceType.toUpperCase()} to ${agent.agent_id}`
-                : `${agent.agent_id}`;
+                ? `${serviceType.toUpperCase()} to ${agent.id}`
+                : `${agent.id}`;
         }
 
         infoContainer.innerHTML = `
@@ -320,10 +322,7 @@ class TunnelClient {
                 <span class="info-label">Hostname:</span>
                 <span><strong class="hostname-text">${cleanHostname}</strong></span>
             </div>
-             <div class="info-row">
-                <span class="info-label">Project:</span>
-                <span>${agent.info?.project || 'Unknown'}</span>
-            </div>
+             <!-- Project info removed -->
         `;
 
         const modal = document.getElementById('agent-modal');
@@ -414,7 +413,7 @@ class TunnelClient {
         this.closeModal();
 
         const params = new URLSearchParams();
-        params.append('agent', this.currentAgent.agent_id);
+        params.append('agent', this.currentAgent.id);
         params.append('service', this.currentService);
 
         let hashParams = '';
@@ -448,9 +447,9 @@ class TunnelClient {
         console.log(`Auto-connect: Looking for agent ${agentId}`);
 
         for (let i = 0; i < retries; i++) {
-            const agent = this.agents.find(a => a.agent_id === agentId);
+            const agent = this.agents.find(a => a.id == agentId);
             if (agent) {
-                console.log(`✅ Agent found: ${agent.hostname}`);
+                console.log(`✅ Agent found: ${agent.name}`);
                 this.currentAgent = agent;
                 this.currentService = params.get('service') || 'ssh';
                 this.currentAgent = agent;
@@ -486,7 +485,7 @@ class TunnelClient {
     }
 
     async startSession(username) {
-        console.log('Starting session for:', this.currentAgent?.hostname);
+        console.log('Starting session for:', this.currentAgent?.name);
 
         // ✅ Ocultar TODOS los elementos de la UI cuando se conecta
         const welcomeScreen = document.getElementById('welcome-screen');
@@ -506,7 +505,7 @@ class TunnelClient {
         // Update Connection Panel Header
         const agentNameEl = document.getElementById('current-agent-name');
         const serviceEl = document.getElementById('current-service');
-        if (agentNameEl) agentNameEl.textContent = this.currentAgent.hostname;
+        if (agentNameEl) agentNameEl.textContent = this.currentAgent.name;
         if (serviceEl) serviceEl.textContent = this.currentService.toUpperCase();
 
         const termDiv = document.getElementById('terminal');
@@ -532,7 +531,7 @@ class TunnelClient {
     }
 
     async startVNC(username) {
-        document.title = `${this.currentAgent.hostname} - VNC Remote`;
+        document.title = `${this.currentAgent.name} - VNC Remote`;
         const vncDiv = document.getElementById('vnc-container');
         vncDiv.innerHTML = ''; // Clean previous
         vncDiv.classList.add('scaling-active'); // Enable scaling CSS
@@ -542,7 +541,7 @@ class TunnelClient {
         if (vncBtn) vncBtn.style.display = 'inline-flex';
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.agent_id}`;
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.id}`;
         const params = new URLSearchParams();
         params.append('service', 'vnc'); // or this.currentService
         wsUrl += `?${params.toString()}`;
@@ -606,14 +605,14 @@ class TunnelClient {
     }
 
     startRDP(username) {
-        document.title = `${this.currentAgent.hostname} - RDP Info`;
+        document.title = `${this.currentAgent.name} - RDP Info`;
 
         const cmdCode = document.getElementById('rdp-command');
         // Command format: python3 client.py <user> -t rdp -a <agent_id> -m <manager_url>
         // We use window.location.origin for manager url
         const managerUrl = window.location.origin;
         const userPart = username ? ` ${username}` : '';
-        const command = `migasfree-connect -t rdp -a ${this.currentAgent.agent_id} -m ${managerUrl} ${userPart}`;
+        const command = `migasfree-connect -t rdp -a ${this.currentAgent.id} -m ${managerUrl} ${userPart}`;
 
         if (cmdCode) cmdCode.textContent = command;
 
@@ -732,7 +731,7 @@ class TunnelClient {
 
         setTimeout(() => this.term.focus(), 50);
 
-        document.title = `${this.currentAgent.hostname} - Remote Access Console`;
+        document.title = `${this.currentAgent.name} - Remote Access Console`;
 
         this.term.clear();
 
@@ -741,12 +740,12 @@ class TunnelClient {
         if (vncBtn) vncBtn.style.display = 'none';
 
         const connMsg = username ?
-            `→ Connecting to ${username}@${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...` :
-            `→ Connecting to ${this.currentAgent.hostname} (${this.currentService.toUpperCase()})...`;
+            `→ Connecting to ${username}@${this.currentAgent.name} (${this.currentService.toUpperCase()})...` :
+            `→ Connecting to ${this.currentAgent.name} (${this.currentService.toUpperCase()})...`;
         this.term.writeln(`\x1b[1;32m${connMsg}\x1b[0m`);
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.agent_id}`;
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.id}`;
 
         const params = new URLSearchParams();
         params.append('service', this.currentService);
