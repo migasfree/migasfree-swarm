@@ -20,19 +20,19 @@ from core.config import API_VERSION, FQDN
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix=f"{API_VERSION}/private/tunnel", tags=["tunnel"])
+router = APIRouter(prefix=f'{API_VERSION}/private/tunnel', tags=['tunnel'])
 
 # Use os.getenv to avoid crash at import time if not set
-REDIS_URL = os.getenv("REDIS_URL")
+REDIS_URL = os.getenv('REDIS_URL')
 
 # Templates configuration
-templates = Jinja2Templates(directory="/usr/share/manager/templates")
+templates = Jinja2Templates(directory='/usr/share/manager/templates')
 
 
 async def get_redis():
     if not REDIS_URL:
-        logger.error("REDIS_URL environment variable is not set")
-        raise Exception("REDIS_URL not configured")
+        logger.error('REDIS_URL environment variable is not set')
+        raise Exception('REDIS_URL not configured')
     client = redis.from_url(REDIS_URL, decode_responses=True)
     try:
         yield client
@@ -40,38 +40,32 @@ async def get_redis():
         await client.close()
 
 
-@router.get("/console", response_class=HTMLResponse)
+@router.get('/console', response_class=HTMLResponse)
 async def tunnel_console(request: Request):
     """Web-based remote access console"""
-    return templates.TemplateResponse("tunnel.html", {"request": request})
+    return templates.TemplateResponse('tunnel.html', {'request': request})
 
 
 class AgentRegister(BaseModel):
     id: int
     name: str
     services: List[str]
-    mode: Optional[str] = "tcp_tunnel"
+    mode: Optional[str] = 'tcp_tunnel'
 
 
-@router.post("/register")
-async def register_agent(
-    agent: AgentRegister, request: Request, r: redis.Redis = Depends(get_redis)
-):
+@router.post('/register')
+async def register_agent(agent: AgentRegister, request: Request, r: redis.Redis = Depends(get_redis)):
     # Verify Client Certificate CN is in COMPUTERS OU
-    client_cn = request.headers.get("X-SSL-Client-CN", "")
-    if "OU=COMPUTERS" not in client_cn:
-        logger.warning(
-            f"Registration rejected for agent {agent.id}: Invalid CN '{client_cn}'"
-        )
-        raise HTTPException(
-            status_code=403, detail="Forbidden: Invalid Client Certificate"
-        )
+    client_cn = request.headers.get('X-SSL-Client-CN', '')
+    if 'OU=COMPUTERS' not in client_cn:
+        logger.warning(f"Registration rejected for agent {agent.id}: Invalid CN '{client_cn}'")
+        raise HTTPException(status_code=403, detail='Forbidden: Invalid Client Certificate')
 
     # Determine Relay URL
     relay_public = None
     try:
         keys = []
-        async for key in r.scan_iter("tunnel:*"):
+        async for key in r.scan_iter('tunnel:*'):
             keys.append(key)
 
         if keys:
@@ -81,7 +75,7 @@ async def register_agent(
                 if t_json:
                     try:
                         data = json.loads(t_json)
-                        if "url" in data:
+                        if 'url' in data:
                             candidates.append(data)
                     except json.JSONDecodeError:
                         pass
@@ -89,49 +83,47 @@ async def register_agent(
             if candidates:
                 # Select relay with minimum load
                 # We interpret 'load' as active connections
-                candidates.sort(key=lambda x: x.get("load", 0))
+                candidates.sort(key=lambda x: x.get('load', 0))
                 best_relay = candidates[0]
                 # Use public URL - HAProxy will handle load balancing with leastconn
-                relay_public = best_relay.get("url")
+                relay_public = best_relay.get('url')
                 logger.info(
-                    f"Selected best relay: {best_relay.get('hostname')} "
-                    f"(load: {best_relay.get('load', 0)}/{best_relay.get('max_connections', 0)}) "
-                    f"URL: {relay_public}"
+                    f'Selected best relay: {best_relay.get("hostname")} '
+                    f'(load: {best_relay.get("load", 0)}/{best_relay.get("max_connections", 0)}) '
+                    f'URL: {relay_public}'
                 )
 
     except Exception as e:
-        logger.error(f"Error selecting best relay: {e}")
+        logger.error(f'Error selecting best relay: {e}')
 
     # Fallback to default URL if no relay was found in Redis
     if not relay_public:
-        relay_public = f"wss://{FQDN}/tunnel"
-        logger.warning(f"No relay found in Redis, using fallback: {relay_public}")
+        relay_public = f'wss://{FQDN}/tunnel'
+        logger.warning(f'No relay found in Redis, using fallback: {relay_public}')
 
     # Store in Redis
     agent_data = agent.dict()
-    agent_data["relay"] = relay_public
+    agent_data['relay'] = relay_public
     # Add server_ip (Client IP)
     if request.client:
-        agent_data["server_ip"] = request.client.host
+        agent_data['server_ip'] = request.client.host
 
     # Expiration? Maybe agents should send heartbeats.
     # For now, we just set it.
-    await r.set(f"agent:{agent.id}", json.dumps(agent_data))
+    await r.set(f'agent:{agent.id}', json.dumps(agent_data))
 
-    logger.info(f"Agent registered: {agent.id} -> {relay_public}")
+    logger.info(f'Agent registered: {agent.id} -> {relay_public}')
 
-    return {"relay": relay_public}
+    return {'relay': relay_public}
 
 
-async def _list_agents(
-    r: redis.Redis, page: int = 1, limit: int = 2, search: str = None
-) -> Dict:
+async def _list_agents(r: redis.Redis, page: int = 1, limit: int = 2, search: str = None) -> Dict:
     """Lists connected agents from Redis with pagination"""
     try:
         # Get all keys first (keys are small, efficient enough for 100k)
         # For production with >1M agents, a secondary index (Redis Search) is recommended.
         all_keys = []
-        async for key in r.scan_iter("agent:*"):
+        async for key in r.scan_iter('agent:*'):
             all_keys.append(key)
 
         # Filter keys based on search (Not ideal without index, but functional for now)
@@ -166,7 +158,7 @@ async def _list_agents(
                         # Let's stick to simple pagination for performance.
 
                         if search:
-                            if search.lower() in agent_data.get("name", "").lower():
+                            if search.lower() in agent_data.get('name', '').lower():
                                 agents.append(agent_data)
                             # Note: Search + Pagination without Index is hard.
                             # We will fallback to returning the page, and frontend search won't span all pages.
@@ -174,15 +166,15 @@ async def _list_agents(
                             agents.append(agent_data)
 
                     except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to decode agent data: {e}")
+                        logger.warning(f'Failed to decode agent data: {e}')
 
-        return {"agents": agents, "total": total_count, "page": page, "limit": limit}
+        return {'agents': agents, 'total': total_count, 'page': page, 'limit': limit}
     except Exception as e:
-        logger.error(f"Error listing agents: {e}")
-        return {"error": str(e), "agents": [], "total": 0}
+        logger.error(f'Error listing agents: {e}')
+        return {'error': str(e), 'agents': [], 'total': 0}
 
 
-@router.get("/agents", response_model=Dict)
+@router.get('/agents', response_model=Dict)
 async def list_agents_endpoint(
     page: int = 1,
     limit: int = 2,
@@ -190,54 +182,50 @@ async def list_agents_endpoint(
     r: redis.Redis = Depends(get_redis),
 ):
     result = await _list_agents(r, page=page, limit=limit, search=q)
-    if "error" in result:
+    if 'error' in result:
         # Log the error detail
-        logger.error(f"Returning 503 due to error: {result['error']}")
-        raise HTTPException(status_code=503, detail=f"Redis error: {result['error']}")
+        logger.error(f'Returning 503 due to error: {result["error"]}')
+        raise HTTPException(status_code=503, detail=f'Redis error: {result["error"]}')
     return result
 
 
-@router.get("/agents/{agent_id}")
+@router.get('/agents/{agent_id}')
 async def get_agent(agent_id: int, r: redis.Redis = Depends(get_redis)):
     try:
-        data = await r.get(f"agent:{agent_id}")
+        data = await r.get(f'agent:{agent_id}')
         if not data:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+            raise HTTPException(status_code=404, detail=f'Agent {agent_id} not found')
         return json.loads(data)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting agent {agent_id}: {e}")
+        logger.error(f'Error getting agent {agent_id}: {e}')
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/health")
+@router.get('/health')
 async def health_check(r: redis.Redis = Depends(get_redis)):
     try:
         result = await _list_agents(r)
-        redis_ok = "error" not in result
+        redis_ok = 'error' not in result
         return {
-            "status": "healthy" if redis_ok else "degraded",
-            "api": "ok",
-            "redis": "ok" if redis_ok else "error",
-            "connected_agents": len(result.get("agents", [])),
+            'status': 'healthy' if redis_ok else 'degraded',
+            'api': 'ok',
+            'redis': 'ok' if redis_ok else 'error',
+            'connected_agents': len(result.get('agents', [])),
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {"status": "unhealthy", "api": "ok", "redis": "error", "error": str(e)}
+        logger.error(f'Health check failed: {e}')
+        return {'status': 'unhealthy', 'api': 'ok', 'redis': 'error', 'error': str(e)}
 
 
-@router.websocket("/ws/agents/{agent_id}")
-async def service_websocket(
-    websocket: WebSocket, agent_id: int, service: str = "ssh", username: str = None
-):
+@router.websocket('/ws/agents/{agent_id}')
+async def service_websocket(websocket: WebSocket, agent_id: int, service: str = 'ssh', username: str = None):
     """WebSocket endpoint for generic TCP tunneling (SSH/VNC/RDP)"""
     # Verify Client Certificate CN is in ADMINS OU
-    client_dn = websocket.headers.get("X-SSL-Client-CN", "")
-    if "OU=ADMINS" not in client_dn:
-        logger.warning(
-            f"WebConsole access rejected for {agent_id}: Invalid CN '{client_dn}'"
-        )
+    client_dn = websocket.headers.get('X-SSL-Client-CN', '')
+    if 'OU=ADMINS' not in client_dn:
+        logger.warning(f"WebConsole access rejected for {agent_id}: Invalid CN '{client_dn}'")
         # 1008 = Policy Violation
         await websocket.close(code=1008)
         return
@@ -245,18 +233,18 @@ async def service_websocket(
     # Extract just the CN value for logging/display
     import re
 
-    match = re.search(r"CN=([^/,]+)", client_dn)
+    match = re.search(r'CN=([^/,]+)', client_dn)
     client_cn = match.group(1).strip() if match else client_dn
 
     await websocket.accept()
 
-    if service not in ["ssh", "vnc", "rdp"]:
-        await websocket.send_json({"error": f"Service {service} not supported"})
+    if service not in ['ssh', 'vnc', 'rdp', 'exec']:
+        await websocket.send_json({'error': f'Service {service} not supported'})
         await websocket.close()
         return
 
-    if service == "ssh" and not username:
-        username = "root"  # Default username
+    if service == 'ssh' and not username:
+        username = 'root'  # Default username
 
     ssh_process = None
     local_server = None
@@ -266,79 +254,73 @@ async def service_websocket(
         try:
             client = redis.from_url(REDIS_URL, decode_responses=True)
             try:
-                agent_json = await client.get(f"agent:{agent_id}")
+                agent_json = await client.get(f'agent:{agent_id}')
             finally:
                 await client.close()
         except Exception as e:
-            logger.error(f"WS: Redis connection failed: {e}")
-            await websocket.send_json({"error": "Internal Service Error (Redis)"})
+            logger.error(f'WS: Redis connection failed: {e}')
+            await websocket.send_json({'error': 'Internal Service Error (Redis)'})
             await websocket.close()
             return
 
         if not agent_json:
-            await websocket.send_json({"error": "Agent not found"})
+            await websocket.send_json({'error': 'Agent not found'})
             await websocket.close()
             return
 
         agent_data = json.loads(agent_json)
-        hostname = agent_data.get("name", "unknown")
+        hostname = agent_data.get('name', 'unknown')
 
         # Get server info for tunnel
-        server_ip = agent_data.get("server_ip")
+        server_ip = agent_data.get('server_ip')
         # Compatibility with old agents? No, refactoring everything.
-        server_url = agent_data.get("relay")
+        server_url = agent_data.get('relay')
 
         target_url = None
         if server_ip:
-            target_url = f"ws://{server_ip}:8080"
+            target_url = f'ws://{server_ip}:8080'
         elif server_url:
             target_url = server_url
 
         if not target_url:
-            await websocket.send_json(
-                {"error": "Agent has no server_url/ip registered"}
-            )
+            await websocket.send_json({'error': 'Agent has no server_url/ip registered'})
             await websocket.close()
             return
 
         logger.info(
-            f"Web Console ({service.upper()}): {username if username else 'N/A'}@{hostname} (agent: {agent_id})"
+            f'Web Console ({service.upper()}): {username if username else "N/A"}@{hostname} (agent: {agent_id})'
         )
-        logger.info(f"Attempting to connect to relay at: {target_url}")
+        logger.info(f'Attempting to connect to relay at: {target_url}')
 
         # 2. Connect to tunnel relay
-        async with websockets.connect(
-            target_url, open_timeout=10, ping_interval=None
-        ) as ws_server:
-            logger.info(f"Successfully connected to relay: {target_url}")
+        async with websockets.connect(target_url, open_timeout=10, ping_interval=None) as ws_server:
+            logger.info(f'Successfully connected to relay: {target_url}')
 
             # Identify as client
-            await ws_server.send(json.dumps({"type": "connect_client"}))
+            await ws_server.send(json.dumps({'type': 'connect_client'}))
             resp_ident = await ws_server.recv()
-            logger.debug(f"Relay identification response: {resp_ident}")
+            logger.debug(f'Relay identification response: {resp_ident}')
 
             # Start TCP tunnel
-            tunnel_id = f"web-{uuid.uuid4()}"
+            tunnel_id = f'web-{uuid.uuid4()}'
             await ws_server.send(
                 json.dumps(
                     {
-                        "type": "start_tcp_tunnel",
-                        "id": agent_id,
-                        "tunnel_id": tunnel_id,
-                        "service": service,
-                        "client_cn": client_cn,
+                        'type': 'start_tcp_tunnel',
+                        'id': agent_id,
+                        'tunnel_id': tunnel_id,
+                        'service': service,
+                        'client_cn': client_cn,
                     }
                 )
             )
 
             resp = json.loads(await ws_server.recv())
-            if resp.get("type") != "tunnel_started":
-                await websocket.send_json(
-                    {"error": resp.get("message", "Failed to start tunnel")}
-                )
+            if resp.get('type') != 'tunnel_started':
+                await websocket.send_json({'error': resp.get('message', 'Failed to start tunnel')})
                 return
 
-            if service == "ssh":
+            if service == 'ssh':
                 # --- SSH SPECIFIC LOGIC (PTY + Local Proxy) ---
 
                 # ... (Existing SSH logic here, reusing local_server and ssh_process vars) ...
@@ -354,12 +336,12 @@ async def service_websocket(
                 # Create a local TCP server on random port
                 local_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 local_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                local_sock.bind(("127.0.0.1", 0))
+                local_sock.bind(('127.0.0.1', 0))
                 local_sock.listen(1)
                 local_port = local_sock.getsockname()[1]
                 local_server = local_sock  # Keep ref for cleanup
 
-                logger.info(f"Local SSH proxy listening on port {local_port}")
+                logger.info(f'Local SSH proxy listening on port {local_port}')
 
                 master_fd, slave_fd = pty.openpty()
 
@@ -370,27 +352,27 @@ async def service_websocket(
                         pass
 
                 ssh_cmd = [
-                    "ssh",
-                    "-tt",
-                    "-o",
-                    "StrictHostKeyChecking=no",
-                    "-o",
-                    "UserKnownHostsFile=/dev/null",
-                    "-o",
-                    "PreferredAuthentications=password,keyboard-interactive,publickey",
-                    "-o",
-                    "ServerAliveInterval=30",
-                    "-o",
-                    "ServerAliveCountMax=3",
-                    "-p",
+                    'ssh',
+                    '-tt',
+                    '-o',
+                    'StrictHostKeyChecking=no',
+                    '-o',
+                    'UserKnownHostsFile=/dev/null',
+                    '-o',
+                    'PreferredAuthentications=password,keyboard-interactive,publickey',
+                    '-o',
+                    'ServerAliveInterval=30',
+                    '-o',
+                    'ServerAliveCountMax=3',
+                    '-p',
                     str(local_port),
-                    f"{username}@127.0.0.1",
+                    f'{username}@127.0.0.1',
                 ]
 
                 ssh_env = os.environ.copy()
-                ssh_env["TERM"] = "xterm-256color"
-                ssh_env["LANG"] = "C.UTF-8"
-                ssh_env["LC_ALL"] = "C.UTF-8"
+                ssh_env['TERM'] = 'xterm-256color'
+                ssh_env['LANG'] = 'C.UTF-8'
+                ssh_env['LC_ALL'] = 'C.UTF-8'
 
                 ssh_process = subprocess.Popen(
                     ssh_cmd,
@@ -406,9 +388,7 @@ async def service_websocket(
                 os.close(slave_fd)
                 fcntl.fcntl(master_fd, fcntl.F_SETFL, os.O_NONBLOCK)
 
-                await websocket.send_json(
-                    {"status": "connected", "tunnel_id": tunnel_id}
-                )
+                await websocket.send_json({'status': 'connected', 'tunnel_id': tunnel_id})
 
                 async def accept_and_bridge():
                     loop = asyncio.get_event_loop()
@@ -423,9 +403,9 @@ async def service_websocket(
                                 await ws_server.send(
                                     json.dumps(
                                         {
-                                            "type": "tunnel_data",
-                                            "tunnel_id": tunnel_id,
-                                            "data": data.hex(),
+                                            'type': 'tunnel_data',
+                                            'tunnel_id': tunnel_id,
+                                            'data': data.hex(),
                                         }
                                     )
                                 )
@@ -441,10 +421,10 @@ async def service_websocket(
                         try:
                             async for msg in ws_server:
                                 msg_json = json.loads(msg)
-                                if msg_json.get("type") == "tunnel_data":
-                                    data = bytes.fromhex(msg_json.get("data", ""))
+                                if msg_json.get('type') == 'tunnel_data':
+                                    data = bytes.fromhex(msg_json.get('data', ''))
                                     await loop.sock_sendall(client_sock, data)
-                                elif msg_json.get("type") == "tunnel_closed":
+                                elif msg_json.get('type') == 'tunnel_closed':
                                     break
                         except Exception:
                             pass
@@ -454,9 +434,7 @@ async def service_websocket(
                             except Exception:
                                 pass
 
-                    await asyncio.gather(
-                        local_to_tunnel(), tunnel_to_local(), return_exceptions=True
-                    )
+                    await asyncio.gather(local_to_tunnel(), tunnel_to_local(), return_exceptions=True)
 
                 async def pty_to_browser():
                     loop = asyncio.get_event_loop()
@@ -478,9 +456,7 @@ async def service_websocket(
                             data = await queue.get()
                             if data is None:
                                 break
-                            await websocket.send_json(
-                                {"type": "data", "data": data.hex()}
-                            )
+                            await websocket.send_json({'type': 'data', 'data': data.hex()})
                     except Exception:
                         pass
                     finally:
@@ -490,12 +466,12 @@ async def service_websocket(
                     try:
                         while ssh_process.poll() is None:
                             data = await websocket.receive_json()
-                            if data.get("type") == "resize":
+                            if data.get('type') == 'resize':
                                 try:
                                     winsize = struct.pack(
-                                        "HHHH",
-                                        data.get("rows", 24),
-                                        data.get("cols", 80),
+                                        'HHHH',
+                                        data.get('rows', 24),
+                                        data.get('cols', 80),
                                         0,
                                         0,
                                     )
@@ -504,7 +480,7 @@ async def service_websocket(
                                     pass
                                 continue
 
-                            hex_data = data.get("data")
+                            hex_data = data.get('data')
                             if hex_data:
                                 try:
                                     os.write(master_fd, bytes.fromhex(hex_data))
@@ -525,14 +501,80 @@ async def service_websocket(
                 for task in pending:
                     task.cancel()
 
+            elif service == 'exec':
+                # --- REMOTE COMMAND EXECUTION ---
+                # Uses relay's existing command execution protocol
+                # Browser side sends execute_command with command text
+                # Agent responds with exec_output/exec_complete/exec_error
+
+                await websocket.send_json({'status': 'connected', 'service': 'exec'})
+
+                async def browser_to_agent():
+                    """Forward execute_command from browser to relay/agent"""
+                    try:
+                        while True:
+                            message = await websocket.receive_json()
+                            if message.get('type') == 'execute_command':
+                                # Generate exec_id and forward to relay
+                                exec_id = f'web-{uuid.uuid4()}'
+                                await ws_server.send(
+                                    json.dumps(
+                                        {
+                                            'type': 'execute_command',
+                                            'id': agent_id,
+                                            'exec_id': exec_id,
+                                            'command': message.get('command'),
+                                            'client_cn': client_cn,
+                                        }
+                                    )
+                                )
+                    except Exception as e:
+                        logger.debug(f'Browser to agent error: {e}')
+
+                async def agent_to_browser():
+                    """Forward command output/results from relay/agent to browser"""
+                    try:
+                        async for msg in ws_server:
+                            try:
+                                msg_json = json.loads(msg)
+                                msg_type = msg_json.get('type')
+
+                                # Forward execution messages to browser
+                                if msg_type in ['exec_started', 'exec_output', 'exec_complete', 'exec_error']:
+                                    # Map exec_output to output for frontend compatibility
+                                    if msg_type == 'exec_output':
+                                        await websocket.send_json({'type': 'output', 'data': msg_json.get('data', '')})
+                                    elif msg_type == 'exec_complete':
+                                        await websocket.send_json(
+                                            {
+                                                'type': 'command_complete',
+                                            }
+                                        )
+                                    elif msg_type == 'exec_error':
+                                        await websocket.send_json(
+                                            {'type': 'command_error', 'error': msg_json.get('error', 'Unknown error')}
+                                        )
+                                    # Just log exec_started, don't forward to browser
+
+                            except Exception as e:
+                                logger.warning(f'Error forwarding to browser: {e}')
+                    except Exception as e:
+                        logger.debug(f'Agent to browser error: {e}')
+
+                # Run exec tasks
+                t_up = asyncio.create_task(browser_to_agent())
+                t_down = asyncio.create_task(agent_to_browser())
+
+                done, pending = await asyncio.wait([t_up, t_down], return_when=asyncio.FIRST_COMPLETED)
+                for task in pending:
+                    task.cancel()
+
             else:
                 # --- GENERIC TCP PROXY (VNC/RDP) ---
                 # Direct bridge: Browser (Binary/JSON) <-> Relay (JSON with hex)
 
                 # Notify client connected
-                await websocket.send_json(
-                    {"status": "connected", "tunnel_id": tunnel_id}
-                )
+                await websocket.send_json({'status': 'connected', 'tunnel_id': tunnel_id})
 
                 async def browser_to_tunnel():
                     """Browser WebSocket -> Tunnel Relay"""
@@ -544,18 +586,18 @@ async def service_websocket(
 
                             data_to_send = None
 
-                            if "bytes" in message:
-                                data = message["bytes"]
+                            if 'bytes' in message:
+                                data = message['bytes']
                                 if data:
                                     data_to_send = data.hex()
 
-                            elif "text" in message:
+                            elif 'text' in message:
                                 # Sometimes clients might send JSON control messages
                                 try:
-                                    text_data = message["text"]
+                                    text_data = message['text']
                                     json_data = json.loads(text_data)
-                                    if "data" in json_data:
-                                        data_to_send = json_data["data"]  # Already hex?
+                                    if 'data' in json_data:
+                                        data_to_send = json_data['data']  # Already hex?
                                 except Exception:
                                     pass
 
@@ -563,15 +605,15 @@ async def service_websocket(
                                 await ws_server.send(
                                     json.dumps(
                                         {
-                                            "type": "tunnel_data",
-                                            "tunnel_id": tunnel_id,
-                                            "data": data_to_send,
+                                            'type': 'tunnel_data',
+                                            'tunnel_id': tunnel_id,
+                                            'data': data_to_send,
                                         }
                                     )
                                 )
 
                     except Exception as e:
-                        logger.debug(f"Browser to tunnel error: {e}")
+                        logger.debug(f'Browser to tunnel error: {e}')
 
                 async def tunnel_to_browser():
                     """Tunnel Relay -> Browser WebSocket"""
@@ -579,32 +621,30 @@ async def service_websocket(
                         async for msg in ws_server:
                             try:
                                 msg_json = json.loads(msg)
-                                if msg_json.get("type") == "tunnel_data":
-                                    hex_data = msg_json.get("data", "")
+                                if msg_json.get('type') == 'tunnel_data':
+                                    hex_data = msg_json.get('data', '')
                                     if hex_data:
                                         data = bytes.fromhex(hex_data)
                                         await websocket.send_bytes(data)
-                                elif msg_json.get("type") == "tunnel_closed":
+                                elif msg_json.get('type') == 'tunnel_closed':
                                     break
                             except Exception as e:
-                                logger.warning(f"Error forwarding to browser: {e}")
+                                logger.warning(f'Error forwarding to browser: {e}')
                     except Exception as e:
-                        logger.debug(f"Tunnel to browser error: {e}")
+                        logger.debug(f'Tunnel to browser error: {e}')
 
                 # Run VNC tasks
                 t_up = asyncio.create_task(browser_to_tunnel())
                 t_down = asyncio.create_task(tunnel_to_browser())
 
-                done, pending = await asyncio.wait(
-                    [t_up, t_down], return_when=asyncio.FIRST_COMPLETED
-                )
+                done, pending = await asyncio.wait([t_up, t_down], return_when=asyncio.FIRST_COMPLETED)
                 for task in pending:
                     task.cancel()
 
     except Exception as e:
-        logger.error(f"Service WebSocket error: {e}", exc_info=True)
+        logger.error(f'Service WebSocket error: {e}', exc_info=True)
         try:
-            await websocket.send_json({"error": str(e)})
+            await websocket.send_json({'error': str(e)})
         except Exception:
             pass
     finally:
@@ -624,4 +664,4 @@ async def service_websocket(
             await websocket.close()
         except Exception:
             pass
-        logger.info(f"Session ended: {username if username else service}@{hostname}")
+        logger.info(f'Session ended: {username if username else service}@{hostname}')

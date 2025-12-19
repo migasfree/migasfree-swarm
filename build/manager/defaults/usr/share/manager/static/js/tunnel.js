@@ -70,7 +70,8 @@ class TunnelClient {
                 brightCyan: '#29b8db',
                 brightWhite: '#e5e5e5'
             },
-            allowProposedApi: true
+            allowProposedApi: true,
+            convertEol: true
         });
 
         this.fitAddon = new FitAddon.FitAddon();
@@ -261,7 +262,8 @@ class TunnelClient {
                         <span class="agent-status"></span>
                     </div>
                     <div class="agent-services">
-                        ${services.map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
+                        ${services.filter(s => s.toLowerCase() !== 'sync').map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
+                        <span class="service-tag" data-service="sync">SYNC</span>
                     </div>
                 </div>
             `;
@@ -293,7 +295,7 @@ class TunnelClient {
         // Determine service: use passed type, or default to SSH, or first available
         const availableServices = (agent.services || []).map(s => s.toLowerCase());
 
-        if (serviceType && availableServices.includes(serviceType)) {
+        if (serviceType && (availableServices.includes(serviceType) || serviceType === 'sync')) {
             this.currentService = serviceType;
         } else if (availableServices.includes('ssh')) {
             this.currentService = 'ssh';
@@ -375,6 +377,7 @@ class TunnelClient {
                 }
                 if (hint) hint.classList.add('hidden');
             } else {
+                // Hide input for sync and other services
                 usernameInput.classList.add('hidden');
             }
         }
@@ -522,6 +525,11 @@ class TunnelClient {
             if (vncDiv) vncDiv.classList.add('hidden');
             if (rdpDiv) rdpDiv.classList.remove('hidden');
             this.startRDP(username);
+        } else if (this.currentService === 'sync') {
+            if (termDiv) termDiv.classList.remove('hidden');
+            if (vncDiv) vncDiv.classList.add('hidden');
+            if (rdpDiv) rdpDiv.classList.add('hidden');
+            this.startSync();
         } else {
             if (termDiv) termDiv.classList.remove('hidden');
             if (vncDiv) vncDiv.classList.add('hidden');
@@ -773,6 +781,86 @@ class TunnelClient {
                             const text = new TextDecoder("utf-8").decode(bytes);
                             this.term.write(text);
                         }
+                    } else if (message.status === 'closed') {
+                        this.term.writeln('\r\n\x1b[1;33m✗ Connection closed by remote host\x1b[0m');
+                        this.disconnect();
+                    } else if (message.error) {
+                        this.term.writeln(`\r\n\x1b[1;31m✗ Error: ${message.error}\x1b[0m`);
+                    }
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.term.writeln('\r\n\x1b[1;31m✗ Connection error\x1b[0m');
+                this.updateConnectionStatus(false);
+            };
+
+            this.ws.onclose = () => {
+                this.term.writeln('\r\n\x1b[1;33m✗ Disconnected\x1b[0m');
+                this.updateConnectionStatus(false);
+            };
+
+        } catch (error) {
+            console.error('Connection error:', error);
+            this.term.writeln(`\r\n\x1b[1;31m✗ Failed to connect: ${error.message}\x1b[0m`);
+            this.updateConnectionStatus(false);
+        }
+    }
+
+    async startSync() {
+        setTimeout(() => this.term.focus(), 50);
+
+        document.title = `${this.currentAgent.name} - Migasfree Sync`;
+
+        this.term.clear();
+
+        // Hide VNC Menu Button
+        const vncBtn = document.getElementById('btn-vnc-menu');
+        if (vncBtn) vncBtn.style.display = 'none';
+
+        const connMsg = `→ Executing 'migasfree sync' on ${this.currentAgent.name}...`;
+        this.term.writeln(`\x1b[1;32m${connMsg}\x1b[0m`);
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let wsUrl = `${protocol}//${window.location.host}/manager/v1/private/tunnel/ws/agents/${this.currentAgent.id}`;
+
+        const params = new URLSearchParams();
+        params.append('service', 'exec');
+        wsUrl += `?${params.toString()}`;
+
+        try {
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+                this.term.writeln('\x1b[1;32m✓ Connected!\x1b[0m');
+                this.term.writeln('');
+                this.updateConnectionStatus(true);
+
+                // Send command execution request
+                this.ws.send(JSON.stringify({
+                    type: 'execute_command',
+                    command: 'migasfree sync'
+                }));
+            };
+
+            this.ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+
+                    if (message.type === 'output') {
+                        // Command output (stdout/stderr)
+                        this.term.write(message.data);
+                    } else if (message.type === 'command_complete') {
+                        // Command finished successfully
+                        this.term.writeln('\r\n\x1b[1;32m✓ Command completed successfully\x1b[0m');
+                        setTimeout(() => this.disconnect(), 2000);
+                    } else if (message.type === 'command_error') {
+                        // Command failed
+                        this.term.writeln(`\r\n\x1b[1;31m✗ Command failed: ${message.error}\x1b[0m`);
+                        setTimeout(() => this.disconnect(), 2000);
                     } else if (message.status === 'closed') {
                         this.term.writeln('\r\n\x1b[1;33m✗ Connection closed by remote host\x1b[0m');
                         this.disconnect();
