@@ -3,16 +3,17 @@
 # main.py - Multi-protocol Server (SSH, VNC, RDP, etc.)
 
 import asyncio
-import websockets
-from websockets.http11 import Response, Headers
 import json
-import redis.asyncio as redis
+import logging
 import os
 import resource
-import uuid
 import socket
-import logging
+import uuid
 from urllib.parse import urlparse
+
+import redis.asyncio as redis
+import websockets
+from websockets.http11 import Headers, Response
 
 
 class IgnoreHandshakeErrorFilter(logging.Filter):
@@ -65,6 +66,7 @@ class MultiProtocolServer:
         self.redis = None
         self.connected_agents = {}
         self.tcp_tunnels = {}
+        self.exec_sessions = {}  # Track which client initiated which exec_id
         self.active_connections = 0
 
         # Public URL (through HAProxy) for clients
@@ -328,6 +330,86 @@ class MultiProtocolServer:
             del self.tcp_tunnels[tunnel_id]
             print(f"🔌 TCP tunnel closed: {tunnel_id}")
 
+    async def execute_remote_command(self, websocket, message):
+        """Executes a command on a remote agent."""
+        agent_id = message.get("id")
+        exec_id = message.get("exec_id")
+        command = message.get("command")
+        client_cn = message.get("client_cn")
+
+        if agent_id in self.connected_agents:
+            # Local agent - forward command execution request
+            agent_ws = self.connected_agents[agent_id]["websocket"]
+            await agent_ws.send(
+                json.dumps(
+                    {
+                        "type": "execute_command",
+                        "exec_id": exec_id,
+                        "command": command,
+                        "client_cn": client_cn,
+                    }
+                )
+            )
+
+            # Confirm to client
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "exec_started",
+                        "exec_id": exec_id,
+                        "id": agent_id,
+                        "command": command,
+                    }
+                )
+            )
+
+            # Track this exec session so we can route messages back to the client
+            self.exec_sessions[exec_id] = {
+                "client_ws": websocket,
+                "agent_id": agent_id,
+            }
+
+            print(f"🔧 Executing command on agent {agent_id}: {command}")
+
+        else:
+            # Agent not found locally
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "exec_error",
+                        "exec_id": exec_id,
+                        "error": f"Agent {agent_id} not found on this server",
+                    }
+                )
+            )
+
+    async def forward_exec_message(self, message):
+        """Forwards execution output/completion/error messages from agent to client."""
+        exec_id = message.get("exec_id")
+        msg_type = message.get("type")
+
+        if exec_id not in self.exec_sessions:
+            # Session not found or already cleaned up
+            return
+
+        session = self.exec_sessions[exec_id]
+        client_ws = session["client_ws"]
+
+        try:
+            # Forward message to the client that initiated this execution
+            await client_ws.send(json.dumps(message))
+
+            # Clean up session if execution is complete or errored
+            if msg_type in ["exec_complete", "exec_error"]:
+                del self.exec_sessions[exec_id]
+                print(f"✅ Exec session closed: {exec_id}")
+
+        except Exception as e:
+            print(f"❌ Error forwarding exec message: {e}")
+            # Clean up on error
+            if exec_id in self.exec_sessions:
+                del self.exec_sessions[exec_id]
+
     async def list_agents(self, websocket):
         """Lists available agents from Redis (global view)"""
         agents = []
@@ -388,6 +470,12 @@ class MultiProtocolServer:
                         tunnel_id = message.get("tunnel_id")
                         await self.close_tcp_tunnel(tunnel_id)
 
+                    elif msg_type == "execute_command":
+                        await self.execute_remote_command(websocket, message)
+
+                    elif msg_type in ["exec_output", "exec_complete", "exec_error"]:
+                        await self.forward_exec_message(message)
+
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
@@ -432,8 +520,7 @@ class MultiProtocolServer:
         while True:
             await asyncio.sleep(30)
             print(
-                f"\n📊 Stats: {self.active_connections} agents, "
-                f"{len(self.tcp_tunnels)} active TCP tunnels"
+                f"\n📊 Stats: {self.active_connections} agents, {len(self.tcp_tunnels)} active TCP tunnels"
             )
 
             # Update Redis TTL for all connected agents
