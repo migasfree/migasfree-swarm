@@ -10,12 +10,14 @@ from core.config import (
     STACK,
     CORE_TOKEN_URL,
     CORE_AUTH_URL,
-    CORE_USER_URL
+    CORE_USER_URL,
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{ROOT_PATH}{API_VERSION}/private/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{ROOT_PATH}{API_VERSION}/private/auth/login"
+)
 
-TOKEN = ""
+TOKEN = None
 
 
 def get_token_user(username: str, password: str):
@@ -23,7 +25,9 @@ def get_token_user(username: str, password: str):
     headers = {"Content-Type": "application/json"}
     response = httpx.post(CORE_AUTH_URL, json=data, headers=headers)
     if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=response.status_code, detail="Invalid credentials"
+        )
     tokens = response.json()
     token = tokens.get("token")
     if not token:
@@ -32,25 +36,37 @@ def get_token_user(username: str, password: str):
 
 
 def get_token_superuser():
-    with open(f'/run/secrets/{STACK}_superadmin_name', 'r') as f:
+    with open(f"/run/secrets/{STACK}_superadmin_name", "r") as f:
         SUPERADMIN_NAME = f.read()
-    with open(f'/run/secrets/{STACK}_superadmin_pass', 'r') as f:
+    with open(f"/run/secrets/{STACK}_superadmin_pass", "r") as f:
         SUPERADMIN_PASS = f.read()
     return get_token_user(SUPERADMIN_NAME, SUPERADMIN_PASS)
+
+
+def get_cached_token():
+    global TOKEN
+    if TOKEN is None:
+        TOKEN = get_token_superuser()
+    return TOKEN
 
 
 async def get_current_superuser(token: str = Depends(oauth2_scheme)):
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            CORE_USER_URL,
-            headers={"Authorization": f"Token {token}"}
+            CORE_USER_URL, headers={"Authorization": f"Token {token}"}
         )
     if response.status_code != 200:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or unauthenticated user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or unauthenticated user",
+        )
 
     user_data = response.json()
     if not user_data.get("is_superuser", False):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superuser privileges required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superuser privileges required",
+        )
 
     return user_data
 
@@ -58,21 +74,28 @@ async def get_current_superuser(token: str = Depends(oauth2_scheme)):
 async def get_core_user(token: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            CORE_USER_URL,
-            headers={"Authorization": f"Token {token}"}
+            CORE_USER_URL, headers={"Authorization": f"Token {token}"}
         )
     if response.status_code != 200:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or unauthenticated user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or unauthenticated user",
+        )
     user_data = response.json()
     return user_data
 
 
 async def get_project_info(name: str = None):
-    headers = {"accept": "application/json", "Authorization": f"Token {TOKEN}"}
+    token = get_cached_token()
+    headers = {"accept": "application/json", "Authorization": f"Token {token}"}
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{CORE_TOKEN_URL}/projects/", headers=headers, follow_redirects=False)
+        response = await client.get(
+            f"{CORE_TOKEN_URL}/projects/", headers=headers, follow_redirects=False
+        )
     if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Error fetching projects")
+        raise HTTPException(
+            status_code=response.status_code, detail="Error fetching projects"
+        )
     data = response.json()
     projects = data.get("results", [])
     project = None
@@ -89,18 +112,26 @@ async def get_project_info(name: str = None):
 
 
 async def get_groups_info():
-    headers = {"accept": "application/json", "Authorization": f"Token {TOKEN}"}
+    token = get_cached_token()
+    headers = {"accept": "application/json", "Authorization": f"Token {token}"}
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{CORE_TOKEN_URL}/accounts/groups/", headers=headers, follow_redirects=False)
+        response = await client.get(
+            f"{CORE_TOKEN_URL}/accounts/groups/",
+            headers=headers,
+            follow_redirects=False,
+        )
     if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Error fetching groups")
+        raise HTTPException(
+            status_code=response.status_code, detail="Error fetching groups"
+        )
     data = response.json()
     groups = data.get("results", [])
     return groups
 
 
-
-def group_has_permission(groups: list, group_name: str, permission_codename: str) -> bool:
+def group_has_permission(
+    groups: list, group_name: str, permission_codename: str
+) -> bool:
     """
     Check if a specific group has a given permission.
 
@@ -121,6 +152,7 @@ def group_has_permission(groups: list, group_name: str, permission_codename: str
     # Check if the permission exists in the group's permissions
     permissions = group.get("permissions", [])
     return any(perm.get("codename") == permission_codename for perm in permissions)
+
 
 async def user_has_permission(user_data: dict, codename: str) -> bool:
     """
@@ -161,9 +193,7 @@ async def user_has_permission(user_data: dict, codename: str) -> bool:
             return True
     # Find the group by name
     groups = await get_groups_info()
-    for group in user_data.get("groups",[]):
+    for group in user_data.get("groups", []):
         if group_has_permission(groups, group["name"], codename):
             return True
     return False
-
-TOKEN = get_token_superuser()
