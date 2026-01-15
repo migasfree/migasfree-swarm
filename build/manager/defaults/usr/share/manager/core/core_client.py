@@ -1,8 +1,6 @@
-import asyncio
-
 import httpx
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 from core.config import (
     ROOT_PATH,
