@@ -26,6 +26,7 @@ services:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
         networks:
+            - {{STACK}}_network
             - infra_network
 
     proxy:
