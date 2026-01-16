@@ -249,9 +249,13 @@ frontend http
     acl url_no_mTLS_post  path_beg /api/v1/public/
     acl url_no_mTLS_get   path_beg /api/public/
     acl url_no_mTLS_get   path_beg /rest-auth/
+    acl url_no_mTLS_post  path_beg /rest-auth/
     acl url_no_mTLS_get   path_beg /token-auth-jwt/
+    acl url_no_mTLS_post  path_beg /token-auth-jwt/
     acl url_no_mTLS_get   path_beg /token-auth/
+    acl url_no_mTLS_post  path_beg /token-auth/
     acl url_no_mTLS_get   path_beg /token-refresh/
+    acl url_no_mTLS_post  path_beg /token-refresh/
     acl url_no_mTLS_get   path     /favicon.ico
     acl url_no_mTLS_get   path     /  # Checks if it is active
     
