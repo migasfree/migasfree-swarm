@@ -146,7 +146,8 @@ function migrate {
 
 function apply_fixtures {
     send_message "applying fixtures to database"
-    python3 - << EOF
+    su -c "DJANGO_SETTINGS_MODULE=migasfree.settings.production django-admin initialize_db --skip-fixtures" www-data
+    python3 - <<EOF
 import django
 django.setup()
 
