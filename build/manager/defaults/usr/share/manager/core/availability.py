@@ -6,9 +6,6 @@ import requests
 import urllib3
 import os
 
-# Disable warning for self-signed certs just in case, though we use http internal
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 import asyncio
 import msgpack
 import websockets
@@ -25,6 +22,9 @@ from core.config import (
 )
 from core.database import get_db_connection
 from core.redis import get_redis_connection
+
+# Disable warning for self-signed certs just in case, though we use http internal
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
