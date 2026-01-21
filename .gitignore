@@ -45,4 +45,6 @@ build/worker_console/defaults/usr/bin/send_message
 build/pms-apk/defaults/usr/bin/send_message
 build/tunnel/defaults/usr/bin/send_message
 build/core/migasfree-backend
+build/manager/defaults/usr/share/manager/__pycache__
 build/manager/defaults/usr/share/manager/*/__pycache__
+
