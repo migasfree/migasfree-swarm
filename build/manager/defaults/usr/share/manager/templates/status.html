@@ -27,7 +27,7 @@
 
     .info-panel {
       display: grid;
-      grid-template-columns: repeat(3, auto);
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
       gap: 20px;
       background: white;
@@ -43,12 +43,16 @@
       font-size: 1.5em;
     }
 
+    #organization {
+      font-weight: bold;
+    }
+
     #stack {
       text-align: center;
     }
 
     #tag {
-      text-align: right;
+      text-align: left;
     }
 
     .info-panel h2 {
@@ -250,6 +254,12 @@
     <p class="info-text" id="organization" title="Organization"></p>
     <p class="info-text" id="stack"></p>
     <p class="info-text" id="tag" title="Tag"></p>
+    <div style="display: flex; gap: 10px;">
+      <a id="pool_emoji_link" href="/pool/" target="_blank" style="text-decoration:none; font-size: 1.5em;"
+        title="Pool">📂</a>
+      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" target="_blank"
+        style="text-decoration:none; font-size: 1.5em;" title="Metrics Dashboard">📊</a>
+    </div>
   </div>
 
   <!-- SVG Section -->
@@ -320,6 +330,7 @@
         </a>
         <text x="4" y="2">console</text>
       </g>
+
 
       <g id="tunnel-node" transform="translate(150, 74)">
         <image class="icon" href="/manager/static/img/remote-session.svg" x="2" y="-12" />
@@ -546,6 +557,8 @@
         dom.logsContent = document.getElementById('logs-content');
         dom.logsContainer = document.getElementById('logs-container');
         dom.toggleIcon = document.getElementById('toggle-icon');
+        dom.poolEmoji = document.getElementById('pool_emoji_link');
+        dom.metricsEmoji = document.getElementById('metrics_emoji_link');
 
         // Cache all service nodes
         CONFIG.serviceList.forEach(elementId => {
@@ -608,7 +621,6 @@
         if (publicLink) {
           publicLink.style.cursor = 'pointer';
           publicLink.addEventListener('click', () => {
-            window.open(`https://${host}/pool/`, '_blank');
             window.open(`https://${host}/public/`, '_blank');
           });
         }
@@ -676,6 +688,14 @@
           console.debug(`${serviceName} shouldShow: ${shouldShow}`)
           link.style.display = shouldShow ? 'block' : 'none';
           console.debug('dom.link:', link);
+        }
+
+        if (serviceName === 'public' && dom.poolEmoji) {
+          // Logic removed
+        }
+
+        if (serviceName === 'manager' && dom.metricsEmoji) {
+          // Logic removed
         }
 
         state.serviceStates[serviceName] = statusInfo;
