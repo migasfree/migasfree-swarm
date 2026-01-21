@@ -12,6 +12,19 @@ services:
             - HTTPSMODE={{HTTPSMODE}}
             - GOOGLE_API_KEY={{GOOGLE_API_KEY}}
             - PMS_ENABLED={{PMS_ENABLED}}
+            - POSTGRES_USER={{POSTGRES_USER}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - REDIS_HOST={{REDIS_HOST}}
+            - REDIS_PORT={{REDIS_PORT}}
+            - REDIS_DB={{REDIS_DB}}
+            - SYNC_MAX_DB_LATENCY={{SYNC_MAX_DB_LATENCY}}
+            - SYNC_MAX_CORE_LOAD={{SYNC_MAX_CORE_LOAD}}
+            - SYNC_QUEUE_PROCESS_INTERVAL={{SYNC_QUEUE_PROCESS_INTERVAL}}
+            - SYNC_MAX_CONCURRENCY={{SYNC_MAX_CONCURRENCY}}
+            - METRICS_RECORDING_INTERVAL={{METRICS_RECORDING_INTERVAL}}
+            - METRICS_RETENTION_LIMIT={{METRICS_RETENTION_LIMIT}}
         deploy:
             replicas: 1
             restart_policy:
