@@ -4,17 +4,17 @@ import importlib.util
 
 from pathlib import Path
 
-_PATH = '/stack'
-_FILE_CLUSTER_VARS = os.path.join(_PATH, 'env.py')
+_PATH = "/stack"
+_FILE_CLUSTER_VARS = os.path.join(_PATH, "env.py")
 
 
 def get_stacks():
     # SHARED DATA
-    base = Path('/mnt/cluster')
-    (base / 'datashares').mkdir(parents=True, exist_ok=True)
-    (base / 'portainer').mkdir(parents=True, exist_ok=True)
+    base = Path("/mnt/cluster")
+    (base / "datashares").mkdir(parents=True, exist_ok=True)
+    (base / "portainer").mkdir(parents=True, exist_ok=True)
 
-    path = base / 'datashares'
+    path = base / "datashares"
 
     return [d.name for d in Path(path).iterdir() if d.is_dir()]
 
@@ -53,7 +53,9 @@ class ContextLoader:
             self.context[name] = input(f"{name} ({default}): ") or default
         else:
             while True:
-                answer = input(f"{name} ({' | '.join(options)}) [{default}]: ") or default
+                answer = (
+                    input(f"{name} ({' | '.join(options)}) [{default}]: ") or default
+                )
                 if answer in options:
                     self.context[name] = answer
                     break
@@ -66,7 +68,7 @@ class ContextLoader:
     def load(self):
         path = Path(_FILE_CLUSTER_VARS)
         if not path.exists():
-            path.write_text('')
+            path.write_text("")
 
         self.module = import_source_file(path)
 
@@ -92,8 +94,8 @@ class ContextLoader:
         self.save()
 
     def load_stack(self, stacks=""):
-        self.context['STACK'] = os.getenv('STACK', '')
-        if not self.context['STACK']:
+        self.context["STACK"] = os.getenv("STACK", "")
+        if not self.context["STACK"]:
             self.prompt("STACK", stacks)
 
         _PATH_STACK = f"/mnt/cluster/datashares/{self.context['STACK']}"
@@ -136,8 +138,7 @@ class ContextLoader:
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
-        self.default("POSTGRESQL_CONF","work_mem=32MB")
-
+        self.default("POSTGRESQL_CONF", "work_mem=32MB")
 
         # Redis (datastore)
         # =================
@@ -151,10 +152,14 @@ class ContextLoader:
         self.default("PMS_ENABLED", "pms-apt,pms-yum")
 
         for key in [
-            "REPLICAS_console", "REPLICAS_core", "REPLICAS_public",
-            "REPLICAS_worker", "REPLICAS_database_console",
-            "REPLICAS_datastore_console", "REPLICAS_worker_console",
-            "REPLICAS_tunnel"
+            "REPLICAS_console",
+            "REPLICAS_core",
+            "REPLICAS_public",
+            "REPLICAS_worker",
+            "REPLICAS_database_console",
+            "REPLICAS_datastore_console",
+            "REPLICAS_worker_console",
+            "REPLICAS_tunnel",
         ]:
             self.default(key, "1")
 
@@ -162,21 +167,28 @@ class ContextLoader:
         # ======
         self.default("TUNNEL_CONNECTIONS", "50000")
 
-
         # BACKUP
         # ======
         self.default("BACKUP_CRON", "00 00 * * *")
+
+        # SYNC SATURATION STRATEGY
+        # ========================
+        self.default("SYNC_MAX_DB_LATENCY", "0.1")
+        self.default("SYNC_MAX_CORE_LOAD", "90")
+        self.default("SYNC_QUEUE_PROCESS_INTERVAL", "30")
+        self.default("SYNC_MAX_CONCURRENCY", "50")
+        self.default("METRICS_RECORDING_INTERVAL", "15")
+        self.default("METRICS_RETENTION_LIMIT", "14400")
 
         # ASSISTANT
         # =========
         self.default("GOOGLE_API_KEY", "")
         self.default("OLLAMA_BASE_URL", "")
 
-
         self.save_stack()
 
     def comment(self, key):
-        line = '-' * 120
+        line = "-" * 120
 
         comments = {
             "DATASHARE_FS": f"""# {line}
@@ -237,7 +249,6 @@ class ContextLoader:
 #     Port where the Swarm cluster serves HTTPS.
 # {line}
 """,
-
             "PORT_DATABASE": f"""# {line}
 # PORT_DATABASE
 #     Port used to expose PostgreSQL externally.
@@ -246,7 +257,6 @@ class ContextLoader:
 #     Default value: ''  # Port not exposed
 # {line}
 """,
-
             "HTTPSMODE": f"""# {line}
 # HTTPSMODE
 #     Sets the mode in which certificates are generated for the FQDN and its subdomains.
@@ -255,7 +265,6 @@ class ContextLoader:
 #     In auto mode, certificates are issued using the ACME HTTP-01 challenge provided by Let's Encrypt.
 # {line}
 """,
-
             "MTLS": f"""# {line}
 # MTLS
 #     This variable controls whether client certificate authentication is required in browsers
@@ -269,8 +278,6 @@ class ContextLoader:
 #         ./migasfree-swarm url-admin-certificate
 # {line}
 """,
-
-
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST
 #    Domain name or IP address of the PostgreSQL database server.
@@ -280,7 +287,6 @@ class ContextLoader:
 #    This ensures the service uses the internal Swarm network for better security.
 # {line}
 """,
-
             "POSTGRESQL_CONF": f"""# {line}
 # POSTGRESQL_CONF
 #    The POSTGRESQL_CONF variable should be configured as a pipe-separated list of
@@ -296,7 +302,6 @@ class ContextLoader:
 #    POSTGRES_CONF='work_mem=64MB|max_connections=100'
 # {line}
 """,
-
             "REDIS_HOST": f"""# {line}
 # REDIS_HOST
 #    Domain name or IP address of the Redis database server.
@@ -304,7 +309,6 @@ class ContextLoader:
 #    this variable should be set to 'datastore'.
 # {line}
 """,
-
             "PMS_ENABLED": f"""# {line}
 # PMS_ENABLED
 #     Enabled Package Management Systems. They allow working with deb, rpm, etc.
@@ -312,35 +316,30 @@ class ContextLoader:
 #     The default value is 'pms-apt,pms-yum'
 # {line}
 """,
-
             "REPLICAS_console": f"""# {line}
 # REPLICAS_console
 #     Sets the number of Migasfree administrative console instances that will run when deploying the stack.
 #     The default value is '1'
 # {line}
 """,
-
             "REPLICAS_core": f"""# {line}
 # REPLICAS_core
 #     Sets the number of Migasfree core instances that will run when deploying the stack.
 #     The default value is '1'
 # {line}
 """,
-
             "REPLICAS_public": f"""# {line}
 # REPLICAS_public
 #     Sets the number of public instances that will run when deploying the stack.
 #     The default value is '1'
 # {line}
 """,
-
             "REPLICAS_worker": f"""# {line}
 # REPLICAS_worker
 #     Sets the number worker instances that will run when deploying the stack.
 #     The default value is '1'
 # {line}
 """,
-
             "REPLICAS_database_console": f"""# {line}
 # REPLICAS_database_console
 #     Sets the number database_console instances that will run when deploying the stack.
@@ -348,7 +347,6 @@ class ContextLoader:
 #     Set 0 for production
 # {line}
 """,
-
             "REPLICAS_datastore_console": f"""# {line}
 # REPLICAS_datastore_console
 #     Sets the number datastore_console instances that will run when deploying the stack.
@@ -356,7 +354,6 @@ class ContextLoader:
 #     Set 0 for production
 # {line}
 """,
-
             "REPLICAS_worker_console": f"""# {line}
 # REPLICAS_worker_console
 #     Sets the number worker_console instances that will run when deploying the stack.
@@ -364,14 +361,12 @@ class ContextLoader:
 #     Set 0 for production
 # {line}
 """,
-
             "REPLICAS_tunnel": f"""# {line}
 # REPLICAS_tunnel
 #     Sets the number tunnel nodes instances that will run when deploying the stack.
 #     The default value is '1'
 # {line}
 """,
-
             "TUNNEL_CONNECTIONS": f"""# {line}
 # TUNNEL_CONNECTIONS
 #     Maximum number of concurrent connections for the Multi-Protocol Tunnel Relay Server
@@ -380,7 +375,6 @@ class ContextLoader:
 #     Recommended: 10000-65000 for production with ulimit nofile=524288
 # {line}
 """,
-
             "BACKUP_CRON": f"""# {line}
 # BACKUP_CRON
 #    Scheduling PostgreSQL and Redis Database Dumps.
@@ -388,14 +382,48 @@ class ContextLoader:
 #    By default, every day at midnight (12:00 AM): '00 00 * * *'
 # {line}
 """,
-
+            "SYNC_MAX_DB_LATENCY": f"""# {line}
+# SYNC_MAX_DB_LATENCY
+#    Max DB latency (seconds) to consider server saturated.
+#    Default: 0.1
+# {line}
+""",
+            "SYNC_MAX_CORE_LOAD": f"""# {line}
+# SYNC_MAX_CORE_LOAD
+#    Max CPU load (%) to consider server saturated.
+#    Default: 90
+# {line}
+""",
+            "SYNC_QUEUE_PROCESS_INTERVAL": f"""# {line}
+# SYNC_QUEUE_PROCESS_INTERVAL
+#    Interval (seconds) to process sync queue.
+#    Default: 30
+# {line}
+""",
+            "SYNC_MAX_CONCURRENCY": f"""# {line}
+# SYNC_MAX_CONCURRENCY
+#    Max number of concurrent syncs processed from queue.
+#    Default: 50
+# {line}
+""",
+            "METRICS_RECORDING_INTERVAL": f"""# {line}
+# METRICS_RECORDING_INTERVAL
+#    Interval (seconds) to record server metrics.
+#    Default: 15
+# {line}
+""",
+            "METRICS_RETENTION_LIMIT": f"""# {line}
+# METRICS_RETENTION_LIMIT
+#    Duration (seconds) to keep metrics history.
+#    Default: 14400 (4 hours)
+# {line}
+""",
             "GOOGLE_API_KEY": f"""# {line}
 # GOOGLE_API_KEY
 #    Obtain a Google API Key to access Gemini and utilize the 'migasfree assistant'.
 #    Visit https://aistudio.google.com/app/apikey to get yours.
 # {line}
 """,
-
             "OLLAMA_BASE_URL": f"""# {line}
 # OLLAMA_BASE_URL
 #     The base URL of the Ollama server that the assistant migasfree (Open-WebUI application) connects
@@ -421,7 +449,7 @@ class ContextLoader:
         for k, v in self.context.items():
             lines.append(f"{self.comment(k)}{k}='{v}'\n\n")
 
-        return ''.join(lines)
+        return "".join(lines)
 
     def save(self):
         with open(_FILE_CLUSTER_VARS, "w") as f:
