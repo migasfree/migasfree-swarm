@@ -39,9 +39,14 @@ RUN apt update && \
 RUN apt-get install -y swig
 
 RUN cd / && \
-    . /venv/bin/activate && \
-    git clone https://github.com/migasfree/migasfree-backend && \
-    cd /migasfree-backend && \
+    . /venv/bin/activate
+
+
+RUN git clone https://github.com/migasfree/migasfree-backend 
+# COPY  migasfree-backend /migasfree-backend 
+
+
+RUN cd /migasfree-backend && \
     git checkout $(cat /VERSION)
 
 RUN  cd / && \
