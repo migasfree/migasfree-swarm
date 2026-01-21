@@ -2,6 +2,7 @@
 
 MIGASFREE_SECRET_DIR='/var/run/secrets'
 export REDIS_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
+export POSTGRES_PASSWORD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
 
 set -e
 
