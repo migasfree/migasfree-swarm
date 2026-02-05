@@ -37,37 +37,6 @@ function wait {
     exit 1
 }
 
-function default_pms_pass {
-    local IS_DEFAULT
-    local TOKEN_DEFAULT
-    local NEW_PASSWORD
-
-    IS_DEFAULT=$(
-        curl -w "%{http_code}" --insecure -o /var/tmp/token_pms \
-            -H "Content-Type: application/json" -X POST \
-            --data '{"username":"pms","password":"pms"}' \
-            http://${MIGASFREE_FQDN}/token-auth/ 2> /dev/null
-    )
-    if [ "${IS_DEFAULT}" = "200" ]
-    then
-        # Change password to user pms
-        TOKEN_DEFAULT=$(awk -F "\"" '{print $4}' /var/tmp/token_pms)
-        NEW_PASSWORD=$(cat "/run/secrets/${STACK}_pms_pass")
-        curl --insecure -X POST -H "Content-Type: application/json" \
-            -H "Authorization: Token ${TOKEN_DEFAULT}" \
-            -d '{"new_password1": "'${NEW_PASSWORD}'","new_password2":"'${NEW_PASSWORD}'"}' \
-            http://${MIGASFREE_FQDN}/rest-auth/password/change/
-    fi
-    rm /var/tmp/token_pms
-}
-
-function save_token_pms {
-    default_pms_pass
-    curl --insecure -H "Content-Type: application/json" -X POST \
-        --data '{"username":"pms","password":"'$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_pms_pass)'"}' \
-        http://${MIGASFREE_FQDN}/token-auth/ \
-        2>/dev/null | awk -F "\"" '{print $4}' > ${MIGASFREE_SECRET_DIR}/token_pms
-}
 
 set_TZ
 . /venv/bin/activate
@@ -119,7 +88,6 @@ echo "
 
 "
 
-save_token_pms
 cd /pms
 
 # CELERY CONFIG
