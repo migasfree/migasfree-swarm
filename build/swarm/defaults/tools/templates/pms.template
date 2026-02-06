@@ -23,7 +23,6 @@
         depends_on:
             - core
         secrets:
-            - source: {{STACK}}_pms_pass
             - source: {{STACK}}_superadmin_pass
         volumes:
             - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:/mnt/datashare

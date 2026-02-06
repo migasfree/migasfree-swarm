@@ -173,7 +173,6 @@ function local2nfs {
                     docker volume rm ${STACK}_datastore
 
                     # Delete secrets
-                    docker secret rm ${STACK}_pms_pass
                     docker secret rm ${STACK}_superadmin_name
                     docker secret rm ${STACK}_superadmin_pass
                     docker secret rm swarm-credential

@@ -80,7 +80,7 @@ services:
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
-            - source: {{STACK}}_pms_pass
+
             - source: swarm-credential
 
         volumes:
@@ -633,8 +633,7 @@ secrets:
         external: true
     {{STACK}}_superadmin_pass:
         external: true
-    {{STACK}}_pms_pass:
-        external: true
+
 
 
 volumes:
