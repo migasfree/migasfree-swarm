@@ -72,7 +72,6 @@ init_datashare() {
     mkdir -p ${_ROOT}/consoles/datashare || :
     mkdir -p ${_ROOT}/consoles/datastore || :
     mkdir -p ${_ROOT}/consoles/database || :
-    mkdir -p ${_ROOT}/consoles/assistant || :
 
     # plugins
     mkdir -p ${_ROOT}/plugins || :
@@ -163,7 +162,6 @@ if ! [ -f ${_DATABASE} ]
 then
     su user -c "/bin/filebrowser config init --branding.name datashare"
     su user -c "/bin/filebrowser users add $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name) $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass) --perm.admin"
-    su user -c "/bin/filebrowser users add assistant assistant --scope /consoles/assistant/ --lockPassword --perm.download --perm.share"
 fi
 
 send_message ""

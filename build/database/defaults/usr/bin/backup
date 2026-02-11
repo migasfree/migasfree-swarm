@@ -4,7 +4,6 @@ _LOG=/var/log/backup
 
 {
     _PATH=${DATASHARE_MOUNT_PATH}/dump
-    _PATH_ASSISTANT=${DATASHARE_MOUNT_PATH}/consoles/assistant
 
     DUMP_SCHEMA="migasfree-schema.txt"
     DUMP_FILE="${1:-migasfree.sql}"
@@ -14,17 +13,6 @@ _LOG=/var/log/backup
     export PGPASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
     echo "Time zone: $TZ"
 
-    # SCHEMA FOR ASSISTANT AI
-    $(/usr/bin/which pg_dump) --schema-only \
-        --no-owner \
-        --no-acl \
-        -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" "$POSTGRES_DB" \
-        -U "$POSTGRES_USER" > "$_PATH_ASSISTANT/$DUMP_SCHEMA"
-    sed -i '/^$/d;/^--/d;/^SET /d;/^CREATE INDEX /d;/^SELECT /d;/^CREATE EXTENSION /d;/^ALTER SEQUENCE /d; /\/\*/,/\*\//d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
-    sed -i '/ALTER TABLE .* IDENTITY (/,/);/d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
-    sed -i '/CREATE SEQUENCE /,/CACHE 1;/d' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
-    sed -i "/ALTER TABLE ONLY .* ALTER COLUMN .* SET DEFAULT/d" "$_PATH_ASSISTANT/$DUMP_SCHEMA"
-    sed -i '/^ALTER TABLE ONLY/{N;/\n.*UNIQUE/d}' "$_PATH_ASSISTANT/$DUMP_SCHEMA"
 
     # DUMP DATABASE
     echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."

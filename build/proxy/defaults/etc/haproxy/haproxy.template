@@ -97,6 +97,7 @@ frontend http
     http-request redirect location /manager/v1/private/status code 301 if status_path
 
     acl network_mng src {{NETWORK_MNG}}
+    acl network_mcp src {{NETWORK_MCP}}
 
     http-request set-header X-Forwarded-For %[src]
 
@@ -112,7 +113,7 @@ frontend http
 
     # CORS (for error pages)
 #    http-request lua.cors "GET,POST,PUT" "ws://{{FQDN}},http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}}" "*"
-    http-request lua.cors "GET,POST,PUT,PATCH,DELETE,OPTIONS" "http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},https://assistant-{{FQDN}},http://localhost:*" "*"
+    http-request lua.cors "GET,POST,PUT,PATCH,DELETE,OPTIONS" "http://{{FQDN}},https://{{FQDN}},https://database-{{FQDN}},https://datastore-{{FQDN}},https://datashare-{{FQDN}},https://worker-{{FQDN}},https://portainer-{{FQDN}},http://localhost:*" "*"
     http-response lua.cors
 
 
@@ -196,6 +197,10 @@ frontend http
     acl is_GET method GET
     acl is_POST method POST
     acl is_PATCH method PATCH
+    acl is_DELETE method DELETE
+    acl is_HEAD method HEAD
+
+    acl url_mcp path_beg /mcp/
 
 
     # external sources
@@ -209,7 +214,6 @@ frontend http
         acl url_datastore_console hdr(host) -i datastore-{{FQDN}}
         acl url_database_console hdr(host) -i database-{{FQDN}}
         acl url_worker_console  hdr(host) -i worker-{{FQDN}}
-        acl url_assistant hdr(host) -i assistant-{{FQDN}}
         acl url_portainer_console  hdr(host) -i portainer-{{FQDN}}
     {% else %}
         acl is_fqdn hdr_reg(host) -i ^{{FQDN}}(:{{PORT_HTTPS}})?$
@@ -217,7 +221,6 @@ frontend http
         acl url_datastore_console hdr_reg(host) -i ^datastore-{{FQDN}}(:{{PORT_HTTPS}})?$
         acl url_database_console hdr_reg(host) -i ^database-{{FQDN}}(:{{PORT_HTTPS}})?$
         acl url_worker_console  hdr_reg(host) -i ^worker-{{FQDN}}(:{{PORT_HTTPS}})?$
-        acl url_assistant hdr_reg(host) -i ^assistant-{{FQDN}}(:{{PORT_HTTPS}})?$
         acl url_portainer_console hdr_reg(host) -i ^portainer-{{FQDN}}(:{{PORT_HTTPS}})?$
     {% endif %}
 
@@ -239,6 +242,10 @@ frontend http
     acl url_no_mTLS_get   path_beg /manager/static/
     acl url_no_mTLS_get   path_beg /manager/v1/public/
     acl url_no_mTLS_post  path_beg /manager/v1/public/
+    acl url_no_mTLS_get   path_beg /mcp/
+    acl url_no_mTLS_post  path_beg /mcp/
+    acl url_no_mTLS_delete path_beg /mcp/
+    acl url_no_mTLS_head   path_beg /mcp/
 
     acl url_no_mTLS_get   path_beg /manager/static/
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
@@ -293,6 +300,8 @@ frontend http
     http-request allow if is_GET   url_no_mTLS_get
     http-request allow if is_POST  url_no_mTLS_post
     http-request allow if is_PATCH url_no_mTLS_patch
+    http-request allow if is_DELETE url_no_mTLS_delete
+    http-request allow if is_HEAD   url_no_mTLS_head
 
     # 3. Enforce Certificate Presence (for anything not Public)
     http-request deny deny_status 403 if !client_cert_present
@@ -325,6 +334,7 @@ frontend http
     use_backend tunnel if url_tunnel hdr_connection_upgrade hdr_upgrade_websocket
 
     use_backend manager if network_mng url_manager
+    use_backend mcp if network_mcp url_mcp
 
 {% if certbot %}
     use_backend mf_certbot if certbot
@@ -333,7 +343,6 @@ frontend http
     use_backend database_console if network_mng url_database_console
     use_backend datashare_console if network_mng url_datashare_console
     use_backend worker_console if network_mng url_worker_console
-    use_backend assistant if network_mng url_assistant
 
     use_backend portainer_console if network_mng url_portainer_console
     use_backend mf_console if network_mng url_root or url_empty
@@ -422,11 +431,6 @@ backend worker_console  # Celery Flower
         server-template worker_console- 1 tasks.worker_console:5555 resolvers docker check init-addr none
 
 
-backend assistant
-    mode http
-    balance leastconn
-        server-template assistant- 1 tasks.assistant:8080 resolvers docker check init-addr none
-
 
 backend manager
     mode http
@@ -458,3 +462,11 @@ backend tunnel
 
 backend per_ip_and_url_rates
     stick-table type binary len 8 size 1m expire 10m store http_req_rate(10s)
+
+
+backend mcp
+    mode http
+    option http-no-delay
+    balance leastconn
+    timeout server 1h
+        server-template mcp- 1 tasks.mcp-server:8080 resolvers docker check init-addr none

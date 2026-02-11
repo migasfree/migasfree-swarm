@@ -13,7 +13,7 @@ do
     echo "● Stack ${STACK}:"
 
     echo
-    echo "    ● database_console & assistant:"
+    echo "    ● database_console:"
     echo
     docker exec -ti "${CONTAINER_PROXY_ID}" sh -c "echo -n '        '; cat /var/run/secrets/${STACK}_superadmin_name; echo -n @${FQDN} ;echo -n ' '; cat /var/run/secrets/${STACK}_superadmin_pass; echo"
 

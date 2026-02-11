@@ -117,6 +117,7 @@ class ContextLoader:
         # Network Management
         # ==================
         self.default("NETWORK_MNG", "0.0.0.0/0")
+        self.default("NETWORK_MCP", "127.0.0.1")
 
         # Exposed Ports
         # =============
@@ -180,11 +181,6 @@ class ContextLoader:
         self.default("METRICS_RECORDING_INTERVAL", "15")
         self.default("METRICS_RETENTION_LIMIT", "14400")
 
-        # ASSISTANT
-        # =========
-        self.default("GOOGLE_API_KEY", "")
-        self.default("OLLAMA_BASE_URL", "")
-
         self.save_stack()
 
     def comment(self, key):
@@ -237,6 +233,14 @@ class ContextLoader:
 #     Default value: 0.0.0.0/0
 #     You can add multiple IPs or networks separated by spaces
 #     Example: '172.0.0.10/32 172.0.1/24'
+# {line}
+""",
+            "NETWORK_MCP": f"""# {line}
+# NETWORK_MCP
+#     Networks or hosts that are permitted to access the MCP server.
+#     Default value: 127.0.0.1 (local access only)
+#     You can add multiple IPs or networks separated by spaces.
+#     Set to 0.0.0.0/0 to allow access from anywhere (not recommended without other security).
 # {line}
 """,
             "PORT_HTTP": f"""# {line}
@@ -416,20 +420,6 @@ class ContextLoader:
 # METRICS_RETENTION_LIMIT
 #    Duration (seconds) to keep metrics history.
 #    Default: 14400 (4 hours)
-# {line}
-""",
-            "GOOGLE_API_KEY": f"""# {line}
-# GOOGLE_API_KEY
-#    Obtain a Google API Key to access Gemini and utilize the 'migasfree assistant'.
-#    Visit https://aistudio.google.com/app/apikey to get yours.
-# {line}
-""",
-            "OLLAMA_BASE_URL": f"""# {line}
-# OLLAMA_BASE_URL
-#     The base URL of the Ollama server that the assistant migasfree (Open-WebUI application) connects
-#     to in order to interact with local LLM (Large Language Model) models. This URL typically points
-#     to the location where Ollama is running, such as http://172.0.0.10:11434.
-#     The default value is ''
 # {line}
 """,
         }
