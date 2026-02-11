@@ -4,8 +4,7 @@ ARG TAG=latest
 
 LABEL maintainer="alberto@migasfree.org"
 LABEL description="MCP server for Migasfree"
-LABEL version="1.0.0"
-
+LABEL version="1.2.0"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -13,10 +12,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DEBIAN_FRONTEND=noninteractive \
     MCP_PORT=8080 \
-    MCP_HOST=0.0.0.0 \
-    LOG_LEVEL=INFO \
-    HF_HOME=/app/model_cache \
-    XDG_CACHE_HOME=/app/model_cache
+    MCP_HOST=0.0.0.0
 
 WORKDIR /app
 
@@ -27,17 +23,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && \
     groupadd -r -g 890 mcpuser && useradd -r -u 890 -g mcpuser mcpuser && \
-    pip install torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir -r requirements.txt && \
-    mkdir -p /app/model_cache && \
-    chown -R mcpuser:mcpuser /app/model_cache
-
+    pip install --no-cache-dir -r requirements.txt
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/app /app
 COPY defaults/usr/bin /usr/bin
 
-RUN chown -R mcpuser:mcpuser /app && \
+RUN mkdir -p /app/docs && \
+    chown -R mcpuser:mcpuser /app && \
     echo "mcpuser ALL=(ALL) NOPASSWD: /usr/sbin/update-ca-certificates" >> /etc/sudoers
 
 USER mcpuser

@@ -1,16 +1,20 @@
-import json
 import os
+import re
+import logging
 import psycopg2
-
+import psycopg2.pool
 from psycopg2.extras import DictCursor
-
 from resources import read_file
-from settings import CORPUS_PATH_DATABASE, RESUME_FILE_DATABASE
+
+logger = logging.getLogger("migasfree-mcp")
 
 
 def get_secret_pass():
-    stack = os.environ['STACK']
-    return read_file(f'/run/secrets/{stack}_superadmin_pass')
+    stack = os.environ.get("STACK", "migasfree")
+    secret_path = f"/run/secrets/{stack}_superadmin_pass"
+    if os.path.exists(secret_path):
+        return read_file(secret_path).strip()
+    return os.getenv("POSTGRES_PASSWORD", "migasfree")
 
 
 DB_CONFIG = {
@@ -18,273 +22,185 @@ DB_CONFIG = {
     "port": int(os.getenv("POSTGRES_PORT", "5432")),
     "database": os.getenv("POSTGRES_DB", "migasfree"),
     "user": os.getenv("POSTGRES_USER", "migasfree"),
-    "password": get_secret_pass()
+    "password": get_secret_pass(),
 }
 
-_conn = None
+# Connection pool: min 1, max 10 connections
+_pool = None
 
 
-def get_tables_catalog():
-    return read_file(RESUME_FILE_DATABASE)
-
-
-def get_table_schema(name):
-    return read_file(f"{CORPUS_PATH_DATABASE}/{name}.json")
+def _get_pool():
+    global _pool
+    if _pool is None or _pool.closed:
+        try:
+            _pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=10,
+                **DB_CONFIG,
+            )
+            logger.info("Database connection pool created")
+        except Exception as e:
+            logger.error(f"Error creating connection pool: {e}")
+            _pool = None
+            raise
+    return _pool
 
 
 def get_connection():
-    global _conn
-    if _conn is None or _conn.closed:
-        try:
-            _conn = psycopg2.connect(**DB_CONFIG)
-            _conn.autocommit = False
-        except Exception as e:
-            print(f"Error establishing database connection: {e}")
-            _conn = None
-            raise
-
-    return _conn
-
-
-def validate_sql(statement):
-    data = run_sql_select_query(f"EXPLAIN {statement}")
-    if isinstance(data, dict) and "ERROR" in data:
-        return {"valid": False, "message": f"{data}"}
-
-    return {"valid": True, "message": ""}
-
-
-def simplify_type_with_length(pg_type: str, type_mod: int) -> str:
-    """Simplifica tipos de PostgreSQL incluyendo longitud cuando es relevante"""
-
-    # Calcular longitud real desde type_modifier
-    length = None
-    if type_mod and type_mod > 0:
-        if pg_type in ['varchar', 'bpchar', 'char']:
-            length = type_mod - 4  # PostgreSQL añade 4 al valor real
-        elif pg_type == 'numeric':
-            # Para numeric: ((precision << 16) | scale) + 4
-            precision = ((type_mod - 4) >> 16) & 0xffff
-            scale = (type_mod - 4) & 0xffff
-            if precision > 0:
-                length = f"{precision},{scale}" if scale > 0 else str(precision)
-
-    # Mapeo de tipos con longitud
-    type_mapping = {
-        'int4': 'int',
-        'int8': 'bigint',
-        'varchar': f'varchar({length})' if length else 'varchar',
-        'bpchar': f'char({length})' if length else 'char',
-        'char': f'char({length})' if length else 'char',
-        'text': 'text',
-        'bool': 'boolean',
-        'timestamp': 'datetime',
-        'timestamptz': 'datetime',
-        'date': 'date',
-        'numeric': f'decimal({length})' if length else 'decimal',
-        'float4': 'float',
-        'float8': 'float',
-        'uuid': 'uuid'
-    }
-
-    return type_mapping.get(pg_type, pg_type)
-
-
-def run_sql_select_query(query: str,) -> str:
-    query_upper = query.upper().strip()
-
-    if not query_upper:
-        raise Exception("ERROR: SELECT empty")
-    if not (query_upper.startswith("SELECT") or query_upper.startswith("EXPLAIN") or query_upper.startswith("```SQL\nSELECT")):
-        raise Exception("ERROR: Only SELECT SQL is allowed")
-    if any(k in query_upper for k in ["DROP ", "DELETE ", "UPDATE ", "INSERT ", "ALTER ", "CREATE ", "TRUNCATE "]):
-        raise Exception("ERROR: Only SELECT SQL is allowed")
-
+    """Get a connection from the pool."""
+    pool = _get_pool()
+    conn = pool.getconn()
     try:
-        conn = get_connection()
+        # Ensure clean state: rollback any pending transaction, then set autocommit
+        conn.rollback()
+        conn.autocommit = True
+        # Test if connection is alive
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+    except (psycopg2.OperationalError, psycopg2.InterfaceError):
+        # Connection is dead, close and get a fresh one
+        logger.warning("Stale DB connection detected, reconnecting...")
+        try:
+            pool.putconn(conn, close=True)
+        except Exception:
+            pass
+        conn = pool.getconn()
+        conn.autocommit = True
+    return conn
+
+
+def release_connection(conn):
+    """Return a connection to the pool."""
+    try:
+        pool = _get_pool()
+        pool.putconn(conn)
+    except Exception:
+        logger.debug("Error returning connection to pool")
+
+
+# Regex to detect multiple statements (semicolons outside of strings)
+_MULTI_STATEMENT_RE = re.compile(
+    r""";\s*(?=(?:[^']*'[^']*')*[^']*$)""",
+    re.DOTALL,
+)
+
+# Forbidden keywords pattern (word boundaries, case-insensitive)
+_FORBIDDEN_KEYWORDS = re.compile(
+    r"\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|EXECUTE|COPY|"
+    r"SET\s+ROLE|SET\s+SESSION|DO\s+\$|CALL|PERFORM)\b",
+    re.IGNORECASE,
+)
+
+# Strip SQL comments
+_SQL_COMMENT_RE = re.compile(
+    r"(--[^\n]*|/\*.*?\*/)",
+    re.DOTALL,
+)
+
+
+def _validate_sql(query: str) -> None:
+    """Validate that a SQL query is a safe SELECT/EXPLAIN statement."""
+    # Remove comments to prevent comment-based bypasses
+    clean_query = _SQL_COMMENT_RE.sub(" ", query).strip()
+
+    if not clean_query:
+        raise ValueError("Empty query")
+
+    # Must start with SELECT or EXPLAIN
+    first_word = clean_query.split()[0].upper()
+    if first_word not in ("SELECT", "EXPLAIN", "WITH"):
+        raise ValueError("Only SELECT, EXPLAIN, and WITH (CTE) queries are allowed")
+
+    # Check for multiple statements
+    statements = [
+        s.strip() for s in _MULTI_STATEMENT_RE.split(clean_query) if s.strip()
+    ]
+    if len(statements) > 1:
+        raise ValueError("Multiple SQL statements are not allowed")
+
+    # Check for forbidden keywords
+    match = _FORBIDDEN_KEYWORDS.search(clean_query)
+    if match:
+        raise ValueError(f"Forbidden keyword: {match.group(0)}")
+
+
+def run_sql_select_query(query: str) -> list:
+    """Execute a validated SELECT query and return results as a list of dicts."""
+    _validate_sql(query)
+
+    conn = get_connection()
+    try:
         with conn.cursor(cursor_factory=DictCursor) as cur:
             cur.execute(query)
             rows = cur.fetchall()
-        return rows
-
+            return [dict(r) for r in rows]
     except Exception as e:
-        if conn:
-            try:
-                conn.rollback()
-            except Exception as rollback_e:
-                print(f"Error during rollback in run_sql_select_query: {rollback_e}")
-                global _conn
-                if _conn:
-                    _conn.close()
-                    _conn = None
-
         return {"ERROR": str(e)}
+    finally:
+        release_connection(conn)
 
 
-def tables_catalog() -> str:
-    query = """  SELECT
-        t.table_name,
-        COALESCE(obj_description(c.oid), '') as table_comment,
-        COALESCE(
-            (SELECT string_agg(
-                kcu.column_name || ' -> ' || ccu.table_name || '(' || ccu.column_name || ')',
-                ', '
-            )
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu
-                ON tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            JOIN information_schema.constraint_column_usage ccu
-                ON tc.constraint_name = ccu.constraint_name
-                AND tc.table_schema = ccu.constraint_schema
-            WHERE tc.constraint_type = 'FOREIGN KEY'
-                AND tc.table_name = t.table_name
-                AND tc.table_schema = 'public'
-            ),
-            ''
-        ) as foreign_keys,
-        COALESCE(
-            (SELECT string_agg(
-                ref_tc.table_name || '(' || ref_kcu.column_name || ') -> ' || ref_ccu.column_name,
-                ', '
-            )
-            FROM information_schema.table_constraints ref_tc
-            JOIN information_schema.key_column_usage ref_kcu
-                ON ref_tc.constraint_name = ref_kcu.constraint_name
-                AND ref_tc.table_schema = ref_kcu.table_schema
-            JOIN information_schema.constraint_column_usage ref_ccu
-                ON ref_tc.constraint_name = ref_ccu.constraint_name
-                AND ref_tc.table_schema = ref_ccu.constraint_schema
-            WHERE ref_tc.constraint_type = 'FOREIGN KEY'
-                AND ref_ccu.table_name = t.table_name
-                AND ref_tc.table_schema = 'public'
-            ),
-            ''
-        ) as referenced_by
-    FROM information_schema.tables t
-    LEFT JOIN pg_class c ON c.relname = t.table_name
-    LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
-    WHERE t.table_type = 'BASE TABLE'
-        AND t.table_schema = 'public'
-        AND t.table_name NOT LIKE 'django_%'
-        AND t.table_name NOT LIKE 'auth_%'
-    ORDER BY t.table_name;
-"""
-    return run_sql_select_query(query)
+# Schema cache: loaded once, reused forever (schema only changes on redeploy)
+_schema_cache = None
 
 
-def get_table_fields(table_name: str) -> list:
-    query = """
-        SELECT
-            a.attname AS column_name,
-            t.typname AS data_type,
-            a.atttypmod AS type_modifier,
-            CASE
-                WHEN pk.constraint_type = 'PRIMARY KEY' THEN true
-                ELSE false
-            END AS is_primary_key,
-            COALESCE(d.description, '') AS column_description
-        FROM
-            pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        JOIN pg_attribute a ON a.attrelid = c.oid
-        JOIN pg_type t ON a.atttypid = t.oid
-        LEFT JOIN pg_description d ON d.objoid = a.attrelid AND d.objsubid = a.attnum
-        LEFT JOIN (
-            SELECT tc.table_name, kcu.column_name, tc.constraint_type
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
-            WHERE tc.constraint_type = 'PRIMARY KEY'
-        ) pk ON c.relname = pk.table_name AND a.attname = pk.column_name
-        WHERE
-            c.relkind = 'r'
-            AND a.attnum > 0
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-            AND n.nspname = 'public'
-            AND c.relname = %s
-        ORDER BY
-            a.attnum;
+def get_db_schema():
+    """Returns the database schema (cached in memory after first call)."""
+    global _schema_cache
+    if _schema_cache is not None:
+        return _schema_cache
+
+    logger.info("Loading database schema into cache...")
+    schema = _fetch_db_schema()
+    if not isinstance(schema, dict) or "ERROR" not in schema:
+        _schema_cache = schema
+    return schema
+
+
+def clear_schema_cache():
+    """Clear the cached schema (useful after DB migrations)."""
+    global _schema_cache
+    _schema_cache = None
+    logger.info("Database schema cache cleared")
+
+
+def _fetch_db_schema():
+    """Fetches the database schema from PostgreSQL."""
+    query_tables = """
+        SELECT t.table_name, obj_description(c.oid) as description
+        FROM information_schema.tables t
+        LEFT JOIN pg_class c ON c.relname = t.table_name
+        WHERE t.table_schema = 'public'
+          AND t.table_type = 'BASE TABLE'
+          AND t.table_name NOT LIKE 'django_%'
+          AND t.table_name NOT LIKE 'auth_%'
+        ORDER BY t.table_name;
     """
 
-    def simplify_type_with_length(data_type: str, type_mod: int) -> str:
-        if data_type == 'bpchar' or data_type == 'varchar':
-            length = type_mod - 4
-            return f"{data_type}({length})"
-        elif data_type == 'numeric':
-            # Puedes parsear más información si es necesario
-            return data_type
-        else:
-            return data_type
+    tables = run_sql_select_query(query_tables)
+    if isinstance(tables, dict) and "ERROR" in tables:
+        return tables
 
+    schema = {}
+    conn = get_connection()
     try:
-        conn = get_connection()
-        with conn.cursor() as cur:
-            cur.execute(query, (table_name,))
-            rows = cur.fetchall()
-
-            fields = []
-
-            for row in rows:
-                column_name = row[0]
-                data_type = row[1]
-                type_mod = row[2]
-                is_primary_key = row[3]
-                column_description = row[4].strip() if row[4] else ''
-
-                field_info = {
-                    "name": column_name,
-                    "type": simplify_type_with_length(data_type, type_mod),
-                    "description": column_description
-                }
-
-                if is_primary_key:
-                    field_info["primary_key"] = True
-
-                fields.append(field_info)
-
-            return fields
-
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            for table in tables:
+                tname = table["table_name"]
+                cur.execute(
+                    """
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_name = %s AND table_schema = 'public'
+                    ORDER BY ordinal_position;
+                    """,
+                    (tname,),
+                )
+                cols = [dict(r) for r in cur.fetchall()]
+                schema[tname] = {"description": table["description"], "columns": cols}
     except Exception as e:
-        if conn:
-            try:
-                conn.rollback()
-            except Exception as rollback_e:
-                print(f"Error during rollback in get_table_fields: {rollback_e}")
-                global _conn
-                if _conn:
-                    _conn.close()
-                    _conn = None
-        return json.dumps({"ERROR": str(e)})
+        return {"ERROR": str(e)}
+    finally:
+        release_connection(conn)
 
-
-def create_schema():
-    os.makedirs(CORPUS_PATH_DATABASE, exist_ok=True)
-
-    if not os.path.exists(RESUME_FILE_DATABASE):
-        tables = []
-        rows = tables_catalog()
-        for name, description, foreign_key, referenced_by in rows:
-            table = {}
-            table["table_name"] = name
-            if description:
-                table["description"] = description
-            if foreign_key:
-                table["foreign_key"] = foreign_key
-            if referenced_by:
-                table["referenced_by"] = referenced_by
-            tables.append(table)
-
-            schema = {}
-            schema["table_name"] = name
-            if description:
-                schema["description"] = description
-            if foreign_key:
-                schema["foreign_key"] = foreign_key
-            if referenced_by:
-                schema["referenced_by"] = referenced_by
-            schema["fields"] = get_table_fields(name)
-            with open(f"{CORPUS_PATH_DATABASE}/{name}.json", "w") as file:
-                file.write(json.dumps(schema))
-
-        with open(RESUME_FILE_DATABASE, "w") as file:
-            file.write(json.dumps(tables))
+    return schema

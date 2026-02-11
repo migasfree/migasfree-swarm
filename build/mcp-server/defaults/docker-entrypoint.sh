@@ -22,11 +22,11 @@ echo "
         $SERVICE ($TAG)
         mcp-server
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
 
 send_message ""
 
-mcpo --port 8080 -- python server.py
+python server.py
