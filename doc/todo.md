@@ -1,4 +1,6 @@
-* TODO: tag <none> al hacer docker-compose
+# TODO List
+
+* TODO: tag `<none>` al hacer docker-compose
 
 * TODO: Actualizar contraseña por defecto a `core`
 
@@ -19,10 +21,10 @@
 
 * Repasar los test de los clientes
 
-PARA INFO
-==============================================================================================
+## Para información
 
-# !/bin/bash
+```bash
+#!/bin/bash
 
 for node in $(docker node ls -q); do
 
@@ -45,3 +47,4 @@ for node in $(docker node ls -q); do
 
   printf "%-36s %-20s %-10s %-15s %-10s\n" "$id" "$hostname" "$role" "$addr" "$leader"
 done
+```
