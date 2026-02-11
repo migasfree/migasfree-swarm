@@ -1,7 +1,5 @@
 * TODO: tag <none> al hacer docker-compose
 
-* TODO Documentar migasfree assistant
-
 * TODO: Actualizar contraseña por defecto a `core`
 
 * TODO abrir postgres al exterior del cluster
@@ -12,7 +10,6 @@
 
 * TODO: Crear comando help
 
-
 * TODO: Documentar Personalizacion del stack (env.py)
 
 * TODO: Documentar labels del swarm y la relación con los volumenes
@@ -22,24 +19,29 @@
 
 * Repasar los test de los clientes
 
-
 PARA INFO
 ==============================================================================================
-#!/bin/bash
+
+# !/bin/bash
+
 for node in $(docker node ls -q); do
-  # Obtener la información del nodo
+
+# Obtener la información del nodo
+
   id=$(docker node inspect $node --format='{{.ID}}')
   hostname=$(docker node inspect $node --format='{{.Description.Hostname}}')
   role=$(docker node inspect $node --format='{{.Spec.Role}}')
   addr=$(docker node inspect $node --format='{{.Status.Addr}}')
 
-  # Determinar si el nodo es un manager y si es el líder
+# Determinar si el nodo es un manager y si es el líder
+
   if [ "$role" = "manager" ]; then
     leader=$(docker node inspect $node --format='{{if .ManagerStatus.Leader}}leader{{else}}     {{end}}')
   else
     leader="     "
   fi
 
-  # Imprimir la información en formato tabulado
+# Imprimir la información en formato tabulado
+
   printf "%-36s %-20s %-10s %-15s %-10s\n" "$id" "$hostname" "$role" "$addr" "$leader"
 done

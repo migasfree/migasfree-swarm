@@ -6,10 +6,9 @@ To access the various consoles, navigate to `http://<FQDN>/status`
 
 ## proxy
 
-  * [HAProxy](https://github.com/haproxy/haproxy) offers a detailed, real-time overview of the status and statistics of the servers and services being managed. This console is particularly useful for monitoring connection performance, request handling, response times, and the health of backend servers.
+* [HAProxy](https://github.com/haproxy/haproxy) offers a detailed, real-time overview of the status and statistics of the servers and services being managed. This console is particularly useful for monitoring connection performance, request handling, response times, and the health of backend servers.
 
     ![proxy-console](proxy-console.png)
-
 
 ## portainer
 
@@ -32,7 +31,6 @@ To access the various consoles, navigate to `http://<FQDN>/status`
   To upload files to this directory, go to`https://datashare.<FQDN>/files/pool/`
 
   ![public-console](public-console.png)
-
 
 ## core
 
@@ -64,13 +62,6 @@ To access the various consoles, navigate to `http://<FQDN>/status`
 
   ![datashare-console](datashare-console.png)
 
-
-## assistant
-
-* [Open WebUI](https://openwebui.com/) is and extensible AI interface for LLMs
-
-  ![assistant](assistant.png)
-
 ## manager
 
 TODO
@@ -80,8 +71,8 @@ TODO
 * Migasfree Remote Access provides a unified interface for connecting to your devices securely. Identify yourself with your client certificate to gain access (mTLS).
 
   It supports the following protocols:
-    - **SSH**: Full web-based terminal access.
-    - **VNC**: Remote desktop access directly in your browser.
-    - **RDP**: Generates the necessary command to connect via a native RDP client through the secure tunnel.
+  * **SSH**: Full web-based terminal access.
+  * **VNC**: Remote desktop access directly in your browser.
+  * **RDP**: Generates the necessary command to connect via a native RDP client through the secure tunnel.
 
   ![remote-access-console](remote-access-console.png)

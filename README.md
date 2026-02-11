@@ -51,7 +51,6 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   <IP> database-<FQDN>
   <IP> datashare-<FQDN>
   <IP> worker-<FQDN>
-  <IP> assistant-<FQDN>
   ```
 
   Example:
@@ -65,7 +64,6 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   172.0.0.10 datashare-migasfree.acme.com
   172.0.0.10 datastore-migasfree.acme.com
   172.0.0.10 worker-migasfree.acme.com
-  172.0.0.10 assistant-migasfree.acme.com
   ```
 
 #### 2. NFS
@@ -103,7 +101,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 #### 5. Datastore Node Configuration Requirement (Redis)
 
-  * To ensure proper operation and avoid potential
+* To ensure proper operation and avoid potential
     failures during background save (RDB snapshots) or replication, the Linux kernel parameter vm.overcommit_memory must be set to 1 on the node where the Redis (datastore) is running.
 
     This setting allows the kernel to permit memory overcommitment, which is critical for Redis because it relies on the ability to fork child processes that temporarily require more memory than the system may physically have available.
@@ -115,7 +113,6 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
     ```
 
     And reboot the node.
-
 
 ## Deployment
 
@@ -129,8 +126,8 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   docker run --detach=false --rm -ti -v $(pwd):/stack -v /var/run/docker.sock:/var/run/docker.sock  migasfree/swarm:5.0-beta15 config
   ```
 
-
 * Initial configuration:
+
   ```txt
   (for nfs)
 
@@ -145,13 +142,14 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   DATASHARE_FS (local | nfs): local
   ```
 
- * Two files will be created in the directory: `env.py` and `migasfree-swarm`.
+* Two files will be created in the directory: `env.py` and `migasfree-swarm`.
 
-  * Check the contents of `env.py`
+* Check the contents of `env.py`
 
     ```bash
     cat env.py
     ```
+
     Example output:
 
     ```txt
@@ -171,13 +169,14 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Deploying the Stack
 
-  * Deploy the `Migasfree stack` by running:
+* Deploy the `Migasfree stack` by running:
 
     ```bash
     ./migasfree-swarm deploy
     ```
 
     During deployment:
+
     ```txt
     STACK (): inv
     FQDN (migasfree.acme.com): inv.org
@@ -187,7 +186,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
     ```
 
-  * You can monitor the services by visiting  `https://<FQDN>/services/status`.
+* You can monitor the services by visiting  `https://<FQDN>/services/status`.
 
 ## Undeploying the Stack
 
@@ -205,7 +204,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Logins
 
-  * To access the `administration consoles`, visit `https://<FQDN>/services/status`. View the credentials by running:
+* To access the `administration consoles`, visit `https://<FQDN>/services/status`. View the credentials by running:
 
     ```bash
     ./migasfree-swarm secret
@@ -220,7 +219,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
       ● Stack inv:
 
-          ● database_console & assistant:
+          ● database_console:
 
               gA6WXBAb@inv.org MmdtABHFsoE8ofoLjru5z3VBTXIalv
 
@@ -307,14 +306,13 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Certificates
 
-### 1. Server Certificate.
+### 1. Server Certificate
 
 Migasfree uses TLS certificates to secure HTTPS communication within the cluster and with external clients. Depending on your deployment scenario, you can choose one of the following methods to configure the server certificates:
 
-  * Self-Signed (default, for testing or internal use)
-  * Manual Replacement (production with your own trusted certificates)
-  * Automatic Certificate Management (recommended, using Let’s Encrypt)
-
+* Self-Signed (default, for testing or internal use)
+* Manual Replacement (production with your own trusted certificates)
+* Automatic Certificate Management (recommended, using Let’s Encrypt)
 
 #### Self-Signed
 
@@ -328,15 +326,12 @@ This allows you to quickly begin using Migasfree without additional setup.
 
 For production deployments, it is recommended to replace the auto-generated certificate with one issued by a trusted CA. The certificate must be valid for all relevant domain names used by Migasfree services:
 
-
 * `<FQDN>`
 * `portainer-<FQDN>`
 * `datastore-<FQDN>`
 * `database-<FQDN>`
 * `datashare-<FQDN>`
 * `worker-<FQDN>`
-* `assistant-<FQDN>`
-
 
 If you have a wildcard or SAN certificate that covers these domains, for example `*.<FQDN>`, replace the existing certificate with a combined PEM file containing both the full certificate chain and the private key, as follows:
 
@@ -361,7 +356,6 @@ If you have a wildcard or SAN certificate that covers these domains, for example
   >
   > openssl x509 -in /var/lib/docker/volumes/migasfree-swarm/_data/certificates/${STACK}.pem -noout -subject -dates
 
-
 #### Automatic Certificate Management (Recommended)
 
 Migasfree can automatically obtain and renew TLS certificates from Let’s Encrypt using the ACME HTTP-01 challenge. This requires that your Migasfree cluster is publicly accessible on port 80 for domain validation.
@@ -371,12 +365,14 @@ To enable automatic certificate management:
   1. Open the `datashare console` and set the `HTTPSMODE` variable to `'auto'` in the `env.py` file.
 
   2. Redeploy the stack with the following commands:
+
      ```bash
      ./migasfree-swarm redeploy
      ```
+
 Certificates will be obtained automatically and renewed before expiration without further user intervention.
 
-### 2. Client Certificate (mTLS) for admins.
+### 2. Client Certificate (mTLS) for admins
 
 To add an additional security layer, especially when your Migasfree server is exposed to the internet, enable mutual TLS (mTLS) authentication **for accessing administrative consoles and sensitive APIs**.
 
@@ -385,6 +381,7 @@ Steps to enable mTLS:
   1. Open the `datashare console` and set the `MTLS` variable to `'True'` in the `env.py` file.
 
   2. Redeploy the stack:
+
      ```bash
      ./migasfree-swarm redeploy
      ```
@@ -410,6 +407,7 @@ To configure this, follow these steps:
   2. Navigate to the `ca-certificates` folder and copy your organization’s root CA certificate.
 
   3. Redeploy the stack:
+
      ```bash
      ./migasfree-swarm redeploy
      ```
@@ -426,8 +424,8 @@ The `BACKUP_CRON` variable in the `env.py` file of the stack defines the frequen
 
 Therefore, backing up the `migasfree-swarm` volume will safeguard all data, including the databases. It is **your responsibility** to ensure that a backup of your entire Migasfree cluster is performed on storage that is independent of both the cluster nodes and the NFS server.
 
-- If `DATASHARE_FS=nfs`, you must copy the exported folder from the NFS server.
-- If `DATASHARE_FS=local`, copy the folder `/var/lib/docker/volumes/migasfree-swarm/_data`.
+* If `DATASHARE_FS=nfs`, you must copy the exported folder from the NFS server.
+* If `DATASHARE_FS=local`, copy the folder `/var/lib/docker/volumes/migasfree-swarm/_data`.
 
 ## Disaster Recovery
 
@@ -436,24 +434,29 @@ Having regular and consistent backups is essential for disaster recovery. In the
 You can restore the database and datastore volumes as follows (ensure the dump files you want to recover are available at `https://datashare.<FQDN>/files/dump/`):
 
 1. Undeploy the stack:
+
     ```bash
     ./migasfree-swarm undeploy
     ```
 
 2. Remove the database and datastore volumes:
+
     ```bash
     docker volume rm <STACK>_database <STACK>_datastore
     ```
 
 3. Deploy the stack (this will create empty databases):
+
     ```bash
     ./migasfree-swarm deploy
     ```
 
 4. From Portainer, access the shell of both the `database` and `datastore` containers, and execute the following command in each:
+
     ```bash
     restore
     ```
+
     ![exec_container](doc/exec_container.png)
 
 ## Installing and Synchronizing with Migasfree Client 5
@@ -471,7 +474,6 @@ You can restore the database and datastore volumes as follows (ensure the dump f
   ```
 
   This command will provide the instructions you need to execute on the new node.
-
 
 ## Leaving the Swarm
 
@@ -496,7 +498,6 @@ You can restore the database and datastore volumes as follows (ensure the dump f
     ```
     docker volume rm <volume>
     ```
-
 
 ## Building images
 

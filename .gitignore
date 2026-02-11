@@ -19,13 +19,11 @@ build/s3/VERSION
 build/swarm/VERSION
 build/worker_console/VERSION
 build/mcp-server/VERSION
-build/assistant/VERSION
 build/tunnel/VERSION
 images/migasfree-*.tar
 images/*.log
 build/manager/defaults/usr/bin/send_message
 build/certbot/defaults/usr/bin/send_message
-build/assistant/defaults/usr/bin/send_message
 build/console/defaults/usr/bin/send_message
 build/core/defaults/usr/bin/send_message
 build/database/defaults/usr/bin/send_message
@@ -47,4 +45,4 @@ build/tunnel/defaults/usr/bin/send_message
 build/core/migasfree-backend
 build/manager/defaults/usr/share/manager/__pycache__
 build/manager/defaults/usr/share/manager/*/__pycache__
-
+.agent/skills/
