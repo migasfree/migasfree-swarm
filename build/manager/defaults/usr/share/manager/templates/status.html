@@ -332,7 +332,7 @@
       </g>
 
 
-      <g id="tunnel-node" transform="translate(150, 74)">
+      <g id="tunnel-node" transform="translate(130, 94)">
         <image class="icon" href="/manager/static/img/remote-session.svg" x="2" y="-12" />
         <circle id="tunnel" class="node" r="1.5" filter="url(#glow)" />
         <text id="nodes_tunnel" class="circle-text" x="0" y="1"></text>
@@ -341,7 +341,7 @@
             <title>Migasfree Remote Access</title>
           </circle>
         </a>
-        <text x="2" y="2">remote access</text>
+        <text x="4" y="2">remote access</text>
       </g>
 
       <g id="public-node" transform="translate(70, 94)">
@@ -431,16 +431,6 @@
         <text x="4" y="2">certbot</text>
       </g>
 
-      <g id="assistant-node" transform="translate(130, 94)">
-        <image class="icon" href="/manager/static/img/assistant.svg" x="2" y="-12" />
-        <circle id="assistant" class="node" r="1.5" filter="url(#glow)" />
-        <a id="assistant_link_parent" target="_blank">
-          <circle id="assistant_link" class="link" cx="7" cy="-7" r="7">
-            <title>Assistant</title>
-          </circle>
-        </a>
-        <text x="3" y="2">assistant</text>
-      </g>
 
       <g id="mcp-server-node" transform="translate(130, 114)">
         <image class="icon" href="/manager/static/img/mcp-server.svg" x="2" y="-12" />
@@ -480,14 +470,14 @@
           'console', 'public', 'pms',
           'beat', 'core', 'worker',
           'database', 'datastore', 'datashare_console',
-          'certbot', 'assistant', 'mcp-server', 'tunnel'
+          'certbot', 'mcp-server', 'tunnel'
         ],
         consoleServices: [
           'portainer', 'proxy', 'manager',
           'console',
           'core', 'worker',
           'database', 'datastore', 'datashare_console',
-          'assistant', 'tunnel'
+          'tunnel'
         ],
         infoData: null,
       };
@@ -607,7 +597,6 @@
           database_link_parent: `https://database-${host}`,
           datastore_link_parent: `https://datastore-${host}`,
           datashare_console_link_parent: `https://datashare-${host}`,
-          assistant_link_parent: `https://assistant-${host}`,
           tunnel_link_parent: `https://${host}/manager/v1/private/tunnel/console`,
         };
 

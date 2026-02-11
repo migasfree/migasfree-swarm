@@ -5,14 +5,14 @@ import asyncio
 import json
 from collections import deque
 
-from fastapi import APIRouter, HTTPException, Request, FastAPI
-from fastapi.responses import Response, JSONResponse, HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Request, FastAPI
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 
 from sse_starlette.sse import EventSourceResponse
 
-from core.config import API_VERSION, STACK, PATH_CERTIFICATES
+from core.config import API_VERSION
 from core.status import Message
 from core.utils import get_timestamp, get_organization
 from core.monitor import DockerSwarmMonitor
@@ -41,7 +41,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-router = APIRouter(prefix=f"", tags=["status"])
+router = APIRouter(prefix="", tags=["status"])
 
 router_internal = APIRouter(prefix=f"{API_VERSION}/internal", tags=["status"])
 
@@ -197,9 +197,6 @@ async def get_info():
     disabled = []
     if os.environ["HTTPSMODE"] == "manual":
         disabled.append("certbot")
-    if os.environ.get("GOOGLE_API_KEY", "") == "":
-        disabled.append("assistant")
-        disabled.append("mcp-server")
 
     return JSONResponse(
         content={
