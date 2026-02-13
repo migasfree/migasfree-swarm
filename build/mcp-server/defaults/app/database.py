@@ -3,6 +3,7 @@ import re
 import logging
 import psycopg2
 import psycopg2.pool
+from pathlib import Path
 from psycopg2.extras import DictCursor
 from resources import read_file
 
@@ -189,10 +190,17 @@ def _fetch_db_schema():
                 tname = table["table_name"]
                 cur.execute(
                     """
-                    SELECT column_name, data_type, is_nullable, column_default
-                    FROM information_schema.columns
-                    WHERE table_name = %s AND table_schema = 'public'
-                    ORDER BY ordinal_position;
+                    SELECT 
+                        cols.column_name, 
+                        cols.data_type, 
+                        cols.is_nullable, 
+                        cols.column_default,
+                        pg_catalog.col_description(c.oid, cols.ordinal_position::int) AS description
+                    FROM information_schema.columns cols
+                    JOIN pg_catalog.pg_class c ON c.relname = cols.table_name
+                    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace AND n.nspname = cols.table_schema
+                    WHERE cols.table_name = %s AND cols.table_schema = 'public'
+                    ORDER BY cols.ordinal_position;
                     """,
                     (tname,),
                 )
@@ -204,3 +212,49 @@ def _fetch_db_schema():
         release_connection(conn)
 
     return schema
+
+
+def db_schema_to_markdown(schema: dict) -> str:
+    """Converts the database schema JSON to Markdown for LLM readability."""
+    md = ["# Database Schema\n"]
+    md.append(
+        "This schema describes the Migasfree PostgreSQL database (public schema).\n"
+    )
+
+    for tname, details in sorted(schema.items()):
+        md.append(f"## Table: `{tname}`")
+        if details.get("description"):
+            md.append(f"**Description**: {details.get('description')}\n")
+
+        md.append("| Column | Type | Nullable | Default | Description |")
+        md.append("| --- | --- | --- | --- | --- |")
+        for col in details.get("columns", []):
+            name = col.get("column_name")
+            dtype = col.get("data_type")
+            null = "YES" if col.get("is_nullable") == "YES" else "NO"
+            default = col.get("column_default") or ""
+            desc = col.get("description") or ""
+            md.append(f"| `{name}` | {dtype} | {null} | {default} | {desc} |")
+        md.append("\n---")
+
+    return "\n".join(md)
+
+
+def sync_db_to_file(docs_dir: str) -> bool:
+    """Fetches the database schema and saves it as Markdown in the docs directory."""
+    try:
+        logger.info("Syncing Database schema to file...")
+        schema = get_db_schema()
+        if isinstance(schema, dict) and "ERROR" in schema:
+            logger.error(f"Failed to fetch DB schema: {schema['ERROR']}")
+            return False
+
+        md_content = db_schema_to_markdown(schema)
+        md_path = Path(docs_dir) / "db_schema.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md_content)
+        logger.info(f"Database schema saved to {md_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Error syncing DB schema to file: {e}")
+        return False

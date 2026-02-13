@@ -3,6 +3,7 @@ import os
 import logging
 import contextlib
 import anyio
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 from mcp.server import Server, NotificationOptions
@@ -21,11 +22,11 @@ from fastapi import FastAPI
 from starlette.requests import Request
 from starlette.responses import Response
 
-from database import run_sql_select_query, get_db_schema
-from api import get_api_schema
-from docs import get_manual_content
+from database import run_sql_select_query, sync_db_to_file
+from api import sync_api_to_files
 from resources import read_file
-from settings import VERSION, DEBUG, CORPUS_PATH_DOCS
+from docs import convert_all_pdfs_to_markdown
+from settings import VERSION, DEBUG, CORPUS_PATH_DOCS, MCP_NAME
 
 # Configure logging
 logging.basicConfig(
@@ -34,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger("migasfree-mcp")
 
 # MCP Server definition
-app = Server("migasfree-mcp-server")
+app = Server(f"{MCP_NAME}-mcp-server")
 
 
 # ==============================================================================
@@ -47,7 +48,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="db_query",
-            description="Execute a SELECT SQL query on the PostgreSQL database.",
+            description=f"Execute a SELECT SQL query on the PostgreSQL database. IMPORTANT: Before querying for table structure, metadata, or column names, YOU MUST READ the resource '{MCP_NAME}://docs/db_schema.md' which contains the full documented schema.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -58,30 +59,6 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["sql"],
             },
-        ),
-        Tool(
-            name="db_get_schema",
-            description="Retrieve the complete database schema.",
-            inputSchema={"type": "object", "properties": {}},
-        ),
-        Tool(
-            name="api_get_schema",
-            description="Get the OpenAPI/Swagger schema for Migasfree services.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "service": {
-                        "type": "string",
-                        "enum": ["core", "manager"],
-                    }
-                },
-                "required": ["service"],
-            },
-        ),
-        Tool(
-            name="docs_get_manual",
-            description="Get the full content of the Migasfree user manual.",
-            inputSchema={"type": "object", "properties": {}},
         ),
     ]
 
@@ -96,16 +73,6 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [
                 TextContent(type="text", text=json.dumps(result, indent=2, default=str))
             ]
-        elif name == "db_get_schema":
-            result = get_db_schema()
-            return [TextContent(type="text", text=json.dumps(result, indent=2))]
-        elif name == "api_get_schema":
-            service = arguments.get("service")
-            result = get_api_schema(service)
-            return [TextContent(type="text", text=json.dumps(result, indent=2))]
-        elif name == "docs_get_manual":
-            result = get_manual_content()
-            return [TextContent(type="text", text=result)]
         return [TextContent(type="text", text=f"Tool unknown: {name}")]
     except Exception as e:
         logger.error(f"Error in tool {name}: {str(e)}")
@@ -119,33 +86,37 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 @app.list_resources()
 async def list_resources() -> list[Resource]:
-    """List available static resources."""
+    """List available documentation resources."""
     resources = []
 
-    # Database schema resource
-    resources.append(
-        Resource(
-            uri="migasfree://schema/database",
-            name="Database Schema",
-            description="Complete PostgreSQL database schema with tables and columns",
-            mimeType="application/json",
-        )
-    )
+    if os.path.isdir(CORPUS_PATH_DOCS):
+        # 1. Master Index (if exists)
+        index_path = os.path.join(CORPUS_PATH_DOCS, "documentation_index.md")
+        if os.path.isfile(index_path):
+            resources.append(
+                Resource(
+                    uri=f"{MCP_NAME}://docs/documentation_index.md",
+                    name="📚 Documentation Index",
+                    description="Master index of all available Migasfree documentation.",
+                    mimeType="text/markdown",
+                )
+            )
 
-    # Documentation resources
-    if os.path.exists(CORPUS_PATH_DOCS):
+        # 2. Files
         _mime_types = {
             ".md": "text/markdown",
-            ".rst": "text/plain",
-            ".txt": "text/plain",
             ".pdf": "application/pdf",
+            ".txt": "text/plain",
+            ".rst": "text/plain",
         }
         for filename in sorted(os.listdir(CORPUS_PATH_DOCS)):
+            if filename.startswith(".") or filename == "documentation_index.md":
+                continue
             ext = os.path.splitext(filename)[1].lower()
             if ext in _mime_types:
                 resources.append(
                     Resource(
-                        uri=f"migasfree://docs/{filename}",
+                        uri=f"{MCP_NAME}://docs/{filename}",
                         name=f"Doc: {filename}",
                         description=f"Documentation file: {filename}",
                         mimeType=_mime_types[ext],
@@ -157,15 +128,8 @@ async def list_resources() -> list[Resource]:
 
 @app.list_resource_templates()
 async def list_resource_templates() -> list[ResourceTemplate]:
-    """List resource templates for dynamic resources."""
-    return [
-        ResourceTemplate(
-            uriTemplate="migasfree://api/{service}/schema",
-            name="API Schema",
-            description="OpenAPI schema for a Migasfree service (core or manager)",
-            mimeType="application/json",
-        ),
-    ]
+    """List resource templates (none currently)."""
+    return []
 
 
 @app.read_resource()
@@ -174,28 +138,20 @@ async def read_resource(uri) -> str:
     uri = str(uri)  # MCP SDK sends AnyUrl, convert to string
     logger.info(f"Reading resource: {uri}")
 
-    if uri == "migasfree://schema/database":
-        schema = get_db_schema()
-        return json.dumps(schema, indent=2)
-
-    if uri.startswith("migasfree://docs/"):
-        filename = uri.replace("migasfree://docs/", "")
+    if uri.startswith(f"{MCP_NAME}://docs/"):
+        filename = uri.replace(f"{MCP_NAME}://docs/", "")
         path = os.path.join(CORPUS_PATH_DOCS, filename)
         if os.path.isfile(path):
+            if filename == "documentation_index.md":
+                content = read_file(path)
+                return content.replace("{MCP_SERVER_URI}", f"{MCP_NAME}://")
+
             if filename.lower().endswith(".pdf"):
                 from docs import _read_pdf
 
                 return _read_pdf(path)
             return read_file(path)
         return f"File not found: {filename}"
-
-    if uri.startswith("migasfree://api/"):
-        # e.g. migasfree://api/core/schema
-        parts = uri.replace("migasfree://api/", "").split("/")
-        if len(parts) >= 1:
-            service = parts[0]
-            schema = get_api_schema(service)
-            return json.dumps(schema, indent=2)
 
     return f"Unknown resource: {uri}"
 
@@ -423,9 +379,44 @@ async def mcp_router(scope, receive, send):
 # ==============================================================================
 
 
+async def background_doc_sync():
+    """Retry syncing documentation until successful or timeout."""
+    max_retries = 30  # 5 minutes approx if 10s sleep
+    for i in range(max_retries):
+        try:
+            # Use run_sync to avoid blocking event loop
+            db_success = await anyio.to_thread.run_sync(
+                sync_db_to_file, CORPUS_PATH_DOCS
+            )
+            api_success = await anyio.to_thread.run_sync(
+                sync_api_to_files, CORPUS_PATH_DOCS
+            )
+
+            if db_success and api_success:
+                logger.info("Documentation sync completed successfully.")
+                break
+
+            logger.warning(
+                f"Documentation sync incomplete (attempt {i + 1}/{max_retries}). Retrying in 10s..."
+            )
+        except Exception as e:
+            logger.error(f"Error in background sync: {e}")
+
+        await asyncio.sleep(10)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
     """Application lifespan that manages the Streamable HTTP session manager."""
+    try:
+        # Convert PDFs immediately (local file operation)
+        convert_all_pdfs_to_markdown()
+
+        # Start background sync for DB and API docs (with retries)
+        asyncio.create_task(background_doc_sync())
+    except Exception as e:
+        logger.error(f"Error initializing files at startup: {e}")
+
     async with session_manager.run():
         logger.info("Streamable HTTP session manager started")
         yield
