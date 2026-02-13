@@ -39,13 +39,25 @@ The URL to configure in your client is:
 https://<YOUR_FQDN>/mcp/sse
 ```
 
-### Configuration in Antigravity (Claude Desktop / Others)
+### Self-Signed Certificates
+
+If the Migasfree server uses a self-signed certificate, the machine running the MCP client must have the CA certificate installed.
+
+Example:
+
+```bash
+# The public certificate from the certification authority is required.
+wget --no-check-certificate -O /usr/local/share/ca-certificates/ca-inv.org.crt https://inv.org/pool/install/ca-inv.org.crt
+update-ca-certificates --fresh
+```
+
+### Configuration in Antigravity
 
 If you are manually configuring Antigravity using a JSON configuration file, the structure would look like this:
 
 ```json
 {
-  "mcpServers": {
+  "<STACK>": {
     "migasfree": {
       "serverUrl": "https://<YOUR_FQDN>/mcp/sse"
     }
@@ -60,9 +72,15 @@ If you are manually configuring Antigravity using a JSON configuration file, the
 Once connected, you will have access to the following tools:
 
 1. **`db_query`**: Execute SQL `SELECT` queries directly on the Migasfree database.
-2. **`db_get_schema`**: Retrieve the full database structure (tables and columns) to understand what data you can query.
-3. **`api_get_schema`**: Retrieve the OpenAPI schema for `core` and `manager` services to learn how to interact with their APIs.
-4. **`docs_get_manual`**: Retrieve all content from the `docs/` folder integrated into the server.
+
+### Resources
+
+In addition to tools, the MCP server exposes valuable **documentation resources** that provide context to the AI:
+
+- **User Manual**: Comprehensive guide on using Migasfree (`docs/migasfree-user-manual.md`).
+- **Architecture**: High-level system overview (`docs/migasfree_architecture.md`).
+- **Database Schema**: detailed DB structure (`docs/db_schema.md`).
+- **API Documentation**: OpenAPI specifications for integration.
 
 ---
 *For additional support, refer to the technical documentation in the migasfree-swarm repository.*

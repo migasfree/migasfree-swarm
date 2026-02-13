@@ -252,6 +252,10 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   ./migasfree-swarm consoles-dev
   ```
 
+## MCP Connection
+
+Check [MCP Connection](doc/mcp_connection.md)
+
 ## Data Persistence
 
 * In Docker, volumes provide data persistence by allowing data generated and used by containers to be stored outside the container's lifecycle. Even if a container is deleted or recreated, volumes persist on the host’s filesystem, ensuring that data is not lost. This allows containers to securely and efficiently access shared or persistent data, such as databases or configuration files, beyond the container's lifespan.
