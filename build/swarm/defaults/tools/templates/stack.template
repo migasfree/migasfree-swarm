@@ -90,53 +90,6 @@ services:
             - infra_network
 
 
-
-
-
-
-#    s3:
-#        # https://min.io/docs/minio/linux/integrations/setup-nginx-proxy-with-minio.html
-#        image: migasfree/s3:{{TAG}}
-#        command: server /data --console-address ":9001"
-#        deploy:
-#            replicas: 1
-#            restart_policy:
-#                condition: on-failure
-#                delay: 5s
-#                max_attempts: 0
-#                window: 180s
-#            placement:
-#                constraints:
-#                    - node.labels.datashare == true
-#        environment:
-#            - TZ={{TZ}}
-#            - STACK={{STACK}}
-#            - FQDN={{FQDN}}
-#            - MINIO_ROOT_USER_FILE=/run/secrets/{{STACK}}_superadmin_name
-#            - MINIO_ROOT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
-#            - MINIO_USERNAME=migasfree
-#            - MINIO_GROUPNAME=migasfree
-#            - MINIO_SERVER_URL=http://datashare:9000
-#
-#            - MINIO_UID=890
-#            - MINIO_GID=890
-#
-#        # 32000 necessary for plugin
-#        ports:
-#            - 32000:9000
-#        secrets:
-#            - source: {{STACK}}_superadmin_name
-#            - source: {{STACK}}_superadmin_pass
-#        volumes:
-#            - {{DATASHARE_PATH}}:/data  # RAW S3
-#
-#        networks:
-#            - {{STACK}}_network
-#            - infra_network
-
-
-
-
     {% for PMS in PMS_ENABLED.split(",") %}
 #{% set PMS_ = 'REPLICAS_' ~ PMS|replace("-", "_") %}
 #{% set REPLICAS_PMS = context()[PMS_] if PMS_ in context() else REPLICAS_pms_others %}

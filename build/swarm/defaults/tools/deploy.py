@@ -134,7 +134,6 @@ def create_labels(client):
 
         # Add labels to the node
         labels = {
-            # "datashare": "true", is only for s3
             "datastore": "true",
             "database": "true",
         }

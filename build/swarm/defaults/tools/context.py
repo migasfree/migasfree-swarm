@@ -76,7 +76,7 @@ class ContextLoader:
         # ===============
         self.prompt("DATASHARE_FS", "local", ["local", "nfs"])
 
-        # nfs || s3 || local (datashare)
+        # nfs || local (datashare)
         # ==============================
         if self.context["DATASHARE_FS"] == "local":
             self.default("DATASHARE_PATH", "")
@@ -87,9 +87,6 @@ class ContextLoader:
             self.prompt("DATASHARE_PATH", "/exports/migasfree-swarm")
             # NFS Port
             self.default("DATASHARE_PORT", "2049")
-        elif self.context["DATASHARE_FS"] == "s3":
-            self.default("DATASHARE_PATH", f"{self.context['FQDN']}")
-            self.default("DATASHARE_PORT", "9000")
 
         self.save()
 

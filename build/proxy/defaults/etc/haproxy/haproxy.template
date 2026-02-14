@@ -392,11 +392,6 @@ backend mf_console
         server-template console- 2 tasks.console:80 resolvers docker check init-addr none
 
 
-#backend s3  # MINIO
-#    mode http
-#        server-template s3_console- 1 tasks.s3_console:9001 resolvers docker check init-addr none
-
-
 backend database_console  # PGADMIN
     mode http
     balance leastconn

@@ -135,8 +135,7 @@ case "$COMMAND" in
             Processes: $(nproc)"
         echo
         show_help
-        # TODO install plugin S3
-        # python3 /usr/bin/install-plugin
+
     ;;
 esac
 
