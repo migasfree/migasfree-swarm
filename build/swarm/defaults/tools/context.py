@@ -4,8 +4,8 @@ import importlib.util
 
 from pathlib import Path
 
-_PATH = "/stack"
-_FILE_CLUSTER_VARS = os.path.join(_PATH, "env.py")
+_PATH = Path("/stack")
+_FILE_CLUSTER_VARS = _PATH / "env.py"
 
 
 def get_stacks():
@@ -20,7 +20,8 @@ def get_stacks():
 
 
 def import_source_file(filename):
-    modname = os.path.basename(filename)
+    filename = Path(filename)
+    modname = filename.name
     spec = importlib.util.spec_from_file_location(modname, filename)
     if spec is None:
         raise ImportError(f"Could not load spec for module '{modname}' at: {filename}")
@@ -95,16 +96,14 @@ class ContextLoader:
         if not self.context["STACK"]:
             self.prompt("STACK", stacks)
 
-        _PATH_STACK = f"/mnt/cluster/datashares/{self.context['STACK']}"
-        if not os.path.exists(_PATH_STACK):
-            os.mkdir(_PATH_STACK)
+        path_stack = Path("/mnt/cluster/datashares") / self.context["STACK"]
+        path_stack.mkdir(parents=True, exist_ok=True)
 
-        _FILE_STACK_VARS = os.path.join(_PATH_STACK, "env.py")
-        if not os.path.exists(_FILE_STACK_VARS):
-            with open(_FILE_STACK_VARS, "w") as f:
-                f.write("")
+        file_stack_vars = path_stack / "env.py"
+        if not file_stack_vars.exists():
+            file_stack_vars.write_text("")
 
-        self.module = import_source_file(Path(_FILE_STACK_VARS))
+        self.module = import_source_file(file_stack_vars)
 
         # Minimal context
         # ===============
@@ -439,13 +438,10 @@ class ContextLoader:
         return "".join(lines)
 
     def save(self):
-        with open(_FILE_CLUSTER_VARS, "w") as f:
-            f.write(self.environment())
+        Path(_FILE_CLUSTER_VARS).write_text(self.environment())
 
     def save_stack(self):
-        _PATH_STACK = f"/mnt/cluster/datashares/{self.context['STACK']}"
-        if not os.path.exists(_PATH_STACK):
-            os.mkdir(_PATH_STACK)
+        path_stack = Path("/mnt/cluster/datashares") / self.context["STACK"]
+        path_stack.mkdir(parents=True, exist_ok=True)
 
-        with open(os.path.join(_PATH_STACK, "env.py"), "w") as f:
-            f.write(self.environment())
+        (path_stack / "env.py").write_text(self.environment())
