@@ -3,6 +3,7 @@
 # https://docker-py.readthedocs.io/en/stable/
 
 import os
+from pathlib import Path
 import string
 import random
 import requests
@@ -21,11 +22,11 @@ from cryptography.hazmat.backends import default_backend
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-_PATH = "/stack"  # Path in this container
-_PATH_SHARE = "/mnt/cluster"  # data shared
-_PATH_CREDENTIALS = os.path.join(_PATH_SHARE, "credentials")
-_PATH_CERTIFICATE = os.path.join(_PATH_SHARE, "certificates")
-_FILE_SETTINGS = os.path.join(_PATH, "settings.py")
+_PATH = Path("/stack")  # Path in this container
+_PATH_SHARE = Path("/mnt/cluster")  # data shared
+_PATH_CREDENTIALS = _PATH_SHARE / "credentials"
+_PATH_CERTIFICATE = _PATH_SHARE / "certificates"
+_FILE_SETTINGS = _PATH / "settings.py"
 
 
 def generate_password(length=12):
@@ -34,8 +35,9 @@ def generate_password(length=12):
 
 
 def safe_mkdir(path, uid=None, gid=None):
-    if not os.path.exists(path):
-        os.mkdir(path)
+    path = Path(path)
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
         if uid is not None and gid is not None:
             os.chown(path, uid, gid)
 
@@ -224,9 +226,9 @@ def connect_network(client, network, hostname):
 def create_paths(context):
     safe_mkdir(_PATH_CREDENTIALS)
     safe_mkdir(_PATH_CERTIFICATE)
-    shares_path = os.path.join(_PATH_SHARE, "datashares")
+    shares_path = _PATH_SHARE / "datashares"
     safe_mkdir(shares_path, 890, 890)
-    stack_share = os.path.join(shares_path, context["STACK"])
+    stack_share = shares_path / context["STACK"]
     safe_mkdir(stack_share, 890, 890)
 
 
@@ -234,16 +236,14 @@ def credentials(credential_name, user="admin", password=None):
     """
     Save & Read credentials with 'user:password' content
     """
-    filename = os.path.join(_PATH_CREDENTIALS, credential_name)
+    filename = _PATH_CREDENTIALS / credential_name
     # if not exist, create it
-    if not os.path.exists(filename):
+    if not filename.exists():
         if password is None:
             password = generate_password(30)
-        with open(filename, "w") as credential_file:
-            credential_file.write(f"{user}:{password}")
+        filename.write_text(f"{user}:{password}")
 
-    with open(filename) as cred_file:
-        user, password = cred_file.read().strip().split(":")
+    user, password = filename.read_text().strip().split(":")
 
     return user, password
 
@@ -251,17 +251,16 @@ def credentials(credential_name, user="admin", password=None):
 def deploy_infra(client, context):
     path_template = "/tools/templates/"
     template = "infra.template"
-    deploy = os.path.join(_PATH, template)
-    with open(deploy, "w") as file_deploy:
-        file_deploy.write(render(path_template, template, context))
+    deploy = _PATH / template
+    deploy.write_text(render(path_template, template, context))
 
     # Secrets swarm-credential
     cred_name = "swarm-credential"
     credentials(cred_name, generate_password(8))
-    create_secret_file(client, cred_name, os.path.join(_PATH_CREDENTIALS, cred_name))
+    create_secret_file(client, cred_name, _PATH_CREDENTIALS / cred_name)
 
-    deploy_stack(deploy, "infra")
-    os.remove(deploy)
+    deploy_stack(str(deploy), "infra")
+    deploy.unlink(missing_ok=True)
 
 
 def config_portainer(client, context):
@@ -293,15 +292,15 @@ def config_portainer(client, context):
     except requests.RequestException as e:
         print(f"Error accessing Portainer wizard: {e}")
 
-    token_file = os.path.join(_PATH_CREDENTIALS, "portainer-token")
-    if os.path.exists(token_file):
-        token = open(token_file, "r").read()
+    token_file = _PATH_CREDENTIALS / "portainer-token"
+    if token_file.exists():
+        token = token_file.read_text().strip()
     else:
         token = create_token("deploy", user, password)
-        open(token_file, "w").write(token)
+        token_file.write_text(token)
 
     if not token:
-        os.remove(token_file)
+        token_file.unlink(missing_ok=True)
         print(
             "Error: The credentials file 'credentials/portainer-token' could not be generated."
         )
@@ -326,7 +325,7 @@ def deploy_migasfree(client, context):
         token = f.read().strip()
 
     api = PortainerAPI("http://portainer:9000/api", token)
-    file_yml = f"/stack/{context['STACK']}.yml"
+    file_yml = _PATH / f"{context['STACK']}.yml"
     api.set_enpoint_id("primary")
 
     # CUSTOM TEMPLATE
@@ -335,8 +334,7 @@ def deploy_migasfree(client, context):
     api.delete_custom_templates(name_template)
 
     content = render("/tools/templates", "stack.template", context)
-    with open(file_yml, "w") as f:
-        f.write(content)
+    file_yml.write_text(content)
 
     payload = {
         "Title": name_template,
@@ -372,9 +370,9 @@ def deploy_migasfree(client, context):
         "SwarmID": api.swarm_id,
     }
 
-    deploy_stack(file_yml, f"{context['STACK']}")
+    deploy_stack(str(file_yml), f"{context['STACK']}")
 
-    os.remove(file_yml)
+    file_yml.unlink(missing_ok=True)
     print()
 
 
@@ -404,12 +402,11 @@ def main():
     config_portainer(client, context)
     deploy_migasfree(client, context)
 
-    cert_path = os.path.join(_PATH_CERTIFICATE, f"{context['STACK']}.pem")
+    cert_path = _PATH_CERTIFICATE / f"{context['STACK']}.pem"
     if context.get("HTTPSMODE") == "auto" and is_self_signed(cert_path):
         print("Changing to HTTPSMODE auto")
-        token_file = os.path.join(_PATH_CREDENTIALS, "portainer-token")
-        with open(token_file) as f:
-            token = f.read().strip()
+        token_file = _PATH_CREDENTIALS / "portainer-token"
+        token = token_file.read_text().strip()
         api = PortainerAPI("http://portainer:9000/api", token)
         api.set_enpoint_id("primary")
         api.execute_in_service(
@@ -422,9 +419,7 @@ def main():
             f"{context['STACK']}_certbot", ["/usr/bin/send_message", ""]
         )
 
-    cache_path = os.path.join(
-        _PATH_SHARE, "datashares", context["STACK"], "__pycache__"
-    )
+    cache_path = _PATH_SHARE / "datashares" / context["STACK"] / "__pycache__"
     try:
         shutil.rmtree(cache_path)
     except Exception:
