@@ -73,7 +73,7 @@ def wait_for_dns(hostname, timeout=60, interval=3):
 
 def download_resource(url, output_path):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
         with open(output_path, "wb") as f:
             f.write(response.content)
@@ -271,18 +271,27 @@ def config_portainer(client, context):
 
     # credentials configuration
     user, password = credentials("swarm-credential")
-    response = requests.post(
-        "http://portainer:9000/api/users/admin/init",
-        json={"Username": user, "Password": password},
-        verify=False,
-    )
-    if response and response.status_code != 200:
-        print("RESPONSE INIT", response)
-        print("RESPONSE INIT", response.text)
+    try:
+        response = requests.post(
+            "http://portainer:9000/api/users/admin/init",
+            json={"Username": user, "Password": password},
+            verify=False,
+            timeout=10,
+        )
+        if response.status_code != 200 and response.status_code != 409:
+            print("RESPONSE INIT", response)
+            print("RESPONSE INIT", response.text)
+    except requests.RequestException as e:
+        print(f"Error initializing Portainer: {e}")
 
-    response = requests.get("http://portainer:9000/#!/wizard", verify=False)
-    if response and response.status_code != 200:
-        print("RESPONSE WIZARD", response)
+    try:
+        response = requests.get(
+            "http://portainer:9000/#!/wizard", verify=False, timeout=10
+        )
+        if response.status_code != 200:
+            print("RESPONSE WIZARD", response)
+    except requests.RequestException as e:
+        print(f"Error accessing Portainer wizard: {e}")
 
     token_file = os.path.join(_PATH_CREDENTIALS, "portainer-token")
     if os.path.exists(token_file):
