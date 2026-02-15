@@ -10,6 +10,7 @@ Welcome to the Migasfree documentation center. Below is a list of all available 
 | **migasfree-user-manual.md** | 📖 User Manual | `{MCP_SERVER_URI}docs/migasfree-user-manual.md` | **Migasfree User Manual (Text)**: The official handbook converted to Markdown for easier reading. Covers installation, configuration, day-to-day operations, and best practices. |
 | **migasfree_architecture.md** | 🏗️ Architecture | `{MCP_SERVER_URI}docs/migasfree_architecture.md` | **Architecture Guide**: Detailed overview of the Migasfree ecosystem, components (Server, Clients, Tools), and data flow diagrams. |
 | **github_repositories.md** | 🐙 Ecosystem | `{MCP_SERVER_URI}docs/github_repositories.md` | **GitHub Repositories**: A complete catalog of all official Migasfree repositories (Backend, Frontend, Clients, Agents, Tools) with descriptions and links. |
+| **faq.md** | ❓ FAQ | `{MCP_SERVER_URI}docs/faq.md` | **Frequently Asked Questions**: Quick solutions to common issues, such as SSL/TLS connection errors and client configuration. |
 
 ---
 
