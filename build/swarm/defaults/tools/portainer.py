@@ -16,9 +16,10 @@ def create_token(name, username, password):
     # https://docs.portainer.io/api/access
     # https://app.swaggerhub.com/apis/portainer/portainer-ce/2.33.1#/users/UserGenerateAPIKey
 
+    attempts = 0
     server_portainer = "http://portainer:9000"
-    while True:
-        session = None
+
+    while attempts < 15:  # Prevent infinite loop
         session = requests.Session()
         session.headers = {"Content-Type": "application/json"}
         session.verify = False
@@ -30,12 +31,24 @@ def create_token(name, username, password):
             )
             if response and response.status_code == requests.codes.ok:
                 break
-        except requests.RequestException as e:
-            print("Error creating token:", e)
-            print(
-                "****** Consider restarting the Docker service: systemctl restart docker"
-            )
-        time.sleep(2)
+        except requests.RequestException:
+            session.close()
+            time.sleep(2 + (attempts * 0.5))  # Slight backoff
+            attempts += 1
+            continue
+
+        else:
+            if response.status_code != 200:
+                print(
+                    f"    Portainer authentication failed. Status Code: {response.status_code}"
+                )
+                session.close()
+                if (
+                    response.status_code == 422
+                ):  # Invalid credentials in some versions or already init
+                    break
+                time.sleep(2)
+                attempts += 1
 
     if response and "jwt" in response.json():
         headers = session.headers
@@ -154,7 +167,8 @@ class PortainerAPI:
                 break
     """
 
-    def set_enpoint_id(self, name):
+    def set_enpoint_id(self, name, timeout=60):
+        start_time = time.time()
         while True:
             response = self.get("/endpoints")
             if response:
@@ -169,12 +183,18 @@ class PortainerAPI:
                             return
                         except (KeyError, IndexError, TypeError):
                             # Fallback to direct Docker info call (live data)
+
                             info = self.get(
                                 f"/endpoints/{self.endpoint_id}/docker/info"
                             )
                             if info and "Swarm" in info and "Cluster" in info["Swarm"]:
                                 self.swarm_id = info["Swarm"]["Cluster"]["ID"]
                                 return
+
+            if time.time() - start_time > timeout:
+                print(f"    Error: Timeout waiting for Portainer endpoint '{name}'")
+                return
+
             time.sleep(2)
 
     def create_environment(self, name):
@@ -192,23 +212,28 @@ class PortainerAPI:
         )
 
         headers = {
-            "Authorization": self.session.headers["Authorization"],
+            "X-API-Key": self.session.headers["X-API-Key"],
             "Content-Type": content_type,
             "Accept": "application/json, text/plain, */*",
         }
 
-        response = None
-        while response is None:
+        while True:
             try:
                 response = self.session.post(
                     f"{self.base_url}/endpoints",
                     headers=headers,
                     data=files,
-                    verify=False,
                     timeout=10,
                 )
-            except requests.RequestException:
-                time.sleep(1)
+                if response.ok or response.status_code == 409:
+                    break
+                print(
+                    f"    Error creating environment: {response.status_code} {response.text}"
+                )
+            except requests.RequestException as e:
+                print(f"    Network error creating environment: {e}")
+
+            time.sleep(2)
 
         self.set_enpoint_id(name)
 
@@ -273,9 +298,7 @@ class PortainerAPI:
         # Start the command execution
         url = f"/endpoints/{self.endpoint_id}/docker/exec/{exec_id}/start"
         payload = {"Detach": False, "Tty": False}
-        response = self.session.post(
-            f"{self.base_url}{url}", json=payload, verify=False, timeout=10
-        )
+        response = self.session.post(f"{self.base_url}{url}", json=payload, timeout=10)
         return response
 
     def execute_in_service(self, service_name, command):

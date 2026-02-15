@@ -13,6 +13,7 @@ import subprocess
 import urllib3
 import shutil
 import docker
+import http.client
 
 from template import render
 from portainer import PortainerAPI, create_token
@@ -42,12 +43,21 @@ def safe_mkdir(path, uid=None, gid=None):
             os.chown(path, uid, gid)
 
 
-def wait_url_available(url, timeout=10):
-    try:
-        response = requests.get(url, timeout=timeout)
-        return response.status_code < 400
-    except requests.RequestException:
-        return False
+def wait_url_available(url, timeout=60):
+    start_time = time.time()
+    while True:
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code < 500:
+                return True
+        except (requests.RequestException, http.client.RemoteDisconnected):
+            pass
+
+        print("    Waiting for service to be ready...", end="\r")
+        if time.time() - start_time > timeout:
+            print()
+            return False
+        time.sleep(2)
 
 
 def wait_for_dns(hostname, timeout=60, interval=3):
@@ -159,7 +169,7 @@ def create_secret_file(client, name, file_path):
     if name not in [secret.name for secret in client.secrets.list()]:
         with open(file_path, "rb") as f:
             data = f.read()
-        create_secret(name=name, data=data)
+        create_secret(client, name, data)
 
 
 def deploy_stack(compose_file, stack_name):
@@ -256,7 +266,7 @@ def deploy_infra(client, context):
 
     # Secrets swarm-credential
     cred_name = "swarm-credential"
-    credentials(cred_name, generate_password(8))
+    credentials(cred_name, generate_password(12))
     create_secret_file(client, cred_name, _PATH_CREDENTIALS / cred_name)
 
     deploy_stack(str(deploy), "infra")
@@ -265,28 +275,32 @@ def deploy_infra(client, context):
 
 def config_portainer(client, context):
     wait_for_dns("portainer")
-    wait_url_available("http://portainer:9000/api/status")
-    time.sleep(1)
+    wait_url_available("http://portainer:9000/api/system/status")
 
     # credentials configuration
     user, password = credentials("swarm-credential")
-    try:
-        response = requests.post(
-            "http://portainer:9000/api/users/admin/init",
-            json={"Username": user, "Password": password},
-            verify=False,
-            timeout=10,
-        )
-        if response.status_code != 200 and response.status_code != 409:
-            print("RESPONSE INIT", response)
-            print("RESPONSE INIT", response.text)
-    except requests.RequestException as e:
-        print(f"Error initializing Portainer: {e}")
+    print("Initializing Portainer admin...")
+    while True:
+        try:
+            response = requests.post(
+                "http://portainer:9000/api/users/admin/init",
+                json={"Username": user, "Password": password},
+                timeout=10,
+            )
+            if response.status_code == 200 or response.status_code == 409:
+                break
+            print(
+                f"    Waiting for Portainer to be ready... (Status: {response.status_code})"
+            )
+        except requests.RequestException as e:
+            print(f"    Waiting for Portainer network... ({e})", end="\r")
+        time.sleep(2)
+
+    print("Verifying Portainer (post-init check)...")
+    wait_url_available("http://portainer:9000/api/system/status")
 
     try:
-        response = requests.get(
-            "http://portainer:9000/#!/wizard", verify=False, timeout=10
-        )
+        response = requests.get("http://portainer:9000/#!/wizard", timeout=10)
         if response.status_code != 200:
             print("RESPONSE WIZARD", response)
     except requests.RequestException as e:
@@ -311,6 +325,7 @@ def config_portainer(client, context):
     api.settings()
 
     # Create Environment
+    api.create_environment("primary")
     api.set_enpoint_id("primary")
 
     # Update Public IP
@@ -388,7 +403,11 @@ def main():
     client = docker.from_env()
     swarm_init(client)
 
-    user, password = credentials(f"{context['STACK']}", password=generate_password(8))
+    user, password = credentials(
+        f"{context['STACK']}",
+        user=generate_password(12),
+        password=generate_password(32),
+    )
 
     # Stack secrets
     create_secret(client, f"{context['STACK']}_superadmin_name", user.encode())

@@ -47,17 +47,56 @@ echo "Parameterization"
 echo "================"
 echo "$POSTGRESQL_CONF"
 echo
-CONFIG_FILE=/var/lib/postgresql/18/docker/postgresql.conf
-IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
-for param_value in "${PARAMS[@]}"; do
-  param=$(echo $param_value | cut -d= -f1)
-  value=$(echo $param_value | cut -d= -f2)
-  if grep -q "^#*\s*${param}\s*=" "$CONFIG_FILE"; then
-    sed -i "s|^#*\s*${param}\s*=.*|${param} = ${value}|" "$CONFIG_FILE"
-  else
-    echo "${param} = ${value}" >> "$CONFIG_FILE"
-  fi
-done
+# Function to apply parameters to postgresql.conf
+function apply_postgresql_params {
+    local config_file=$1
+    if [ -f "$config_file" ]; then
+        echo "Applying parameters to $config_file"
+        IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
+        for param_value in "${PARAMS[@]}"; do
+            param=$(echo $param_value | cut -d= -f1)
+            value=$(echo $param_value | cut -d= -f2)
+            if grep -q "^#*\s*${param}\s*=" "$config_file"; then
+                sed -i "s|^#*\s*${param}\s*=.*|${param} = ${value}|" "$config_file"
+            else
+                echo "${param} = ${value}" >> "$config_file"
+            fi
+        done
+    fi
+}
+
+# Locate postgresql.conf
+CONFIG_FILE=$(find /var/lib/postgresql -name postgresql.conf | head -n 1)
+if [ -z "$CONFIG_FILE" ]; then
+    CONFIG_FILE="${PGDATA:-/var/lib/postgresql/data}/postgresql.conf"
+fi
+
+if [ -f "$CONFIG_FILE" ]; then
+    apply_postgresql_params "$CONFIG_FILE"
+else
+    echo "PostgreSQL configuration file $CONFIG_FILE not found."
+    echo "Creating initialization hook in /docker-entrypoint-initdb.d/99-config-params.sh"
+    mkdir -p /docker-entrypoint-initdb.d
+    cat <<EOF > /docker-entrypoint-initdb.d/99-config-params.sh
+#!/bin/bash
+# Find the actual config file after initialization
+REAL_CONFIG=\$(find /var/lib/postgresql -name postgresql.conf | head -n 1)
+if [ -n "\$REAL_CONFIG" ]; then
+    echo "Initialization hook: Applying parameters to \$REAL_CONFIG"
+    IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
+    for param_value in "\${PARAMS[@]}"; do
+        param=\$(echo \$param_value | cut -d= -f1)
+        value=\$(echo \$param_value | cut -d= -f2)
+        if grep -q "^#*\s*\${param}\s*=" "\$REAL_CONFIG"; then
+            sed -i "s|^#*\s*\${param}\s*=.*|\${param} = \${value}|" "\$REAL_CONFIG"
+        else
+            echo "\${param} = \${value}" >> "\$REAL_CONFIG"
+        fi
+    done
+fi
+EOF
+    chmod +x /docker-entrypoint-initdb.d/99-config-params.sh
+fi
 
 
 send_message "starting ${SERVICE:(${#STACK})+1}"

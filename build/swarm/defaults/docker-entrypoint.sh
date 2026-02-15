@@ -53,6 +53,7 @@ Available commands:
   pull                   Pull all images
   url-admin-certificate  Generate a one-time URL to create a client certificate for administration console access
   join-worker            Add a worker node to the cluster
+  leave                  Leave the Swarm cluster
 EOF
 }
 
