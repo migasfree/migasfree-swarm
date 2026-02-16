@@ -1,7 +1,6 @@
 import os
-import subprocess
+import asyncio
 import secrets
-import time
 import logging
 import re
 
@@ -49,11 +48,11 @@ class TokenValidator:
         self.resource = resource  # "admin" or "computer"
         self.token_file = PATH_CERTIFICATES / stack / resource / "tokens" / token
 
-    def validate(self) -> tuple[str, str]:
+    async def validate(self) -> tuple[str, str]:
         # Basic validation
         if not self.token or len(self.token) != 64:
             logger.warning(f"Invalid token format from stack {self.stack}")
-            time.sleep(3)  # Timing attack mitigation
+            await asyncio.sleep(3)  # Timing attack mitigation
             raise HTTPException(status_code=401, detail="Invalid token")
 
         # Verify existence
@@ -61,7 +60,7 @@ class TokenValidator:
             logger.warning(
                 f"Token not found: {self.token[:8]}... for stack {self.stack}"
             )
-            time.sleep(3)
+            await asyncio.sleep(3)
             raise HTTPException(status_code=401, detail="Invalid token")
 
         # Verify expiration by timestamp of the file
@@ -71,7 +70,7 @@ class TokenValidator:
         if age > timedelta(hours=MAX_TOKEN_AGE_HOURS):
             logger.info(f"Expired token removed: {self.token[:8]}...")
             self.token_file.unlink(missing_ok=True)
-            time.sleep(3)
+            await asyncio.sleep(3)
             raise HTTPException(status_code=401, detail="Token expired")
 
         # Read content
@@ -81,7 +80,7 @@ class TokenValidator:
 
             if len(parts) != 2:
                 logger.error(f"Malformed token content in {self.token_file}")
-                time.sleep(3)
+                await asyncio.sleep(3)
                 raise HTTPException(status_code=401, detail="Invalid token format")
 
             common_name, validity_days = parts
@@ -93,7 +92,7 @@ class TokenValidator:
 
         except (ValueError, OSError) as e:
             logger.error(f"Error reading token file: {e}")
-            time.sleep(3)
+            await asyncio.sleep(3)
             raise HTTPException(status_code=401, detail="Invalid token")
 
     def consume(self):
@@ -106,7 +105,7 @@ def sanitize_input(value: str, allowed_chars: str = r"[^a-zA-Z0-9@._:-]") -> str
     return re.sub(allowed_chars, "", value)
 
 
-def create_admin_cert(
+async def create_admin_cert(
     fqdn: str,
     host: str,
     stack: str,
@@ -133,12 +132,20 @@ def create_admin_cert(
         ]
         logger.debug(f"Running command: {cmd}")
 
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30, check=False
+        process = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        if result.returncode != 0:
-            logger.error(f"create_cert_admin.sh failed: {result.stderr}")
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            logger.error("create_cert_admin.sh execution timeout")
+            return False
+
+        if process.returncode != 0:
+            logger.error(f"create_cert_admin.sh failed: {stderr.decode()}")
             return False
 
         logger.info(
@@ -146,15 +153,12 @@ def create_admin_cert(
         )
         return True
 
-    except subprocess.TimeoutExpired:
-        logger.error("create_cert_admin.sh execution timeout")
-        return False
     except Exception as e:
         logger.error(f"Error executing create_cert_admin.sh: {e}")
         return False
 
 
-def revoke_admin_cert(common_name: str, stack: str) -> bool:
+async def revoke_admin_cert(common_name: str, stack: str) -> bool:
     """
     Revokes the user certificate identified by common_name in the specified stack.
     Updates the CRL to reflect the revocation.
@@ -171,20 +175,34 @@ def revoke_admin_cert(common_name: str, stack: str) -> bool:
         resource_dir = PATH_CERTIFICATES / stack / "admin"
 
         # Revoke
-        subprocess.run(
-            [
-                "openssl",
-                "ca",
-                "-config",
-                str(resource_dir / "openssl.cnf"),
-                "-revoke",
-                str(cert_path),
-            ],
-            check=True,
+        cmd_revoke = [
+            "openssl",
+            "ca",
+            "-config",
+            str(resource_dir / "openssl.cnf"),
+            "-revoke",
+            str(cert_path),
+        ]
+        process_revoke = await asyncio.create_subprocess_exec(
+            *cmd_revoke, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
+        await process_revoke.communicate()
+
+        if process_revoke.returncode != 0:
+            logger.error("OpenSSL revoke command failed")
+            return False
 
         # Renew CRL
-        subprocess.run(["/usr/bin/renew_crl"], check=True)
+        process_renew = await asyncio.create_subprocess_exec(
+            "/usr/bin/renew_crl",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process_renew.communicate()
+
+        if process_renew.returncode != 0:
+            logger.error("renew_crl command failed")
+            return False
 
         os.remove(cert_path)
 
@@ -193,15 +211,12 @@ def revoke_admin_cert(common_name: str, stack: str) -> bool:
         )
         return True
 
-    except subprocess.CalledProcessError as e:
-        logger.error(f"OpenSSL command failed: {e}")
-        return False
     except Exception as e:
         logger.error(f"Unexpected error during revocation: {e}")
         return False
 
 
-def create_computer_cert(
+async def create_computer_cert(
     fqdn: str,
     host: str,
     stack: str,
@@ -229,12 +244,20 @@ def create_computer_cert(
         ]
         logger.debug(f"Running command: {cmd}")
 
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30, check=False
+        process = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        if result.returncode != 0:
-            logger.error(f"create_cert_computer.sh failed: {result.stderr}")
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            logger.error("create_cert_computer.sh execution timeout")
+            return False
+
+        if process.returncode != 0:
+            logger.error(f"create_cert_computer.sh failed: {stderr.decode()}")
             return False
 
         logger.info(
@@ -242,15 +265,12 @@ def create_computer_cert(
         )
         return True
 
-    except subprocess.TimeoutExpired:
-        logger.error("create_cert_computer.sh execution timeout")
-        return False
     except Exception as e:
         logger.error(f"Error executing create_cert_computer.sh: {e}")
         return False
 
 
-def revoke_computer_cert(common_name: str, stack: str) -> bool:
+async def revoke_computer_cert(common_name: str, stack: str) -> bool:
     cert_dir = PATH_CERTIFICATES / stack / "computer" / "certs"
     cert_file = f"{common_name}.crt"
     cert_path = cert_dir / cert_file
@@ -262,20 +282,34 @@ def revoke_computer_cert(common_name: str, stack: str) -> bool:
         resource_dir = PATH_CERTIFICATES / stack / "computer"
 
         # Revoke
-        subprocess.run(
-            [
-                "openssl",
-                "ca",
-                "-config",
-                str(resource_dir / "openssl.cnf"),
-                "-revoke",
-                str(cert_path),
-            ],
-            check=True,
+        cmd_revoke = [
+            "openssl",
+            "ca",
+            "-config",
+            str(resource_dir / "openssl.cnf"),
+            "-revoke",
+            str(cert_path),
+        ]
+        process_revoke = await asyncio.create_subprocess_exec(
+            *cmd_revoke, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
+        await process_revoke.communicate()
+
+        if process_revoke.returncode != 0:
+            logger.error("OpenSSL revoke command failed")
+            return False
 
         # Renew CRL
-        subprocess.run(["/usr/bin/renew_crl"], check=True)
+        process_renew = await asyncio.create_subprocess_exec(
+            "/usr/bin/renew_crl",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process_renew.communicate()
+
+        if process_renew.returncode != 0:
+            logger.error("renew_crl command failed")
+            return False
 
         os.remove(cert_path)
 
@@ -284,9 +318,6 @@ def revoke_computer_cert(common_name: str, stack: str) -> bool:
         )
         return True
 
-    except subprocess.CalledProcessError as e:
-        logger.error(f"OpenSSL command failed: {e}")
-        return False
     except Exception as e:
         logger.error(f"Unexpected error during revocation: {e}")
         return False

@@ -1,5 +1,5 @@
 import logging
-import time
+import asyncio
 import secrets
 
 from fastapi import APIRouter, Request, HTTPException, Form, Body, status, Depends
@@ -130,11 +130,11 @@ async def create_computer_certificate(
     """
 
     validator = TokenValidator(STACK, token, "computer")
-    common_name, validity_days = validator.validate()
+    common_name, validity_days = await validator.validate()
     FQDN = get_fqdn(STACK)
     HOST = get_host(STACK)
 
-    success = create_computer_cert(
+    success = await create_computer_cert(
         FQDN, HOST, STACK, common_name, password, validity_days, email
     )
 
@@ -148,7 +148,7 @@ async def create_computer_certificate(
 
     if not file_tar.exists():
         logger.error(f"Certificate file not found: {file_tar}")
-        time.sleep(3)
+        await asyncio.sleep(3)
         raise HTTPException(status_code=500, detail="Certificate file not found")
 
     try:
@@ -183,7 +183,7 @@ async def revoke_computer_certificate(
     """
 
     try:
-        revoked = revoke_computer_cert(common_name, STACK)
+        revoked = await revoke_computer_cert(common_name, STACK)
         if not revoked:
             logger.warning(
                 f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}"
