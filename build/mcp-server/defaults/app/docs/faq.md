@@ -11,8 +11,10 @@ Welcome to the FAQ. Here you will find answers to the most common questions and 
 - [🗄️ Database](#database)
 - [💻 Migasfree Client](#migasfree-client)
   - [Sync Error: 404](#sync-error-404)
+  - [TLSV1_ALERT_UNKNOWN_CA](#tlsv1_alert_unknown_ca)
 - [🤖 Migasfree Agent](#migasfree-agent)
   - [Manager Error: 403](#manager-error-403)
+  - [CERTIFICATE_VERIFY_FAILED](#certificate_verify_failed)
 
 ---
 
@@ -101,6 +103,24 @@ To resolve this issue, you must delete the obsolete keys on the client machine. 
 rm -rf /var/migasfree-client/keys
 ```
 
+### TLSV1_ALERT_UNKNOWN_CA
+
+**Problem:**  
+You encounter an error similar to:
+
+```bash
+WARNING - connectionpool - urlopen - Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(1, '[SSL: TLSV1_ALERT_UNKNOWN_CA] tlsv1 alert unknown ca (_ssl.c:2649)')': /api/v1/public/server/info/
+```
+
+**Solution:**
+
+The mTLS certificate is incorrect or has expired. This can happen if the server certificate has been changed or if the client has not downloaded the certificate correctly.
+
+```bash
+rm -rf /var/migasfree-client/mtls
+migasfree sync
+```
+
 ---
 
 ## Migasfree Agent
@@ -116,6 +136,24 @@ You encounter an error similar to the following when checking the agent logs (e.
 This error is typically caused by an invalid or expired mTLS certificate on the agent side.
 
 To resolve this, delete the existing certificate and force a new download by performing a fresh synchronization:
+
+```bash
+rm -rf /var/migasfree-client/mtls
+migasfree sync
+systemctl restart migasfree-agent
+```
+
+### CERTIFICATE_VERIFY_FAILED
+
+**Problem:**  
+You encounter an error similar to:
+
+```bash
+ERROR - Connection error: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1029)```
+
+**Solution:**
+
+The mTLS certificate is incorrect or has expired. This can happen if the server certificate has been changed or if the client has not downloaded the certificate correctly.
 
 ```bash
 rm -rf /var/migasfree-client/mtls
