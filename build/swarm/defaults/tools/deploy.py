@@ -252,6 +252,7 @@ def credentials(credential_name, user="admin", password=None):
         if password is None:
             password = generate_password(30)
         filename.write_text(f"{user}:{password}")
+        os.chmod(filename, 0o600)
 
     user, password = filename.read_text().strip().split(":")
 
@@ -312,6 +313,7 @@ def config_portainer(client, context):
     else:
         token = create_token("deploy", user, password)
         token_file.write_text(token)
+        os.chmod(token_file, 0o600)
 
     if not token:
         token_file.unlink(missing_ok=True)
