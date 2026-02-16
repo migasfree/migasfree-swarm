@@ -105,8 +105,8 @@ function run_as_www_data {
 
 function is_db_empty() {
     send_message "checking database is empty"
-    local _RET=$(PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER $_NAME -tAc "SELECT count(*) FROM information_schema.tables WHERE table_type='BASE TABLE' and table_schema='$_NAME ' ; ")
-    test $_RET -eq "$(echo "0")"
+    local _RET=$(PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER $_NAME -tAc "SELECT count(*) FROM information_schema.tables WHERE table_type='BASE TABLE' and table_schema='public';")
+    test $_RET -eq 0
 }
 
 function is_db_exists() {
@@ -146,15 +146,31 @@ function migrate {
 
 function apply_fixtures {
     send_message "applying fixtures to database"
-    su -c "DJANGO_SETTINGS_MODULE=migasfree.settings.production django-admin initialize_db --skip-fixtures" www-data
-    python3 - <<EOF
+    su -c "DJANGO_SETTINGS_MODULE=migasfree.settings.production django-admin initialize_db --skip-fixtures --force" www-data
+    su -c "python3 -" www-data <<EOF
 import django
+from django.core.management import call_command
+from io import StringIO
+from django.db import connection
+import os
+
 django.setup()
 
-from migasfree.fixtures import create_initial_data, sequence_reset
+from migasfree.fixtures import create_initial_data
 
 create_initial_data()
-sequence_reset()
+
+# Custom sequence reset to avoid 'su postgres' error
+commands = StringIO()
+os.environ['DJANGO_COLORS'] = 'nocolor'
+label_apps = ['core', 'client', 'device', 'hardware', 'stats', 'app_catalog']
+for label in label_apps:
+    call_command('sqlsequencereset', label, stdout=commands)
+
+sql = commands.getvalue()
+if sql:
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
 EOF
 }
 
@@ -186,14 +202,19 @@ function migasfree_init {
 
     is_user_exists || create_user
 
-    is_db_empty && echo yes | cat - | migrate "fake-initial" || (
-        su -c "django-admin showmigrations | grep '\[ \]' " www-data >/dev/null
-        if [ $? -eq 0 ] # we have pending migrations
+    if is_db_empty
+    then
+        send_message "empty database, running migrations and fixtures"
+        echo yes | migrate "fake-initial"
+        apply_fixtures
+    else
+        send_message "checking for pending migrations"
+        if su -c "django-admin showmigrations | grep '\[ \]' " www-data >/dev/null
         then
             migrate
             apply_fixtures
         fi
-    )
+    fi
 
     create_superuser
 
