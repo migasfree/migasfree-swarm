@@ -7,14 +7,10 @@ from fastapi.responses import Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
 from datetime import datetime, timedelta
-from typing import Optional
+
 
 from core.config import ROOT_PATH, API_VERSION, STACK, PATH_CERTIFICATES
-from core.security import (
-    TokenValidator,
-    create_admin_cert,
-    revoke_admin_cert
-)
+from core.security import TokenValidator, create_admin_cert, revoke_admin_cert
 from core.models import TokenAdminResponse, TokenCreateRequest
 from core.utils import get_fqdn, get_host
 from core.core_client import get_current_superuser
@@ -23,25 +19,18 @@ logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
 
-router_public = APIRouter(
-    prefix=f"{API_VERSION}/public/mtls",
-    tags=["mtls-admin"]
-)
+router_public = APIRouter(prefix=f"{API_VERSION}/public/mtls", tags=["mtls-admin"])
 
-router_private = APIRouter(
-    prefix=f"{API_VERSION}/private/mtls",
-    tags=["mtls-admin"]
-)
+router_private = APIRouter(prefix=f"{API_VERSION}/private/mtls", tags=["mtls-admin"])
 
 
 @router_private.post(
-    '/admin-tokens',
+    "/admin-tokens",
     response_model=TokenAdminResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 async def create_token(
-    data: TokenCreateRequest,
-    currentuser: dict = Depends(get_current_superuser)
+    data: TokenCreateRequest, currentuser: dict = Depends(get_current_superuser)
 ):
     """
     Create a token for the issuance of an mTLS certificate for an administrator.
@@ -55,18 +44,17 @@ async def create_token(
     # Save common_name|validity_days
     token_file = stack_token_dir / token
     content = f"{data.common_name}|{data.validity_days}"
-    token_file.write_text(content, encoding='utf-8')
+    token_file.write_text(content, encoding="utf-8")
 
     logger.info(f"Token created for CN={data.common_name} in stack={STACK}")
     host = get_host(STACK)
-    return TokenAdminResponse(url=f"https://{host}{ROOT_PATH}/v1/public/mtls/admin-requests/{token}")
+    return TokenAdminResponse(
+        url=f"https://{host}{ROOT_PATH}/v1/public/mtls/admin-requests/{token}"
+    )
 
 
 @router_public.get("/admin-requests/{token}", response_class=HTMLResponse)
-async def admin_request_form(
-    request: Request,
-    token: str
-):
+async def admin_request_form(request: Request, token: str):
     """
     mTLS Certificate Issuance Form for administrators.
     """
@@ -79,9 +67,9 @@ async def admin_request_form(
         token_file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=404, detail="Token expired")
 
-    content = token_file_path.read_text(encoding='utf-8')
+    content = token_file_path.read_text(encoding="utf-8")
     try:
-        common_name, validity_days = content.split('|')
+        common_name, validity_days = content.split("|")
     except Exception:
         raise HTTPException(status_code=500, detail="Corrupted token file content")
 
@@ -94,8 +82,8 @@ async def admin_request_form(
             "token": token,
             "fqdn": get_fqdn(STACK),
             "stack": STACK,
-            "root_path": ROOT_PATH
-        }
+            "root_path": ROOT_PATH,
+        },
     )
 
 
@@ -103,7 +91,7 @@ async def admin_request_form(
 async def create_admin_certificate(
     token: str = Form(...),
     email: EmailStr = Form(...),
-    password: Optional[str] = Form(None)
+    password: str | None = Form(None),
 ):
     """
     mTLS Certificate Issuance for administrators.
@@ -140,13 +128,13 @@ async def create_admin_certificate(
 
         return Response(
             content=content,
-            media_type='application/x-tar',
+            media_type="application/x-tar",
             headers={
-                'Content-Disposition': f'attachment; filename="{cert_name}_{FQDN}.tar"',
-                'Content-Length': str(len(content)),
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
-                'Pragma': 'no-cache'
-            }
+                "Content-Disposition": f'attachment; filename="{cert_name}_{FQDN}.tar"',
+                "Content-Length": str(len(content)),
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+            },
         )
     except Exception as e:
         logger.error(f"Error serving certificate: {e}")
@@ -156,7 +144,7 @@ async def create_admin_certificate(
 @router_private.delete("/admin-certificates", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_admin_certificate(
     common_name: str = Body(..., embed=True),
-    currentuser: dict = Depends(get_current_superuser)
+    currentuser: dict = Depends(get_current_superuser),
 ):
     """
     mTLS Certificate Revocation for administrators.
@@ -165,12 +153,18 @@ async def revoke_admin_certificate(
     try:
         revoked = revoke_admin_cert(common_name, STACK)
         if not revoked:
-            logger.warning(f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}")
-            raise HTTPException(status_code=404, detail="Certificate not found or already revoked")
+            logger.warning(
+                f"Attempt to revoke non-existent or already revoked cert: {common_name} in stack {STACK}"
+            )
+            raise HTTPException(
+                status_code=404, detail="Certificate not found or already revoked"
+            )
 
         logger.info(f"Certificate revoked for {common_name} in stack {STACK}")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     except Exception as e:
-        logger.error(f"Error revoking certificate for {common_name} in stack {STACK}: {e}")
+        logger.error(
+            f"Error revoking certificate for {common_name} in stack {STACK}: {e}"
+        )
         raise HTTPException(status_code=500, detail="Error revoking certificate")

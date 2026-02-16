@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional
+
 
 VALIDITY_DAYS = 7305
 
@@ -8,11 +8,11 @@ class TokenCreateRequest(BaseModel):
     common_name: str
     validity_days: int = VALIDITY_DAYS
 
-    @field_validator('validity_days')
+    @field_validator("validity_days")
     @classmethod
     def validate_validity_days(cls, v: int) -> int:
         if not 1 <= v <= VALIDITY_DAYS:
-            raise ValueError(f'validity_days must be between 1 and {VALIDITY_DAYS}')
+            raise ValueError(f"validity_days must be between 1 and {VALIDITY_DAYS}")
 
         return v
 
@@ -21,14 +21,14 @@ class TokenComputerRequest(BaseModel):
     uuid: str
     project_name: str
     validity_days: int = VALIDITY_DAYS
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
 
-    @field_validator('validity_days')
+    @field_validator("validity_days")
     @classmethod
     def validate_validity_days(cls, v: int) -> int:
         if not 1 <= v <= VALIDITY_DAYS:
-            raise ValueError(f'validity_days must be between 1 and {VALIDITY_DAYS}')
+            raise ValueError(f"validity_days must be between 1 and {VALIDITY_DAYS}")
         return v
 
 

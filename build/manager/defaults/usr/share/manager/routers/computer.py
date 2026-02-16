@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, HTTPException, Form, Body, status, Depen
 from fastapi.responses import Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timedelta
-from typing import Optional
+
 
 from core.config import ROOT_PATH, API_VERSION, STACK, PATH_CERTIFICATES
 from core.security import TokenValidator, create_computer_cert, revoke_computer_cert
@@ -122,8 +122,8 @@ async def get_computer_cert_request_form(request: Request, token: str):
 @router_public.post("/computer-certificates")
 async def create_computer_certificate(
     token: str = Form(...),
-    email: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
+    email: str | None = Form(None),
+    password: str | None = Form(None),
 ):
     """
     mTLS Certificate Issuance for computers.

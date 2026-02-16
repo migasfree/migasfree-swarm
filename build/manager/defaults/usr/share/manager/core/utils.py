@@ -46,7 +46,7 @@ async def get_organization(stack) -> str:
     return ''
 
 
-def get_extensions() -> List[str]:
+def get_extensions() -> list[str]:
     pms_enabled = os.environ['PMS_ENABLED']
     extensions = []
     result = subprocess.run(
