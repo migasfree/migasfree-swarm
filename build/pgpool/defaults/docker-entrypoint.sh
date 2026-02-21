@@ -179,40 +179,94 @@ stop_pgpool() {
 }
 
 # ==========================================
+# Dynamic Discovery
+# ==========================================
+
+# Discover PostgreSQL backends from Swarm service DNS (tasks.database)
+discover_backends() {
+    echo "Discovering PostgreSQL backends from 'tasks.database'..."
+    local PRIMARY=""
+    local REPLICAS=""
+    
+    # Get all IPs for the database service via Swarm tasks DNS
+    # We retry a few times to give DNS time to propagate all nodes
+    local IPs=""
+    local count=0
+    while [ $count -lt 5 ]; do
+        IPs=$(nslookup tasks.database 2>/dev/null | grep -A999 "Non-authoritative" | grep "Address:" | awk '{print $2}' | sort -u)
+        if [ -n "$IPs" ]; then
+            # If we find only 1 IP, wait a bit more just in case it's a multi-node cluster
+            local ip_count=$(echo "$IPs" | wc -l)
+            if [ "$ip_count" -gt 1 ]; then
+                break
+            fi
+        fi
+        echo "  [discovery] Found $count IPs, waiting for more..."
+        sleep 2
+        count=$((count + 1))
+    done
+
+    if [ -z "$IPs" ]; then
+        echo "  [discovery] No IPs found for 'tasks.database' yet."
+        return 1
+    fi
+    
+    for IP in $IPs; do
+        if [ -z "$IP" ]; then continue; fi
+        echo "  [discovery] Checking node $IP..."
+        # Check if node is primary or replica
+        local IS_PRIMARY
+        IS_PRIMARY=$(PGPASSWORD="$DB_PASSWORD" psql -h "$IP" -p "$PORT_DATABASE" -U "$POSTGRES_USER" -d postgres -tAc "SELECT NOT pg_is_in_recovery();" 2>/dev/null || echo "error")
+        
+        if [ "$IS_PRIMARY" = "t" ]; then
+            if [ -n "$PRIMARY" ]; then
+                echo "  [discovery] WARNING: Multiple primaries reported! ($PRIMARY and $IP). Picking the first one."
+            else
+                PRIMARY="$IP"
+                echo "  [discovery] Found Primary: $IP"
+            fi
+        elif [ "$IS_PRIMARY" = "f" ]; then
+            echo "  [discovery] Found Replica: $IP"
+            REPLICAS="${REPLICAS}${IP},"
+        else
+            echo "  [discovery] Node $IP is unreachable or error during check. Skipping."
+        fi
+    done
+    
+    if [ -z "$PRIMARY" ]; then
+        echo "  [discovery] No primary database found among available IPs."
+        return 1
+    fi
+    
+    # Remove trailing comma from REPLICAS
+    REPLICAS=${REPLICAS%,}
+    
+    export PRIMARY_IP="$PRIMARY"
+    export REPLICAS_IP="$REPLICAS"
+    return 0
+}
+
+# ==========================================
 # Initial configuration
 # ==========================================
 
-# Use environment variables, or fallback to host IP if not set
-PRIMARY_IP="${PRIMARY_IP:-172.0.0.10}"
-REPLICAS_IP="${REPLICAS_IP:-172.0.0.20}"
+echo "Waiting for services to stabilize before discovery..."
+sleep 10
 
-if [ -z "$PRIMARY_IP" ]; then
-    echo "ERROR: PRIMARY_IP environment variable must be set."
-    exit 1
-fi
-
-echo "Waiting for PostgreSQL Primary ($PRIMARY_IP:$PORT_DATABASE) to be reachable..."
-until nc -zv "$PRIMARY_IP" "$PORT_DATABASE" >/dev/null 2>&1; do
-    sleep 2
+echo "Starting dynamic backend discovery..."
+until discover_backends; do
+    echo "Retrying discovery in 5 seconds..."
+    sleep 5
 done
-echo "  Primary is UP!"
 
-if [ -n "$REPLICAS_IP" ]; then
-    echo "Checking PostgreSQL Replicas..."
-    replica_list=$(echo "$REPLICAS_IP" | tr ',' ' ')
-    for IP in $replica_list; do
-        if nc -zv "$IP" "$PORT_DATABASE" >/dev/null 2>&1; then
-            echo "  Replica $IP:$PORT_DATABASE is UP!"
-        else
-            echo "  WARNING: Replica $IP:$PORT_DATABASE is still DOWN. Pgpool will attempt to connect later."
-        fi
-    done
-fi
+echo "Discovery complete:"
+echo "  Primary: $PRIMARY_IP"
+echo "  Replicas: $REPLICAS_IP"
 
-echo "Generating static PostgreSQL backends from Node IPs..."
+echo "Generating PostgreSQL backends configuration..."
 generate_backends_from_static
 
-echo "Found $BACKEND_COUNT backend(s)."
+echo "Found $BACKEND_COUNT active backend(s)."
 
 # ==========================================
 # Generate config files

@@ -73,10 +73,14 @@ def get_portainer_endpoint_id(headers):
 def get_service_cpu_load_via_portainer(service_suffix):
     """
     Calculate CPU load for containers of a service using Portainer API.
-    Returns a dict: {'avg': float, 'nodes': {ip: load, ...}}
+    Returns a dict: {
+        'avg': float,
+        'nodes': {node_ip: load, ...},
+        'container_map': {container_ip: {'node_ip': ip, 'node_hostname': host, 'load': l}}
+    }
     """
     global _prev_stats_cache
-    result = {"avg": 0.0, "nodes": {}}
+    result = {"avg": 0.0, "nodes": {}, "container_map": {}}
 
     headers = get_portainer_headers()
     if not headers:
@@ -86,7 +90,7 @@ def get_service_cpu_load_via_portainer(service_suffix):
         return result
 
     try:
-        # 1. Fetch Swarm Nodes to map NodeId -> HostIP
+        # 1. Fetch Swarm Nodes to map NodeId -> NodeInfo
         nodes_map = {}
         try:
             nodes_resp = requests.get(
@@ -99,7 +103,7 @@ def get_service_cpu_load_via_portainer(service_suffix):
                     nid = n.get("ID")
                     # 'Addr' is the typically reachable IP of the node in Swarm
                     ip = n.get("Status", {}).get("Addr")
-                    # 'Hostname' is needed for X-PortainerAgent-Target
+                    # 'Hostname' is the node hostname
                     hostname = n.get("Description", {}).get("Hostname")
                     if nid and ip:
                         nodes_map[nid] = {"ip": ip, "hostname": hostname}
@@ -138,21 +142,20 @@ def get_service_cpu_load_via_portainer(service_suffix):
             labels = container.get("Labels", {})
             node_id = labels.get("com.docker.swarm.node.id")
 
-            # Map container to an IP and Hostname
+            # Map container to a Swarm Node
             node_info = nodes_map.get(node_id, {})
-            node_ip = node_info.get("ip") if isinstance(node_info, dict) else node_info
-            node_hostname = (
-                node_info.get("hostname") if isinstance(node_info, dict) else None
-            )
+            node_ip = node_info.get("ip")
+            node_hostname = node_info.get("hostname")
 
-            if not node_ip:
-                networks = container.get("NetworkSettings", {}).get("Networks", {})
-                for net_name in ["inv_network", "infra_network"]:
-                    if net_name in networks:
-                        node_ip = networks[net_name].get("IPAddress")
-                        break
-                if not node_ip and networks:
-                    node_ip = next(iter(networks.values())).get("IPAddress")
+            # Get Container Internal IP (used by pgpool backends)
+            container_ip = None
+            networks = container.get("NetworkSettings", {}).get("Networks", {})
+            for net_name in ["inv_network", "infra_network"]:
+                if net_name in networks:
+                    container_ip = networks[net_name].get("IPAddress")
+                    break
+            if not container_ip and networks:
+                container_ip = next(iter(networks.values())).get("IPAddress")
 
             try:
                 # Add target header for cross-node stats proxying
@@ -195,18 +198,21 @@ def get_service_cpu_load_via_portainer(service_suffix):
                         current_load = (cpu_delta / system_delta) * online_cpus * 100.0
                         total_load += current_load
                         valid_samples += 1
+
                         if node_ip:
-                            # Store the CPU load associated with the host IP
+                            # Store the CPU load associated with the Swarm Node IP
                             result["nodes"][node_ip] = current_load
-                else:
-                    pass  # Container not in cache yet, no load calculation for this cycle
+
+                        if container_ip:
+                            result["container_map"][container_ip] = {
+                                "node_ip": node_ip,
+                                "node_hostname": node_hostname,
+                                "load": current_load,
+                            }
 
                 _prev_stats_cache[cid] = {"cpu": cpu_usage, "system": system_usage}
             except Exception:
                 continue
-
-        # Clean cache of old containers? optional.
-        # For simplicity, we just keep growing/updating. Redis restart clears it anyway.
 
         if valid_samples > 0:
             result["avg"] = total_load / valid_samples
@@ -313,12 +319,12 @@ def refresh_server_metrics():
 
     # 2. Check Swarm CPU Load (Distributed via Portainer)
     core_stats = get_service_cpu_load_via_portainer("_core")
-    load_percentage = core_stats["avg"]
+    load_percentage = core_stats.get("avg", 0.0)
 
     # 3. Check Database CPU Load (Distributed via Portainer)
     db_stats = get_service_cpu_load_via_portainer("_database")
-    db_load_percentage = db_stats["avg"]
-    db_node_loads = db_stats["nodes"]
+    db_load_percentage = db_stats.get("avg", 0.0)
+    db_container_map = db_stats.get("container_map", {})
 
     saturated = db_latency > SYNC_MAX_DB_LATENCY or load_percentage > SYNC_MAX_CORE_LOAD
 
@@ -392,13 +398,18 @@ def refresh_server_metrics():
                         write_wpm = (delta_wri / elapsed) * 60
                         error_epm = (delta_err / elapsed) * 60
 
-                        node_ip = node.get("hostname")
-                        node_cpu = db_node_loads.get(node_ip)
+                        # Resolve Node Metadata from Container IP
+                        container_ip = node.get("hostname")
+                        node_info = db_container_map.get(container_ip, {})
+                        node_display_name = (
+                            node_info.get("node_hostname") or container_ip
+                        )
+                        node_cpu = node_info.get("load")
 
                         cluster_nodes.append(
                             {
                                 "id": node_id,
-                                "host": node_ip,
+                                "host": node_display_name,
                                 "status": node.get("status"),
                                 "role": node.get("role"),
                                 "cpu_load": round(node_cpu, 1)
