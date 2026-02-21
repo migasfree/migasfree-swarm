@@ -3,6 +3,7 @@
 # https://docker-py.readthedocs.io/en/stable/
 
 import os
+import sys
 from pathlib import Path
 import string
 import random
@@ -147,7 +148,6 @@ def create_labels(client):
         # Add labels to the node
         labels = {
             "datastore": "true",
-            "database": "true",
         }
 
         node_spec = {
@@ -172,20 +172,42 @@ def create_secret_file(client, name, file_path):
         create_secret(client, name, data)
 
 
-def deploy_stack(compose_file, stack_name):
-    subprocess.run(
-        [
-            "docker",
-            "stack",
-            "deploy",
-            "-c",
-            compose_file,
-            stack_name,
-            "--detach=true",
-            "--resolve-image=never",
-        ],
-        check=True,
-    )
+def deploy_stack(compose_file, stack_name, max_retries=5, initial_delay=5):
+    cmd = [
+        "docker",
+        "stack",
+        "deploy",
+        "-c",
+        compose_file,
+        stack_name,
+        "--detach=true",
+        "--resolve-image=never",
+    ]
+    for attempt in range(1, max_retries + 1):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            if result.stdout:
+                print(result.stdout, end="")
+            return
+        error_output = result.stderr or ""
+        if "AlreadyExists" in error_output and attempt < max_retries:
+            delay = initial_delay * (2 ** (attempt - 1))
+            print(
+                f"  Service conflict detected (attempt {attempt}/{max_retries}). "
+                f"Retrying in {delay}s..."
+            )
+            if error_output:
+                print(f"  {error_output.strip()}")
+            time.sleep(delay)
+        else:
+            # Print any captured output before raising
+            if result.stdout:
+                print(result.stdout, end="")
+            if error_output:
+                print(error_output, end="", file=sys.stderr)
+            raise subprocess.CalledProcessError(
+                result.returncode, cmd, result.stdout, result.stderr
+            )
 
 
 def create_network_overlay(network_name):
@@ -414,6 +436,17 @@ def main():
     # Stack secrets
     create_secret(client, f"{context['STACK']}_superadmin_name", user.encode())
     create_secret(client, f"{context['STACK']}_superadmin_pass", password.encode())
+
+    # Replication secrets
+    repl_user = context.get("REPLICATION_USER", "repuser")
+    _, repl_password = credentials(
+        f"{context['STACK']}_replication",
+        user=repl_user,
+        password=generate_password(32),
+    )
+    create_secret(
+        client, f"{context['STACK']}_replication_pass", repl_password.encode()
+    )
 
     create_labels(client)
     create_network_overlay("infra_network")

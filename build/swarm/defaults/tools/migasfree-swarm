@@ -214,15 +214,13 @@ if [ "${ROLE}" = "" ] || [ "${ROLE}" = "MANAGER" ]
 then
     if ! [ -f "${SCRIPT_DIR}/env.py" ]
     then
-      docker run --name migasfree-swarm \
-          --detach=false --rm -ti \
-          -v "$(pwd)":/stack \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          "$_IMAGE" "config"
+        docker run --name migasfree-swarm --detach=false --rm -ti -v "$(pwd)":/stack -v /var/run/docker.sock:/var/run/docker.sock "$_IMAGE" "config"
     fi
     . "${SCRIPT_DIR}/env.py"
     local2nfs
     create_volume_cluster "${VOLUME}"
+
+
 fi
 
 if docker volume ls | grep -q "$VOLUME"

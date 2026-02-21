@@ -1,6 +1,7 @@
 import os
 import sys
 import importlib.util
+import subprocess
 
 from pathlib import Path
 
@@ -119,7 +120,19 @@ class ContextLoader:
         # =============
         self.default("PORT_HTTP", "80")
         self.default("PORT_HTTPS", "443")
-        self.default("PORT_DATABASE", "")
+
+        # Postgres (database)
+        # ===================
+        self.default("POSTGRES_HOST", "pgpool")
+        self.default("POSTGRES_PORT", "5432")
+        self.default("POSTGRES_DB", "migasfree")
+        self.default("POSTGRES_USER", "migasfree")
+        self.default("POSTGRESQL_CONF", "work_mem=32MB")
+
+        db_port_default = (
+            "5432" if self.context["POSTGRES_HOST"] in ["pgpool", "database"] else ""
+        )
+        self.default("PORT_DATABASE", db_port_default)
 
         # Server Certificate  mode
         # ========================
@@ -128,14 +141,6 @@ class ContextLoader:
         # mTLS
         # ====
         self.default("MTLS", "False")
-
-        # Postgres (database)
-        # ===================
-        self.default("POSTGRES_HOST", "database")
-        self.default("POSTGRES_PORT", "5432")
-        self.default("POSTGRES_DB", "migasfree")
-        self.default("POSTGRES_USER", "migasfree")
-        self.default("POSTGRESQL_CONF", "work_mem=32MB")
 
         # Redis (datastore)
         # =================
@@ -159,6 +164,24 @@ class ContextLoader:
             "REPLICAS_tunnel",
         ]:
             self.default(key, "1")
+
+        # Replication
+        # ===========
+        self.default("REPLICATION_USER", "repuser")
+
+        node_default = "node-1"
+        try:
+            res = subprocess.check_output(
+                ["docker", "info", "-f", "{{.Name}}"],
+                stderr=subprocess.DEVNULL,
+                encoding="utf-8",
+            ).strip()
+            if res:
+                node_default = res
+        except Exception:
+            pass
+
+        self.default("POSTGRES_PRIMARY_NODE", node_default)
 
         # TUNNEL
         # ======
@@ -251,10 +274,18 @@ class ContextLoader:
 """,
             "PORT_DATABASE": f"""# {line}
 # PORT_DATABASE
-#     Port used to expose PostgreSQL externally.
-#     It's best practice to keep the PostgreSQL port closed to the outside world and
-#     only accessible within trusted networks.
-#     Default value: ''  # Port not exposed
+#     Port used to publish PostgreSQL instances on the host nodes (mode: host).
+#     This is REQUIRED (usually set to '5432') when using Pgpool-II with static IPs,
+#     as it allows Pgpool to reach the database backends across the Swarm cluster.
+#     SECURITY: Do NOT expose this port to the public internet; use firewalls/VPN.
+#     Default value: '5432'
+# {line}
+""",
+            "POSTGRES_PORT": f"""# {line}
+# POSTGRES_PORT
+#     Internal port used by the PostgreSQL service.
+#     Pgpool-II also listens on this port to provide a transparent gateway for applications.
+#     Default value: '5432'
 # {line}
 """,
             "HTTPSMODE": f"""# {line}
@@ -280,11 +311,18 @@ class ContextLoader:
 """,
             "POSTGRES_HOST": f"""# {line}
 # POSTGRES_HOST
-#    Domain name or IP address of the PostgreSQL database server.
-#    If you are not using an external database outside the Swarm cluster, set
-#        POSTGRES_HOST='database' and
-#        POSTGRES_PORT='5432' to connect internally.
-#    This ensures the service uses the internal Swarm network for better security.
+#    Determines how the application connects to the PostgreSQL database.
+#
+#    Options for Internal Cluster:
+#        'pgpool'   (DEFAULT): Connects via Pgpool-II gateway. Enables High Availability,
+#                              Load Balancing (read/write split), and Auto-Failback.
+#        'database': Connects directly to the PostgreSQL engine. Bypasses Pgpool-II.
+#                    Use only for single-node setups or specific maintenance.
+#
+#    Options for External Database:
+#        'IP' or 'FQDN': If set to anything else (e.g., '10.0.0.50'), the internal
+#                         'database' and 'pgpool' services will NOT be deployed.
+#                         The application will connect directly to the external host.
 # {line}
 """,
             "POSTGRESQL_CONF": f"""# {line}
@@ -365,6 +403,19 @@ class ContextLoader:
 # REPLICAS_tunnel
 #     Sets the number tunnel nodes instances that will run when deploying the stack.
 #     The default value is '1'
+# {line}
+""",
+            "POSTGRES_PRIMARY_NODE": f"""# {line}
+# POSTGRES_PRIMARY_NODE
+#     Node hostname that will act as the Primary for PostgreSQL database.
+#     Other instances will act as Replicas.
+#     To promote a new primary, update this variable to the new node hostname and redeploy.
+#     Default: node-1
+# {line}
+""",
+            "REPLICATION_USER": f"""# {line}
+# REPLICATION_USER
+#     Username for the PostgreSQL replication connection.
 # {line}
 """,
             "TUNNEL_CONNECTIONS": f"""# {line}

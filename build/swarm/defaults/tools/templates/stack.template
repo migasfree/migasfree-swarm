@@ -73,9 +73,9 @@ services:
                 condition: on-failure
                 delay: 10s
                 max_attempts: 0
-            placement:
-                constraints:
-                    - node.role == manager
+#            placement:
+#                constraints:
+#                    - node.role == manager
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
@@ -244,6 +244,7 @@ services:
             - {{STACK}}_network
             - infra_network
 
+{% if POSTGRES_HOST == "database" or POSTGRES_HOST == "pgpool" %}
     database:
         image: migasfree/database:{{TAG}}
         environment:
@@ -252,13 +253,17 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
-            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}
+            - DATASHARE_MOUNT_PATH={{DATASHARE_MOUNT_PATH}}/datashares/{{STACK}}
             - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
-            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_HOST=localhost
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - POSTGRESQL_CONF={{POSTGRESQL_CONF}}
+            - POSTGRES_PRIMARY_NODE={{POSTGRES_PRIMARY_NODE}}
+            - MY_NODE_HOSTNAME={{ '{{.Node.Hostname}}' }}
+            - REPLICATION_USER={{REPLICATION_USER}}
+            - REPLICATION_PASSWORD_FILE=/run/secrets/{{STACK}}_replication_pass
             - BACKUP_CRON='{{BACKUP_CRON}}'
 
         {% if PORT_DATABASE %}  #  Expose PostgreSQL port to external access from the Swarm cluster
@@ -271,8 +276,9 @@ services:
 
         secrets:
             - source: {{STACK}}_superadmin_pass
+            - source: {{STACK}}_replication_pass
         deploy:
-            replicas: 1
+            mode: global
             restart_policy:
                 condition: on-failure
                 delay: 5s
@@ -280,15 +286,42 @@ services:
                 window: 180s
             placement:
                 constraints:
-                    - node.labels.database == true
-#        depends_on:
-#            - datashare
+                    - node.labels.database != false
         volumes:
             - database:/var/lib/postgresql
-            - /var/lib/docker/volumes/migasfree-swarm/_data/datashares/{{STACK}}:{{DATASHARE_MOUNT_PATH}}
+            - migasfree-swarm:{{DATASHARE_MOUNT_PATH}}
         networks:
             - {{STACK}}_network
             - infra_network
+{% endif %}
+
+{% if POSTGRES_HOST == "pgpool" %}
+    pgpool:
+        image: migasfree/pgpool:{{TAG}}
+        environment:
+            - TZ={{TZ}}
+            - STACK={{STACK}}
+            - POSTGRES_USER={{POSTGRES_USER}}
+            - POSTGRES_DB={{POSTGRES_DB}}
+            - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
+            - PRIMARY_IP=172.0.0.10
+            - REPLICAS_IP=172.0.0.20
+        deploy:
+            mode: replicated
+            replicas: 1
+            restart_policy:
+                condition: on-failure
+                delay: 5s
+                max_attempts: 0
+                window: 180s
+        secrets:
+            - source: {{STACK}}_superadmin_pass
+        depends_on:
+            - database
+        networks:
+            - {{STACK}}_network
+            - infra_network
+{% endif %}
 
     datastore:
         image: migasfree/datastore:{{TAG}}
@@ -548,11 +581,18 @@ secrets:
     {{STACK}}_superadmin_pass:
         external: true
 
+{% if POSTGRES_HOST == "database" or POSTGRES_HOST == "pgpool" %}
+    {{STACK}}_replication_pass:
+        external: true
+{% endif %}
+
 
 
 volumes:
+{% if POSTGRES_HOST == "database" or POSTGRES_HOST == "pgpool" %}
     database:
         driver: local
+{% endif %}
 
     datastore:
         driver: local
