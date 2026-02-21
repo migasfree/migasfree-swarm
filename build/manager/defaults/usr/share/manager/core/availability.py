@@ -472,6 +472,37 @@ def refresh_server_metrics():
     pipe.execute()
 
 
+def get_database_backends():
+    """
+    Returns a list of database backends with their node IPs and roles.
+    Uses Portainer to map database containers to Node IPs.
+    """
+    db_stats = get_service_cpu_load_via_portainer("_database")
+    container_map = db_stats.get("container_map", {})
+
+    backends = []
+    # We rely on the container_map which already mapped Container IP -> Node IP
+    for container_ip, info in container_map.items():
+        node_ip = info.get("node_ip")
+        if not node_ip:
+            continue
+
+        role = "REPLICA"
+        try:
+            # Check role by connecting to the container IP (internal)
+            with get_db_connection(host=container_ip) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT NOT pg_is_in_recovery()")
+                    if cursor.fetchone()[0]:
+                        role = "PRIMARY"
+        except Exception:
+            pass
+
+        backends.append({"ip": node_ip, "role": role})
+
+    return backends
+
+
 def get_metrics_from_history(limit=1000):
     """
     Get historical metrics from Redis.

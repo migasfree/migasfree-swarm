@@ -3,7 +3,7 @@ FROM alpine:3.20
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 RUN apk upgrade --no-cache && \
-    apk add --no-cache pgpool postgresql-client bash curl
+    apk add --no-cache pgpool postgresql-client bash curl bind-tools jq
 
 COPY defaults/etc/pgpool2 /etc/pgpool
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh

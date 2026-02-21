@@ -182,64 +182,30 @@ stop_pgpool() {
 # Dynamic Discovery
 # ==========================================
 
-# Discover PostgreSQL backends from Swarm service DNS (tasks.database)
+# Discover PostgreSQL backends from Manager API (Node IPs)
 discover_backends() {
-    echo "Discovering PostgreSQL backends from 'tasks.database'..."
+    echo "Discovering PostgreSQL backends from Manager API..."
+    
+    # Query Manager API for backends
+    local response
+    response=$(curl -s "http://manager:8080/v1/internal/backends")
+    
+    if [ -z "$response" ] || [ "$response" = "[]" ]; then
+        echo "  [discovery] No backends found from Manager yet."
+        return 1
+    fi
+    
     local PRIMARY=""
     local REPLICAS=""
     
-    # Get all IPs for the database service via Swarm tasks DNS
-    # We retry a few times to give DNS time to propagate all nodes
-    local IPs=""
-    local count=0
-    while [ $count -lt 5 ]; do
-        IPs=$(nslookup tasks.database 2>/dev/null | grep -A999 "Non-authoritative" | grep "Address:" | awk '{print $2}' | sort -u)
-        if [ -n "$IPs" ]; then
-            # If we find only 1 IP, wait a bit more just in case it's a multi-node cluster
-            local ip_count=$(echo "$IPs" | wc -l)
-            if [ "$ip_count" -gt 1 ]; then
-                break
-            fi
-        fi
-        echo "  [discovery] Found $count IPs, waiting for more..."
-        sleep 2
-        count=$((count + 1))
-    done
+    # Parse JSON using jq
+    PRIMARY=$(echo "$response" | jq -r '.[] | select(.role == "PRIMARY") | .ip' | head -n 1)
+    REPLICAS=$(echo "$response" | jq -r '.[] | select(.role == "REPLICA") | .ip' | tr '\n' ',' | sed 's/,$//')
 
-    if [ -z "$IPs" ]; then
-        echo "  [discovery] No IPs found for 'tasks.database' yet."
-        return 1
-    fi
-    
-    for IP in $IPs; do
-        if [ -z "$IP" ]; then continue; fi
-        echo "  [discovery] Checking node $IP..."
-        # Check if node is primary or replica
-        local IS_PRIMARY
-        IS_PRIMARY=$(PGPASSWORD="$DB_PASSWORD" psql -h "$IP" -p "$PORT_DATABASE" -U "$POSTGRES_USER" -d postgres -tAc "SELECT NOT pg_is_in_recovery();" 2>/dev/null || echo "error")
-        
-        if [ "$IS_PRIMARY" = "t" ]; then
-            if [ -n "$PRIMARY" ]; then
-                echo "  [discovery] WARNING: Multiple primaries reported! ($PRIMARY and $IP). Picking the first one."
-            else
-                PRIMARY="$IP"
-                echo "  [discovery] Found Primary: $IP"
-            fi
-        elif [ "$IS_PRIMARY" = "f" ]; then
-            echo "  [discovery] Found Replica: $IP"
-            REPLICAS="${REPLICAS}${IP},"
-        else
-            echo "  [discovery] Node $IP is unreachable or error during check. Skipping."
-        fi
-    done
-    
     if [ -z "$PRIMARY" ]; then
-        echo "  [discovery] No primary database found among available IPs."
+        echo "  [discovery] No primary database found in Manager response."
         return 1
     fi
-    
-    # Remove trailing comma from REPLICAS
-    REPLICAS=${REPLICAS%,}
     
     export PRIMARY_IP="$PRIMARY"
     export REPLICAS_IP="$REPLICAS"

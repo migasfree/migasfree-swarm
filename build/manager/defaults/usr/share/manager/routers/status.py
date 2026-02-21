@@ -16,7 +16,7 @@ from core.config import API_VERSION
 from core.status import Message
 from core.utils import get_timestamp, get_organization
 from core.monitor import DockerSwarmMonitor
-from core.availability import start_recording, stop_recording
+from core.availability import start_recording, stop_recording, get_database_backends
 
 
 FQDN = os.environ["FQDN"]
@@ -79,6 +79,17 @@ async def post_message(message: Message):
     logger.debug("post_message data: %s", data)
 
     return JSONResponse(content={"status": "ok"})
+
+
+@router_internal.get("/backends")
+async def get_backends():
+    """Returns database backends with Node IPs for pgpool"""
+    try:
+        backends = get_database_backends()
+        return JSONResponse(content=backends)
+    except Exception as e:
+        logger.error(f"Error getting backends: {e}")
+        return JSONResponse(content=[], status_code=500)
 
 
 @router.get("/favicon.ico")

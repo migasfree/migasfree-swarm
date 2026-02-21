@@ -10,7 +10,7 @@ from core.config import (
 
 
 @contextmanager
-def get_db_connection():
+def get_db_connection(host=None, port=None, user=None, password=None, dbname=None):
     """
     Get a database connection.
     This is a synchronous connection using psycopg2.
@@ -18,11 +18,12 @@ def get_db_connection():
     conn = None
     try:
         conn = psycopg2.connect(
-            dbname=POSTGRES_DB,
-            user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD,
-            host=POSTGRES_HOST,
-            port=POSTGRES_PORT,
+            dbname=dbname or POSTGRES_DB,
+            user=user or POSTGRES_USER,
+            password=password or POSTGRES_PASSWORD,
+            host=host or POSTGRES_HOST,
+            port=port or POSTGRES_PORT,
+            connect_timeout=3,
         )
         yield conn
     finally:
