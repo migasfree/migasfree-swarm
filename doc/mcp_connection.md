@@ -35,7 +35,7 @@ The Migasfree MCP server uses the **SSE (Server-Sent Events)** protocol to allow
 
 The URL to configure in your client is:
 
-```
+```text
 https://<YOUR_FQDN>/mcp/sse
 ```
 
