@@ -19,6 +19,7 @@ from core.config import (
     METRICS_RETENTION_LIMIT,
     ROOT_PATH,
     API_VERSION,
+    POSTGRES_HOST,
 )
 from core.database import get_db_connection
 from core.redis import get_redis_connection
@@ -28,7 +29,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
-PORTAINER_URL = "http://infra_portainer:9000/api"
+PORTAINER_URL = "http://portainer:9000/api"
 PORTAINER_TOKEN_FILE = "/mnt/cluster/credentials/portainer-token"
 
 _portainer_endpoint_id = None
@@ -71,26 +72,42 @@ def get_portainer_endpoint_id(headers):
 
 def get_service_cpu_load_via_portainer(service_suffix):
     """
-    Calculate average CPU load for containers of a service using Portainer API.
-    service_suffix: e.g. '_core' or '_database'
+    Calculate CPU load for containers of a service using Portainer API.
+    Returns a dict: {'avg': float, 'nodes': {ip: load, ...}}
     """
     global _prev_stats_cache
+    result = {"avg": 0.0, "nodes": {}}
 
     headers = get_portainer_headers()
     if not headers:
-        return 0.0
-
+        return result
     endpoint_id = get_portainer_endpoint_id(headers)
     if not endpoint_id:
-        return 0.0
+        return result
 
     try:
-        # 1. List all containers via Portainer for this endpoint
-        # We can filter by label if Portainer supports it in the query, or filter client-side.
-        # Docker API filter format: {"label": ["..."]}
+        # 1. Fetch Swarm Nodes to map NodeId -> HostIP
+        nodes_map = {}
+        try:
+            nodes_resp = requests.get(
+                f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/nodes",
+                headers=headers,
+                timeout=5,
+            )
+            if nodes_resp.status_code == 200:
+                for n in nodes_resp.json():
+                    nid = n.get("ID")
+                    # 'Addr' is the typically reachable IP of the node in Swarm
+                    ip = n.get("Status", {}).get("Addr")
+                    # 'Hostname' is needed for X-PortainerAgent-Target
+                    hostname = n.get("Description", {}).get("Hostname")
+                    if nid and ip:
+                        nodes_map[nid] = {"ip": ip, "hostname": hostname}
+        except Exception as ne:
+            logger.warning(f"Could not fetch Swarm nodes from Portainer: {ne}")
+
+        # 2. Fetch containers
         filters = {"label": ["com.docker.swarm.service.name"]}
-        # Need to URL encode filters if passed as param, but request.get handles params
-        # Actually Portainer proxies this to Docker, so filters param works.
         resp = requests.get(
             f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/containers/json",
             headers=headers,
@@ -101,7 +118,7 @@ def get_service_cpu_load_via_portainer(service_suffix):
             logger.error(
                 f"Portainer containers list failed: {resp.status_code} {resp.text}"
             )
-            return 0.0
+            return result
 
         containers = resp.json()
         target_containers = []
@@ -111,19 +128,41 @@ def get_service_cpu_load_via_portainer(service_suffix):
                 target_containers.append(c)
 
         if not target_containers:
-            return 0.0
+            return result
 
         total_load = 0.0
         valid_samples = 0
 
-        # We iterate over found containers to get stats
         for container in target_containers:
             cid = container["Id"]
+            labels = container.get("Labels", {})
+            node_id = labels.get("com.docker.swarm.node.id")
+
+            # Map container to an IP and Hostname
+            node_info = nodes_map.get(node_id, {})
+            node_ip = node_info.get("ip") if isinstance(node_info, dict) else node_info
+            node_hostname = (
+                node_info.get("hostname") if isinstance(node_info, dict) else None
+            )
+
+            if not node_ip:
+                networks = container.get("NetworkSettings", {}).get("Networks", {})
+                for net_name in ["inv_network", "infra_network"]:
+                    if net_name in networks:
+                        node_ip = networks[net_name].get("IPAddress")
+                        break
+                if not node_ip and networks:
+                    node_ip = next(iter(networks.values())).get("IPAddress")
+
             try:
-                # stats?stream=false
+                # Add target header for cross-node stats proxying
+                stats_headers = headers.copy()
+                if node_hostname:
+                    stats_headers["X-PortainerAgent-Target"] = node_hostname
+
                 stats_resp = requests.get(
                     f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/containers/{cid}/stats?stream=false",
-                    headers=headers,
+                    headers=stats_headers,
                     timeout=5,
                 )
                 if stats_resp.status_code != 200:
@@ -131,54 +170,51 @@ def get_service_cpu_load_via_portainer(service_suffix):
 
                 stats = stats_resp.json()
 
-                # Logic same as before
-                cpu_usage = stats["cpu_stats"]["cpu_usage"]["total_usage"]
-                system_usage = stats["cpu_stats"]["system_cpu_usage"]
+                # Resilient check: ensure we have the necessary stats keys
+                if not isinstance(stats, dict) or "cpu_stats" not in stats:
+                    continue
+
+                cpu_usage_data = stats["cpu_stats"].get("cpu_usage", {})
+                cpu_usage = cpu_usage_data.get("total_usage")
+                system_usage = stats["cpu_stats"].get("system_cpu_usage")
+
+                if cpu_usage is None or system_usage is None:
+                    continue
 
                 online_cpus = stats["cpu_stats"].get("online_cpus")
                 if not online_cpus:
-                    per_cpu = stats["cpu_stats"]["cpu_usage"].get("percpu_usage")
+                    per_cpu = cpu_usage_data.get("percpu_usage")
                     online_cpus = len(per_cpu) if per_cpu else 1
 
-                # Check cache for delta
                 if cid in _prev_stats_cache:
                     prev = _prev_stats_cache[cid]
                     cpu_delta = cpu_usage - prev["cpu"]
                     system_delta = system_usage - prev["system"]
 
-                    if system_delta > 0 and cpu_delta > 0:
-                        load = (cpu_delta / system_delta) * online_cpus * 100.0
-                        total_load += load
+                    if system_delta > 0 and cpu_delta >= 0:
+                        current_load = (cpu_delta / system_delta) * online_cpus * 100.0
+                        total_load += current_load
                         valid_samples += 1
+                        if node_ip:
+                            # Store the CPU load associated with the host IP
+                            result["nodes"][node_ip] = current_load
+                else:
+                    pass  # Container not in cache yet, no load calculation for this cycle
 
-                # Update cache
                 _prev_stats_cache[cid] = {"cpu": cpu_usage, "system": system_usage}
-
-            except Exception as e:
-                logger.warning(f"Error getting stats for {cid[:12]}: {e}")
+            except Exception:
                 continue
 
         # Clean cache of old containers? optional.
         # For simplicity, we just keep growing/updating. Redis restart clears it anyway.
 
-        if valid_samples == 0:
-            return 0.0
-
-        if service_suffix == "_database":
-            # Database is single instance typically, return total load (sum)
-            # If replicated request, it's sum or avg? usually sum for total resource usage?
-            # But dashboards expect 0-200%. If we have 2 DBs (read replica), showing avg or sum?
-            # User has 1 DB. Sum is fine.
-            return total_load
-        else:
-            # Core service is replicated. We want Average Load per container (to know if we need to scale or if they are saturated)
-            # Or Total?
-            # Previous logic was Average: return total_load / valid_samples
-            return total_load / valid_samples
+        if valid_samples > 0:
+            result["avg"] = total_load / valid_samples
 
     except Exception as e:
-        logger.error(f"Error calculating Portainer stats: {e}")
-        return 0.0
+        logger.error(f"Error calculating stats via Portainer for {service_suffix}: {e}")
+
+    return result
 
 
 def get_saturation_metrics():
@@ -187,6 +223,7 @@ def get_saturation_metrics():
     Returns default values if cache is empty.
     """
     hostname = socket.gethostname()
+    host_value = (os.environ.get("POSTGRES_HOST") or "").strip()
     key = "manager:metric:actual"
     con = get_redis_connection()
 
@@ -195,11 +232,14 @@ def get_saturation_metrics():
     if data:
         metrics = {
             "host": hostname,
+            "ts": float(data.get("ts", time.time())),
             "saturated": data.get("saturated") == "1",
             "db_latency": float(data.get("db_latency", 0)),
             "core_cpu": float(data.get("core_cpu", 0)),
             "db_cpu": float(data.get("db_cpu", 0)),
             "queued": int(data.get("queued", 0)),
+            "cluster_nodes": json.loads(data.get("cluster_nodes", "[]")),
+            "is_pgpool": host_value == "pgpool",
         }
         return metrics
 
@@ -213,6 +253,7 @@ def get_saturation_metrics():
         "db_latency": 0.0,
         "core_cpu": 0.0,
         "db_cpu": 0.0,
+        "cluster_nodes": [],
     }
 
 
@@ -248,6 +289,15 @@ def refresh_server_metrics():
     """
     history_key = "manager:metric:history"
     key = "manager:metric:actual"
+
+    # 0. Get previous metrics to calculate rates
+    prev_metrics = get_saturation_metrics()
+    prev_nodes = {node["id"]: node for node in prev_metrics.get("cluster_nodes", [])}
+    now_ts = time.time()
+    elapsed = now_ts - prev_metrics.get("ts", now_ts - 10)  # Fallback to 10s if no ts
+    if elapsed <= 0:
+        elapsed = 10
+
     con = get_redis_connection()
 
     # 1. Check Postgres latency
@@ -262,14 +312,113 @@ def refresh_server_metrics():
         db_latency = 999.0
 
     # 2. Check Swarm CPU Load (Distributed via Portainer)
-    load_percentage = get_service_cpu_load_via_portainer("_core")
+    core_stats = get_service_cpu_load_via_portainer("_core")
+    load_percentage = core_stats["avg"]
 
     # 3. Check Database CPU Load (Distributed via Portainer)
-    db_load_percentage = get_service_cpu_load_via_portainer("_database")
+    db_stats = get_service_cpu_load_via_portainer("_database")
+    db_load_percentage = db_stats["avg"]
+    db_node_loads = db_stats["nodes"]
 
     saturated = db_latency > SYNC_MAX_DB_LATENCY or load_percentage > SYNC_MAX_CORE_LOAD
 
-    # 4. Get and reset counters (attempts)
+    # 4. Check Pgpool-II Nodes status (if using pgpool)
+    cluster_nodes = []
+    host_value = (POSTGRES_HOST or "").strip()
+    if host_value == "pgpool":
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    # 1. Get cluster status and replication delay
+                    cursor.execute("SHOW pool_nodes")
+                    cols_nodes = [desc[0] for desc in cursor.description]
+                    node_data = {}
+                    for row in cursor.fetchall():
+                        d = dict(zip(cols_nodes, row))
+                        node_data[str(d.get("node_id"))] = d
+
+                    # 2. Get detailed stats for counters
+                    cursor.execute("SHOW pool_backend_stats")
+                    cols_stats = [desc[0] for desc in cursor.description]
+                    for row in cursor.fetchall():
+                        s = dict(zip(cols_stats, row))
+                        nid = str(s.get("node_id"))
+                        if nid in node_data:
+                            node_data[nid].update(s)
+
+                    for nid, node in node_data.items():
+                        node_id = nid
+
+                        # Helper to get value from dict with case-insensitive and fuzzy match fallback
+                        def get_cnt(d, *search_terms):
+                            for term in search_terms:
+                                term_lower = term.lower()
+                                # 1. Try exact/case-insensitive match
+                                for dk in d:
+                                    if dk.lower() == term_lower:
+                                        return int(d[dk] or 0)
+                                # 2. Try fuzzy match (if column contains the term)
+                                for dk in d:
+                                    if term_lower in dk.lower():
+                                        return int(d[dk] or 0)
+                            return 0
+
+                        current_selects = get_cnt(node, "select_cnt", "select")
+                        current_writes = (
+                            get_cnt(node, "insert_cnt", "insert")
+                            + get_cnt(node, "update_cnt", "update")
+                            + get_cnt(node, "delete_cnt", "delete")
+                            + get_cnt(node, "ddl_cnt", "ddl")
+                            + get_cnt(node, "copy_cnt", "copy")
+                        )
+                        current_errors = get_cnt(node, "error_cnt", "error")
+
+                        prev_selects = prev_nodes.get(node_id, {}).get(
+                            "select_cnt", current_selects
+                        )
+                        prev_writes = prev_nodes.get(node_id, {}).get(
+                            "write_cnt", current_writes
+                        )
+                        prev_errors = prev_nodes.get(node_id, {}).get(
+                            "error_cnt", current_errors
+                        )
+
+                        # Delta calculation (handle resets)
+                        delta_sel = max(0, current_selects - prev_selects)
+                        delta_wri = max(0, current_writes - prev_writes)
+                        delta_err = max(0, current_errors - prev_errors)
+
+                        select_qpm = (delta_sel / elapsed) * 60
+                        write_wpm = (delta_wri / elapsed) * 60
+                        error_epm = (delta_err / elapsed) * 60
+
+                        node_ip = node.get("hostname")
+                        node_cpu = db_node_loads.get(node_ip)
+
+                        cluster_nodes.append(
+                            {
+                                "id": node_id,
+                                "host": node_ip,
+                                "status": node.get("status"),
+                                "role": node.get("role"),
+                                "cpu_load": round(node_cpu, 1)
+                                if node_cpu is not None
+                                else None,
+                                "select_cnt": current_selects,
+                                "write_cnt": current_writes,
+                                "error_cnt": current_errors,
+                                "select_qpm": round(select_qpm, 2),
+                                "write_wpm": round(write_wpm, 2),
+                                "error_epm": round(error_epm, 2),
+                                "replication_delay": int(
+                                    node.get("replication_delay", 0)
+                                ),
+                            }
+                        )
+        except Exception as e:
+            logger.warning(f"Could not fetch Pgpool nodes status: {e}")
+
+    # 5. Get and reset counters (attempts)
     pipe = con.pipeline()
     pipe.hget(key, "attempts")
     pipe.hset(key, "attempts", 0)
@@ -277,35 +426,36 @@ def refresh_server_metrics():
     res = pipe.execute()
     sync_attempts = int(res[0] or 0)
 
-    # 5. Update Current State (Actual)
+    # 6. Update Current State (Actual)
     # We do NOT use expiration here anymore as per request
     con.hset(
         key,
         mapping={
-            "ts": time.time(),
+            "ts": now_ts,
             "saturated": 1 if saturated else 0,
             "db_latency": db_latency,
             "core_cpu": load_percentage,
             "db_cpu": db_load_percentage,
+            "cluster_nodes": json.dumps(cluster_nodes),
         },
     )
 
-    # 6. Add to history (ZSET)
-    now = time.time()
+    # 7. Add to history (ZSET)
     history_entry = {
-        "ts": now,
+        "ts": now_ts,
         "saturated": 1 if saturated else 0,
         "db_latency": db_latency,
         "core_cpu": load_percentage,
         "db_cpu": db_load_percentage,
         "attempts": sync_attempts,
+        "cluster_nodes": cluster_nodes,  # Store as list in history
     }
 
     pipe = con.pipeline()
-    pipe.zadd(history_key, {json.dumps(history_entry): now})
+    pipe.zadd(history_key, {json.dumps(history_entry): now_ts})
 
     # Trim history (keep last 4 hours)
-    retention_limit = now - METRICS_RETENTION_LIMIT
+    retention_limit = now_ts - METRICS_RETENTION_LIMIT
     pipe.zremrangebyscore(history_key, "-inf", retention_limit)
 
     pipe.execute()
