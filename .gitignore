@@ -20,6 +20,7 @@ build/swarm/VERSION
 build/worker_console/VERSION
 build/mcp-server/VERSION
 build/tunnel/VERSION
+build/pgpool/VERSION
 images/migasfree-*.tar
 images/*.log
 build/manager/defaults/usr/bin/send_message
@@ -42,6 +43,7 @@ build/swarm/defaults/usr/bin/send_message
 build/worker_console/defaults/usr/bin/send_message
 build/pms-apk/defaults/usr/bin/send_message
 build/tunnel/defaults/usr/bin/send_message
+build/pgpool/defaults/usr/bin/send_message
 build/core/migasfree-backend
 build/manager/defaults/usr/share/manager/__pycache__
 build/manager/defaults/usr/share/manager/*/__pycache__

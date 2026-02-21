@@ -5,8 +5,9 @@ _SERVER="${2:-manager}"
 _POINT="http://manager:8080/v1/internal/message"
 _DATA="{\"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\", \"node\":\"$NODE\", \"container\":\"$HOSTNAME\"}"
 
-_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT)
+_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT)
 if ! [ "$_STATUS" = "200" ]
 then
-    echo "Received HTTP status $_STATUS when sending message to $_SERVER. Retrying in 2 seconds..."
+    echo "Notice: Could not send message to $_SERVER (Status: $_STATUS). Continuing..."
 fi
+exit 0
