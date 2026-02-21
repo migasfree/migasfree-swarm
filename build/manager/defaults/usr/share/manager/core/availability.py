@@ -202,16 +202,26 @@ def get_service_cpu_load_via_portainer(service_suffix):
                         if node_ip:
                             # Store the CPU load associated with the Swarm Node IP
                             result["nodes"][node_ip] = current_load
+                else:
+                    current_load = None
 
-                        if container_ip:
-                            result["container_map"][container_ip] = {
-                                "node_ip": node_ip,
-                                "node_hostname": node_hostname,
-                                "load": current_load,
-                            }
+                # IMPORTANT: Map the container to the node even if we don't have CPU stats yet
+                if container_ip:
+                    result["container_map"][container_ip] = {
+                        "node_ip": node_ip,
+                        "node_hostname": node_hostname,
+                        "load": current_load,
+                    }
 
                 _prev_stats_cache[cid] = {"cpu": cpu_usage, "system": system_usage}
             except Exception:
+                # If stats fail, still try to populate basic mapping if we haven't already
+                if container_ip and container_ip not in result["container_map"]:
+                    result["container_map"][container_ip] = {
+                        "node_ip": node_ip,
+                        "node_hostname": node_hostname,
+                        "load": None,
+                    }
                 continue
 
         if valid_samples > 0:
@@ -398,13 +408,25 @@ def refresh_server_metrics():
                         write_wpm = (delta_wri / elapsed) * 60
                         error_epm = (delta_err / elapsed) * 60
 
-                        # Resolve Node Metadata from Container IP
-                        container_ip = node.get("hostname")
-                        node_info = db_container_map.get(container_ip, {})
-                        node_display_name = (
-                            node_info.get("node_hostname") or container_ip
-                        )
-                        node_cpu = node_info.get("load")
+                        # Resolve Node Metadata (could be Container IP or Node IP)
+                        backend_ip = node.get("hostname")
+                        node_info = db_container_map.get(backend_ip)
+
+                        # Fallback: if not found by IP, it might be that backend_ip is already a Node IP
+                        if not node_info:
+                            for c_ip, info in db_container_map.items():
+                                if info.get("node_ip") == backend_ip:
+                                    node_info = info
+                                    break
+
+                        if node_info:
+                            node_display_name = (
+                                node_info.get("node_hostname") or backend_ip
+                            )
+                            node_cpu = node_info.get("load")
+                        else:
+                            node_display_name = backend_ip
+                            node_cpu = None
 
                         cluster_nodes.append(
                             {
