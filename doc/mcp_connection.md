@@ -57,8 +57,8 @@ If you are manually configuring Antigravity using a JSON configuration file, the
 
 ```json
 {
-  "<STACK>": {
-    "migasfree": {
+  "mcpServers": {
+    "<STACK>_migasfree": {
       "serverUrl": "https://<YOUR_FQDN>/mcp/sse"
     }
   }
