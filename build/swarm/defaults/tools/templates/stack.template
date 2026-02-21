@@ -304,8 +304,6 @@ services:
             - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
-            - PRIMARY_IP=172.0.0.10
-            - REPLICAS_IP=172.0.0.20
         deploy:
             mode: replicated
             replicas: 1
