@@ -771,11 +771,25 @@
                             const isPrimary = node.role.toLowerCase() === 'primary';
 
                             const formatBytes = (bytes) => {
-                                if (!bytes || bytes === 0) return isPrimary ? '-' : '0 B';
+                                if (isPrimary) return '-';
+
+                                const val = bytes || 0;
+                                const lagInMB = val / (1024 * 1024);
+
+                                if (lagInMB < 5) {
+                                    return '<span title="Sync OK" style="font-size: 1.1em;">✅</span>';
+                                }
+
                                 const k = 1024;
                                 const sizes = ['B', 'KB', 'MB', 'GB'];
-                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                const i = Math.floor(Math.log(val) / Math.log(k));
+                                const formattedValue = parseFloat((val / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+                                if (lagInMB <= 50) {
+                                    return `<span title="Warning: Increasing Replication Lag">⚠️</span> <strong>${formattedValue}</strong>`;
+                                } else {
+                                    return `<span title="Critical: High Replication Lag">🚨</span> <strong>${formattedValue}</strong>`;
+                                }
                             };
 
                             const hasCpu = node.cpu_load !== null && node.cpu_load !== undefined;

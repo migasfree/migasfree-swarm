@@ -185,60 +185,96 @@ stop_pgpool() {
 }
 
 # ==========================================
-# Dynamic Discovery
+# Dynamic Discovery & Watchdog
 # ==========================================
 
-# Discover PostgreSQL backends from Manager API (Node IPs)
-discover_backends() {
-    echo "Discovering PostgreSQL backends from Manager API..."
-    
-    # Query Manager API for backends
+# Discover all Swarm Nodes
+discover_topology() {
     local response
-    response=$(curl -s "http://manager:8080/v1/internal/backends")
-    
-    if [ -z "$response" ] || [ "$response" = "[]" ]; then
-        echo "  [discovery] No backends found from Manager yet."
+    response=$(curl -s "http://manager:8080/v1/internal/topology")
+    if [ -z "$response" ] || [ "$response" = "{}" ]; then
         return 1
     fi
-    
-    local PRIMARY=""
-    local REPLICAS=""
-    
-    # Parse JSON using jq
-    PRIMARY=$(echo "$response" | jq -r '.[] | select(.role == "PRIMARY") | .ip' | head -n 1)
-    REPLICAS=$(echo "$response" | jq -r '.[] | select(.role == "REPLICA") | .ip' | tr '\n' ',' | sed 's/,$//')
-
-    if [ -z "$PRIMARY" ]; then
-        echo "  [discovery] No primary database found in Manager response."
-        return 1
-    fi
-    
-    export PRIMARY_IP="$PRIMARY"
-    export REPLICAS_IP="$REPLICAS"
+    mkdir -p /var/run/pgpool
+    echo "$response" > /var/run/pgpool/topology.json
     return 0
+}
+
+
+# Generate pgpool.conf with fixed slots for each Swarm Node IP
+generate_dynamic_config() {
+    local nodes_count=$(jq '.nodes | length' /var/run/pgpool/topology.json)
+    local backends=""
+    local index=0
+    
+    local nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
+    local primary_ip=$(curl -s "http://manager:8080/v1/internal/backends" | jq -r '.[] | select(.role == "PRIMARY") | .ip')
+    
+    for node_ip in $nodes_ips; do
+        # Primary gets weight 0 (only writes). Replicas get weight 1 (reads).
+        local weight=1
+        if [ "$node_ip" = "$primary_ip" ]; then
+            weight=0
+        fi
+        
+        backends="${backends}
+# Backend $index -> Swarm Node: $node_ip
+backend_hostname${index} = '${node_ip}'
+backend_port${index} = ${PORT_DATABASE}
+backend_weight${index} = ${weight}
+backend_flag${index} = 'ALLOW_TO_FAILOVER'
+"
+        index=$((index + 1))
+    done
+    
+    PGPOOL_BACKENDS="$backends"
+    BACKEND_COUNT=$nodes_count
+    generate_pgpool_conf
+}
+
+# The Watchdog: Monitors and automatically attaches recovered DB nodes
+start_topology_watchdog() {
+    (
+        echo "[watchdog] Starting Topology Watchdog..."
+        sleep 30  # Wait for pgpool to stabilize 
+        
+        while true; do
+            if [ -f "$PGPOOL_PIDFILE" ]; then
+                local index=0
+                local nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
+                
+                for node_ip in $nodes_ips; do
+                    local current_status=$(pcp_node_info -h localhost -p $PCP_PORT -U "$PCP_USER" -w $index | awk '{print $3}')
+                    
+                    if [ "$current_status" = "3" ]; then
+                        # Node is marked down by pgpool. Check network availability
+                        if nc -zv "$node_ip" "$PORT_DATABASE" >/dev/null 2>&1; then
+                            echo "[watchdog] Node $index ($node_ip) is reachable again. Attempting to attach..."
+                            pcp_attach_node -h localhost -p $PCP_PORT -U "$PCP_USER" -w $index || true
+                        fi
+                    fi
+                    index=$((index + 1))
+                done
+            fi
+            sleep 15
+        done
+    ) &
 }
 
 # ==========================================
 # Initial configuration
 # ==========================================
 
-echo "Waiting for services to stabilize before discovery..."
-sleep 10
-
-echo "Starting dynamic backend discovery..."
-until discover_backends; do
-    echo "Retrying discovery in 5 seconds..."
+echo "Waiting for Manager topology API..."
+until discover_topology; do
+    echo "Retrying in 5 seconds..."
     sleep 5
 done
 
-echo "Discovery complete:"
-echo "  Primary: $PRIMARY_IP"
-echo "  Replicas: $REPLICAS_IP"
+echo "Topology discovered. Generating slots for $(jq '.nodes | length' /var/run/pgpool/topology.json) nodes."
+generate_dynamic_config
 
-echo "Generating PostgreSQL backends configuration..."
-generate_backends_from_static
-
-echo "Found $BACKEND_COUNT active backend(s)."
+start_topology_watchdog
 
 # ==========================================
 # Generate config files

@@ -525,6 +525,55 @@ def get_database_backends():
     return backends
 
 
+def get_swarm_topology():
+    """
+    Returns the full Swarm node topology with associated database containers.
+    Used by pgpool to manage fixed slots per node.
+    """
+    db_stats = get_service_cpu_load_via_portainer("_database")
+    db_container_map = db_stats.get("container_map", {})
+
+    headers = get_portainer_headers()
+    if not headers:
+        return {"nodes": []}
+    endpoint_id = get_portainer_endpoint_id(headers)
+    if not endpoint_id:
+        return {"nodes": []}
+
+    topology = {"nodes": []}
+
+    try:
+        # Fetch ALL Swarm Nodes
+        nodes_resp = requests.get(
+            f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/nodes",
+            headers=headers,
+            timeout=5,
+        )
+        if nodes_resp.status_code == 200:
+            for n in nodes_resp.json():
+                node_ip = n.get("Status", {}).get("Addr")
+                node_hostname = n.get("Description", {}).get("Hostname")
+
+                # Check if any database container is running on this node IP
+                db_container_ip = None
+                for c_ip, info in db_container_map.items():
+                    if info.get("node_ip") == node_ip:
+                        db_container_ip = c_ip
+                        break
+
+                topology["nodes"].append(
+                    {
+                        "node_ip": node_ip,
+                        "node_hostname": node_hostname,
+                        "db_container_ip": db_container_ip,
+                    }
+                )
+    except Exception as e:
+        logger.error(f"Error getting Swarm topology: {e}")
+
+    return topology
+
+
 def get_metrics_from_history(limit=1000):
     """
     Get historical metrics from Redis.
