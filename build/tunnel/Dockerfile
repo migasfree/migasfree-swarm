@@ -1,5 +1,9 @@
 FROM python:3.13-slim
 
+ARG TAG=latest
+
+ENV TAG=${TAG}
+
 WORKDIR /usr/share/tunnel
 
 COPY requirements.txt .

@@ -4,7 +4,7 @@ services:
     manager:
         image: migasfree/manager:{{TAG}}
         environment:
-            - TZ=Europe/Madrid
+            - TZ={{TZ}}
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -54,7 +54,7 @@ services:
               mode: host
         dns: 127.0.0.11
         environment:
-            - TZ=Europe/Madrid
+            - TZ={{TZ}}
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -300,7 +300,10 @@ services:
         image: migasfree/pgpool:{{TAG}}
         environment:
             - TZ={{TZ}}
+            - FQDN={{FQDN}}
             - STACK={{STACK}}
+            - NODE={{NODE}}
+            - SERVICE={{SERVICE}}
             - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass

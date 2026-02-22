@@ -5,8 +5,8 @@ ARG TAG=latest
 LABEL maintainer="alberto@migasfree.org"
 LABEL description="MCP server for Migasfree"
 LABEL version="1.2.0"
-
-ENV PYTHONUNBUFFERED=1 \
+ENV TAG=${TAG} \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
