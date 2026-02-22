@@ -193,7 +193,7 @@ class ContextLoader:
 
         # SYNC SATURATION STRATEGY
         # ========================
-        self.default("SYNC_MAX_DB_LATENCY", "0.1")
+        self.default("SYNC_MAX_DB_LATENCY", "0.5")
         self.default("SYNC_MAX_CORE_LOAD", "90")
         self.default("SYNC_QUEUE_PROCESS_INTERVAL", "30")
         self.default("SYNC_MAX_CONCURRENCY", "50")
@@ -436,7 +436,7 @@ class ContextLoader:
             "SYNC_MAX_DB_LATENCY": f"""# {line}
 # SYNC_MAX_DB_LATENCY
 #    Max DB latency (seconds) to consider server saturated.
-#    Default: 0.1
+#    Default: 0.5
 # {line}
 """,
             "SYNC_MAX_CORE_LOAD": f"""# {line}
