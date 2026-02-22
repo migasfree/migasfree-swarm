@@ -47,6 +47,7 @@ wait $REDIS_HOST $REDIS_PORT
 
 send_message "init datashare"
 
+REDISINSIGHT_VERSION=$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' /usr/src/app/redisinsight/api/dist/package.json)
 echo "
 
 
@@ -62,9 +63,9 @@ echo "
 
 
         $SERVICE ($TAG)
-        redisinsight
+        redisinsight $REDISINSIGHT_VERSION
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "

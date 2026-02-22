@@ -6,6 +6,12 @@ if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
     export DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
 fi
 
+# Set Timezone
+if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+    echo "$TZ" > /etc/timezone
+fi
+
 # ==========================================
 # Constants
 # ==========================================
@@ -296,6 +302,30 @@ trap cleanup SIGTERM SIGINT
         done < <(pcp_node_info -h localhost -p $PCP_PORT -U "$PCP_USER" -w)
     done
 ) &
+
+
+echo "
+
+
+                   █                          ██
+                                             █
+         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
+        █   █  █   █   █  █       █   █      █   █    █   █  █   █
+        █   █  █   █   █  █    ████    ██    █   █    ████   ████
+        █   █  █   █   █  █   █   █      █   █   █    █      █
+        █   █  █   █    ███    ███    ███    █   █     ███    ███
+                          █
+        we love change  ██
+
+
+        $SERVICE ($TAG)
+        $(pgpool -v 2>&1)
+        Container: $HOSTNAME
+        Time zone: $TZ $(date)
+        Processes: $(nproc)
+
+"
+
 
 # ==========================================
 # Start Pgpool and keep container alive

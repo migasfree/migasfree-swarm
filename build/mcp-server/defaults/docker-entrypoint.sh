@@ -20,7 +20,7 @@ echo "
 
 
         $SERVICE ($TAG)
-        mcp-server
+        $(pip freeze|grep mcp)
         Container: $HOSTNAME
         Time zone: $TZ $(date)
         Processes: $(nproc)

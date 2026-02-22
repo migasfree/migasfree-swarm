@@ -37,7 +37,7 @@ echo "
         $SERVICE ($TAG)
         $(filebrowser version)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "

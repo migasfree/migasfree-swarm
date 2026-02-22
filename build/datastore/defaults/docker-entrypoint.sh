@@ -63,7 +63,7 @@ echo "
         $SERVICE ($TAG)
         $(redis-server -v)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 "
 

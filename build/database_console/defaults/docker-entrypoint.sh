@@ -40,9 +40,9 @@ echo "
 
 
         $SERVICE ($TAG)
-        pgadmin4
+        pgadmin4 $(/venv/bin/python3 -c 'import version;print(version.APP_VERSION)')
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
