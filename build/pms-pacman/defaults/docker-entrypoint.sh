@@ -72,7 +72,7 @@ echo "
         $SERVICE ($TAG)
         celery $(celery --version)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "

@@ -30,7 +30,7 @@ ENV TAG=${TAG}
 COPY VERSION /VERSION
 
 RUN apk upgrade --no-cache && \
-    apk add curl
+    apk add curl tzdata musl-locales
 
 # Copy application
 COPY --from=build-stage /migasfree-frontend/dist/spa /usr/share/nginx/html

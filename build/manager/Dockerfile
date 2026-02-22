@@ -11,7 +11,7 @@ WORKDIR /usr/share/manager
 
 COPY ./requirements.txt /usr/share/manager/requirements.txt
 
-RUN apk add --no-cache openssl curl cronie socat openssh-client libpq && \
+RUN apk add --no-cache openssl curl cronie socat openssh-client libpq tzdata musl-locales && \
     apk add --no-cache --virtual .build-deps postgresql-dev gcc musl-dev && \
     pip install --no-cache-dir --upgrade -r /usr/share/manager/requirements.txt && \
     apk del .build-deps

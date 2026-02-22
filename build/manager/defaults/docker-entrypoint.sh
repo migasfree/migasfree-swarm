@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Set Timezone
+if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+    echo "$TZ" > /etc/timezone
+fi
+
 MIGASFREE_SECRET_DIR='/var/run/secrets'
 export REDIS_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
 export POSTGRES_PASSWORD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
@@ -50,7 +56,7 @@ echo "
         $SERVICE ($TAG)
         Uvicorn: $(uvicorn --version)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "

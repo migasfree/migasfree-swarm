@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Set Timezone
+if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+    echo "$TZ" > /etc/timezone
+    echo "Timezone set to: $TZ"
+fi
+
 set -e
 
 function capture_message {
@@ -282,7 +289,7 @@ echo "
         $SERVICE ($TAG)
         $(postgres -V)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "

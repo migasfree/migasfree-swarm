@@ -8,6 +8,16 @@ QUEUES="default"
 BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
 export CELERY_BROKER_URL=${BROKER_URL}
 
+function set_TZ {
+    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+        echo "$TZ" > /etc/timezone
+        echo "Timezone set to: $TZ"
+    fi
+}
+
+set_TZ
+
 function wait {
     local _SERVER=$1
     local _PORT=$2
@@ -30,13 +40,11 @@ function wait {
 }
 
 function set_TZ {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
+    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+        echo "$TZ" > /etc/timezone
+        echo "Timezone set to: $TZ"
     fi
-    # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
 }
 
 function update_ca_certificates {
@@ -249,7 +257,6 @@ send_message "waiting database"
 wait "$POSTGRES_HOST" "$POSTGRES_PORT"
 
 send_message "starting ${SERVICE:(${#STACK})+1}"
-set_TZ
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
@@ -279,7 +286,7 @@ echo "
         $SERVICE ($TAG)
         $_PROCESS
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
 
 "
 

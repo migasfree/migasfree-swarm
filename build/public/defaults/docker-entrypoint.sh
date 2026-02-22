@@ -76,7 +76,7 @@ echo "
         $SERVICE ($TAG)
         $(nginx -v 2>&1)
         Container: $HOSTNAME
-        Time zome: $TZ $(date)
+        Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
