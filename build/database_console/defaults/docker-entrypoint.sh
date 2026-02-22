@@ -23,6 +23,10 @@ set_TZ
 chown pgadmin:root /run/pgadmin
 chown pgadmin:root /pgadmin4/config_distro.py
 
+mkdir -p /var/lib/pgadmin ||  :
+chown pgadmin:root /var/lib/pgadmin
+
+
 send_message "init database_console"
 
 echo "

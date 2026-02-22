@@ -1,6 +1,10 @@
 #!/bin/sh
 # https://www.pgadmin.org/docs/pgadmin4/8.4/import_export_servers.html
 
+PG_USER=${POSTGRES_USER:-migasfree}
+PG_PORT=${POSTGRES_PORT:-5432}
+PG_HOST=${POSTGRES_HOST:-database}
+
 while true
 do
     timeout 1 curl --fail --silent --head --request GET http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping > /dev/null
@@ -12,30 +16,46 @@ do
     fi
 done
 
-cat << EOF > /var/tmp/server.json
-{
-    "Servers": {
-        "1": {
-            "Name": "database",
-            "Group": "Servers",
-            "Host": "database",
-            "Port": 5432,
-            "MaintenanceDB": "postgres",
-            "Username": "migasfree",
-            "UseSSHTunnel": 0,
-            "TunnelPort": "22",
-            "TunnelAuthentication": 0,
-            "KerberosAuthentication": false,
-            "ConnectionParameters": {
-                "sslmode": "prefer",
-                "connect_timeout": 10,
-                "sslcert": "<STORAGE_DIR>/.postgresql/postgresql.crt",
-                "sslkey": "<STORAGE_DIR>/.postgresql/postgresql.key"
-            }
+# Build Servers JSON
+SERVERS_JSON="{\"Servers\": {"
+
+# Connection to POSTGRES_HOST (Cluster/LB)
+SERVERS_JSON="${SERVERS_JSON}
+    \"1\": {
+        \"Name\": \"migasfree $STACK ($PG_HOST)\",
+        \"Group\": \"Servers\",
+        \"Host\": \"$PG_HOST\",
+        \"Port\": $PG_PORT,
+        \"MaintenanceDB\": \"postgres\",
+        \"Username\": \"$PG_USER\",
+        \"UseSSHTunnel\": 0,
+        \"ConnectionParameters\": {
+            \"sslmode\": \"prefer\",
+            \"connect_timeout\": 10
         }
-    }
-}
-EOF
+    }"
+
+# Additional connection to direct database if using pgpool
+if [ "$PG_HOST" = "pgpool" ]; then
+SERVERS_JSON="${SERVERS_JSON},
+    \"2\": {
+        \"Name\": \"migasfree $STACK (direct)\",
+        \"Group\": \"Servers\",
+        \"Host\": \"database\",
+        \"Port\": 5432,
+        \"MaintenanceDB\": \"postgres\",
+        \"Username\": \"$PG_USER\",
+        \"UseSSHTunnel\": 0,
+        \"ConnectionParameters\": {
+            \"sslmode\": \"prefer\",
+            \"connect_timeout\": 10
+        }
+    }"
+fi
+
+SERVERS_JSON="${SERVERS_JSON} }}"
+
+echo "$SERVERS_JSON" > /var/tmp/server.json
 
 cd /pgadmin4
 /venv/bin/python3 setup.py load-servers /var/tmp/server.json --user ${PGADMIN_DEFAULT_EMAIL} --replace

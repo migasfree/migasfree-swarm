@@ -388,6 +388,9 @@ services:
             - PGADMIN_DEFAULT_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
             - PGADMIN_LISTEN_PORT=5050
             - PGADMIN_LISTEN_ADDRESS=0.0.0.0
+            - POSTGRES_USER={{POSTGRES_USER}}
+            - POSTGRES_HOST={{POSTGRES_HOST}}
+            - POSTGRES_PORT={{POSTGRES_PORT}}
         deploy:
             replicas: {{REPLICAS_database_console}}
         secrets:
