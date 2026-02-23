@@ -14,7 +14,10 @@ RUN apk upgrade --no-cache && \
 
 COPY defaults/etc/pgpool2 /etc/pgpool
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+COPY defaults/healthcheck.sh /healthcheck.sh
 
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh /healthcheck.sh
+
+HEALTHCHECK --start-period=30s --interval=30s --timeout=5s CMD /healthcheck.sh || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
