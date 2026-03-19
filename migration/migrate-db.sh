@@ -64,11 +64,11 @@ then
 
     /usr/bin/time -f "Time DATA MIGRATION: %E" docker exec ${DB_V5} bash -c "echo yes| bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
 
-    bash ../run/scale.sh ${STACK}core $_REPLICAS_BE
+    bash ../run/scale.sh ${STACK}_core $_REPLICAS_BE
     bash ../run/scale.sh ${STACK}_console $_REPLICAS_FE
     echo "***** CORE & CONSOLE: ENABLED *****"
 
-    BE_V5=$(docker ps | grep ${STACK}_backend | awk '{print $1}' | head -n 1)
+    BE_V5=$(docker ps | grep ${STACK}_core | awk '{print $1}' | head -n 1)
 
     # SUMMARIZE SYNCS
     # ================
@@ -86,4 +86,16 @@ then
         fi
         _COUNTER=$(($_COUNTER -1))
     done
+
+    # MIGRATE PACKAGES
+    # ================
+    echo
+    echo "PACKAGE MIGRATION"
+    echo "================="
+    read -p "Do you want to migrate packages and projects now? (Make sure the v4 'STORES' directory is copied/mounted into the new volume) [yes/N]? "
+    if [[ $REPLY = "yes" ]]
+    then
+        echo "Migrating packages..."
+        /usr/bin/time -f "Time PACKAGE MIGRATION: %E" docker exec ${BE_V5} bash -c "migrate-packages"
+    fi
 fi

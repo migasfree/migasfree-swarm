@@ -467,6 +467,10 @@ You can restore the database and datastore volumes as follows (ensure the dump f
 
 * If you are testing Migasfree, go to `https://<FQDN>/pool/install/` and check the migasfree-client.txt file to manually install a client. However, this is not the recommended method for installation. Ideally, the client configuration should be packaged for proper deployment.
 
+## Migration from version 4
+
+* Detailed steps for [Migration from v4](doc/migration_v4_to_v5.md)
+
 ## Adding Worker Nodes to a Swarm Cluster
 
 * Adding worker nodes increases the cluster's capacity. When you deploy a service in a swarm, the Docker engine automatically schedules tasks on all available nodes, whether they are worker or manager nodes.
