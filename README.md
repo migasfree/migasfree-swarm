@@ -36,7 +36,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 ## Requirements
 
-#### 1. FQDN & DNS
+### 1. FQDN & DNS
 
 * Choose a suitable `FQDN` for your Migasfree server, e.g., `migasfree.mydomain.com`.
 
@@ -66,7 +66,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
   172.0.0.10 worker-migasfree.acme.com
   ```
 
-#### 2. NFS
+### 2. NFS
 
 * In a `Production Environment`, an `NFS server` is required so each Swarm cluster node has access to the data. Refer to [NFS install](doc/nfs.md)
 
@@ -88,18 +88,18 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
   In this `local mode`, data will only be accessible on the manager node where the deployment takes place, used for testing on a `single-node` Swarm cluster.
 
-#### 3. Swarm node hardware
+### 3. Swarm node hardware
 
 * RAM >= 16 GB
 * CPU >= 4
 * Disk SPACE SYSTEM >= 80 GB
 * DockerRootDir = /var/lib/docker (default directory)
 
-#### 4. Swarm node software
+### 4. Swarm node software
 
 * [Install docker engine](https://docs.docker.com/engine/install) on each Swarm node.
 
-#### 5. Datastore Node Configuration Requirement (Redis)
+### 5. Datastore Node Configuration Requirement (Redis)
 
 * To ensure proper operation and avoid potential
     failures during background save (RDB snapshots) or replication, the Linux kernel parameter vm.overcommit_memory must be set to 1 on the node where the Redis (datastore) is running.
@@ -163,7 +163,7 @@ This project runs the Migasfree Server Suite 5 on [Docker Swarm](https://docs.do
 
 * Download the images we will need at this time..
 
-  ```
+  ```bash
   ./migasfree-swarm pull
   ```
 
@@ -288,13 +288,13 @@ Check [MCP Connection](doc/mcp_connection.md)
 
      * Local: Used for **testing** or when the Swarm cluster has only **a single node**. Configure this by setting the environment variable:
 
-       ```
+       ```txt
        DATASHARE_FS=local
        ```
 
      * NFS (Network File System): Used for multi-node setups. Data is stored on an NFS server, and **each node in the cluster** has an **volume of type NFS** pointing to the NFS server. Configure this by setting the environment variable:
 
-       ```
+       ```txt
        DATASHARE_FS=nfs
        ```
 
@@ -503,7 +503,7 @@ You can restore the database and datastore volumes as follows (ensure the dump f
 
     To remove a volume:
 
-    ```
+    ```bash
     docker volume rm <volume>
     ```
 
