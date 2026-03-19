@@ -12,7 +12,6 @@ ENV TAG=${TAG} \
 RUN apk upgrade --no-cache && \
     apk add --no-cache pgpool postgresql-client bash curl bind-tools jq tzdata musl-locales
 
-COPY defaults/etc/pgpool2 /etc/pgpool
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/healthcheck.sh /healthcheck.sh
 
