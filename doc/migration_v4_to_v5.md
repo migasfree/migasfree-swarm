@@ -23,8 +23,9 @@ This guide provides precise, step-by-step instructions to safely migrate an exis
   ```
 
 * Know the origin server's PostgreSQL credentials (host, modified port, database name, user, and password).
-* **Django Configuration file (`settings.py`):** If you had customized your production environment on v4, you will typically find this file at the host path `/var/lib/migasfree/<FQDN>/conf/settings.py`. It is crucial that you review its manual variables. Many legacy configurations will break the container startup if you blindly clone them to the new environment. We recommend letting v5 automatically generate the base file (which it will place in the `conf/settings.py` directory inside your volume or *datashare* NFS) and only transcribing the strictly necessary extra adjustments (like LDAP, SMTP configurations, or `MIGASFREE_PACKAGER`).
+* **Django Configuration file (`settings.py`):** If you had customized your production environment on v4, you will typically find this file at the host path `/var/lib/migasfree/conf/settings.py`. It is crucial that you review its manual variables. Many legacy configurations will break the container startup if you blindly clone them to the new environment. We recommend letting v5 automatically generate the base file (which it will place in the `conf/settings.py` directory inside your volume or *datashare* NFS) and only transcribing the strictly necessary extra adjustments (like LDAP, SMTP configurations, or `MIGASFREE_PACKAGER`).
 * The v4 repositories (physical files under the v4 storage path, typically `/var/lib/migasfree/data/`) **must** be synchronized or mounted in the version 5 `migasfree-swarm` volume (so they are accessible in the `MEDIA_ROOT` of the `core` container) **before** launching the file migration.
+* The `keys` directory from the v4 installation (typically located at `/var/lib/migasfree/keys/`) **must also be copied exactly as it is** to the corresponding `keys` directory in the version 5 shared volume. This preserves the cryptographic identity necessary for package signatures and client communications.
 
 ## Step 1: Database Migration (Relational)
 
