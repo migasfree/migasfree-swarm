@@ -49,3 +49,4 @@ build/manager/defaults/usr/share/manager/__pycache__
 build/manager/defaults/usr/share/manager/*/__pycache__
 .agent/skills/
 premium_audit_report.md
+doc/governance
