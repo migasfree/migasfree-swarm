@@ -12,5 +12,5 @@ fi
 
 for _IMAGE in ${_IMAGES}
 do
-    trivy image migasfree/${_IMAGE}:$(cat ../VERSION) > ${_IMAGE}.log
+    trivy image "migasfree/${_IMAGE}:$(cat ../VERSION)" > "${_IMAGE}.log"
 done

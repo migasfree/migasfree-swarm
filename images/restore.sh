@@ -1,6 +1,7 @@
 #!/bin/bash
 
-for _IMG in $(ls *.tar)
+for _IMG in ./*.tar
 do
-    docker load < ${_IMG}
+    [ -e "$_IMG" ] || continue
+    docker load < "$_IMG"
 done

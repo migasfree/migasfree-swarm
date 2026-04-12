@@ -12,5 +12,5 @@ fi
 
 for _IMAGE in ${_IMAGES}
 do
-    docker push migasfree/${_IMAGE}:${VERSION}
+    docker push "migasfree/${_IMAGE}:${VERSION}"
 done
