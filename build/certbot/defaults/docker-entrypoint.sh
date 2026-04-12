@@ -20,7 +20,7 @@ echo "
 
 
         $SERVICE ($TAG)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 

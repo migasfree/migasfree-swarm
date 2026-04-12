@@ -27,5 +27,4 @@ HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh 
 # Expose port 380
 EXPOSE 380
 
-
 ENTRYPOINT ["/docker-entrypoint.sh"]

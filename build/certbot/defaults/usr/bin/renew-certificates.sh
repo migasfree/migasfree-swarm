@@ -1,27 +1,33 @@
 #!/bin/sh
 
 # Certificates exist
-if [ -d /etc/letsencrypt/live/${FQDN} ]; then
-    if [ ! -f /etc/letsencrypt/live/${FQDN}/fullchain.pem.md5 ]; then
-        md5sum /etc/letsencrypt/live/${FQDN}/fullchain.pem >/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5
+if [ -d "/etc/letsencrypt/live/${FQDN}" ]
+then
+    if [ ! -f "/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5" ]
+    then
+        md5sum "/etc/letsencrypt/live/${FQDN}/fullchain.pem" > "/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5"
     fi
     # Check certificates and renew them
     certbot renew --http-01-port=380
-    if ! md5sum -c /etc/letsencrypt/live/${FQDN}/fullchain.pem.md5; then
-        md5sum /etc/letsencrypt/live/${FQDN}/fullchain.pem >/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5
+    if ! md5sum -c "/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5"
+    then
+        md5sum "/etc/letsencrypt/live/${FQDN}/fullchain.pem" > "/etc/letsencrypt/live/${FQDN}/fullchain.pem.md5"
         
         echo "Certificates have been renewed"
         
         # Concatenate certificates
+        # shellcheck source=/dev/null
         . /usr/bin/concatenate-certificates.sh
         
         echo "Renewing HAProxy certificates..."
         # Update certificates in HAProxy
-        [ -f /etc/certificates/${STACK}.pem ] && . /usr/bin/update-haproxy-certificates.sh
+        # shellcheck source=/dev/null
+        [ -f "/etc/certificates/${STACK}.pem" ] && . /usr/bin/update-haproxy-certificates.sh
     fi
 
 # Live Certificates don't exist
 else
     #  Execute certificate creation script
+    # shellcheck source=/dev/null
     . /usr/bin/create-certificates.sh
 fi
