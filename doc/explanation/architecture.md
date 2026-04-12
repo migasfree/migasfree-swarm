@@ -33,3 +33,14 @@ The Migasfree Swarm stack consists of several interconnected microservices:
 * **Database**: PostgreSQL for persistent data.
 * **Worker**: Background task processors.
 * **Consoles**: Administrative interfaces for database, datastore, and cluster management.
+* **MCP Server**: Model Context Protocol bridge for AI-driven management.
+
+## Security Model
+
+Migasfree Swarm is built on a **Zero Trust** foundation:
+
+* **Root-Init, User-Run Pattern**: Services start as `root` to perform system-level initialization (timezones, shared volume symlinks, certificate processing) and then explicitly drop privileges to non-privileged users (consistent UID: 890, such as `www-data` or `node`) for the application runtime.
+* **Encrypted Overlays**: All internal cluster traffic moves across encrypted Docker Swarm overlay networks.
+* **mTLS Identity**: Client-server communication is protected by Mutual TLS (mTLS) with a cluster-specific Root CA.
+* **Network Isolation**: Management consoles are restricted to a specific CIDR (`NETWORK_MNG`) to prevent unauthorized access.
+* **Least Privilege**: Services like the MCP bridge use dedicated Read-Only database profiles and rigorous SQL validation.

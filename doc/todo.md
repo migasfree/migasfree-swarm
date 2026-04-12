@@ -16,8 +16,8 @@
 
 * TODO: Documentar labels del swarm y la relación con los volumenes
 
-* BUG: `datastore_console` no crea la configuración inicial de la DB.
-       Si se reinicia el service entonces si que la crea.
+* DONE: `datastore_console` and other consoles now correctly initialize configuration via entrypoint refactoring.
+* TODO: Standardize remaining legacy services to the 'Root-Init, User-Run' pattern for consistent security across the entire stack.
 
 * Repasar los test de los clientes
 

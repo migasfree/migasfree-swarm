@@ -28,6 +28,21 @@ Disable sensitive consoles (Database, Datastore, Worker) while keeping the publi
 ./migasfree-swarm consoles-pro
 ```
 
+### Remote Access Security
+
+By default, all administrative consoles are restricted to `127.0.0.1` for security. To access them from your management network, edit `env.py` and set `NETWORK_MNG`:
+
+```python
+# env.py
+NETWORK_MNG = '192.168.1.0/24'  # Allow your local network
+```
+
+Then redeploy the stack:
+
+```bash
+./migasfree-swarm deploy
+```
+
 ## Scaling the Cluster
 
 ### Adding Worker Nodes
