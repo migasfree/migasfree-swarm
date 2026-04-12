@@ -20,10 +20,10 @@ ENV TAG=${TAG} \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production
 
 RUN _BUILD_DEPENDS='python-setuptools python-pip wget' && \
-    _DEPENDS='gnupg gzip python python-virtualenv curl openbsd-netcat python-dateutil' && \
+    _DEPENDS='gnupg gzip python python-virtualenv curl openbsd-netcat python-dateutil inetutils' && \
     _PIP_DEPENDS='celery redis requests' && \
-    groupadd -g $_GID www-data && \
-    useradd -u $_UID -g www-data -s /bin/bash www-data && \
+    getent group www-data || groupadd -g $_GID www-data && \
+    getent passwd www-data || useradd -u $_UID -g www-data -s /bin/bash www-data && \
     pacman-key --init && \
     pacman-key --populate archlinux && \
     pacman -Sy --noconfirm archlinux-keyring && \
@@ -43,5 +43,8 @@ HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh 
 RUN chown -R $_UID:$_GID /pms
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+
+# Reverted: let entrypoint handle initialization as root
+# USER www-data
 
 ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]

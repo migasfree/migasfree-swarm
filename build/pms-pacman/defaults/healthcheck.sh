@@ -1,15 +1,16 @@
 #!/bin/sh
+set -e
 
 MIGASFREE_SECRET_DIR=/var/run/secrets
-BROKER_URL=redis://default:$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)@datastore:6379/0
+BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
 
+# shellcheck source=/dev/null
 . /venv/bin/activate
-cd /pms
+cd /pms || exit 1
 
-timeout 1 ls ${DATASHARE_MOUNT_PATH}/conf/ >/dev/null
-if [ $? -eq 0 ]
+if timeout 1 ls "${DATASHARE_MOUNT_PATH}/conf/" >/dev/null
 then
-    timeout 1 celery -b ${BROKER_URL} inspect ping -d celery@${HOSTNAME} > /dev/null
+    timeout 1 celery -b "${BROKER_URL}" inspect ping -d "celery@$(hostname)" > /dev/null
 else
     echo "File system disconnected"
     exit 1
