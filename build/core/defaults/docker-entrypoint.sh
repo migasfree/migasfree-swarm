@@ -1,29 +1,35 @@
 #!/bin/bash
+set -e
 
 export MIGASFREE_SECRET_DIR=/var/run/secrets
 
 _SETTINGS=/var/lib/migasfree-backend/conf/settings.py
 
 QUEUES="default"
-BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
-export CELERY_BROKER_URL=${BROKER_URL}
+BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
+export CELERY_BROKER_URL="${BROKER_URL}"
 
-function set_TZ {
-    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+set_TZ() {
+    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
+    then
         ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
         echo "$TZ" > /etc/timezone
         echo "Timezone set to: $TZ"
     fi
 }
 
+get_secret_pass() {
+    cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass"
+}
+
 set_TZ
 
-function wait {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
+wait_for_service() {
+    _SERVER=$1
+    _PORT=$2
+    _COUNTER=0
 
-    until [ $_COUNTER -gt 30 ]
+    until [ "$_COUNTER" -gt 30 ]
     do
         if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
@@ -33,52 +39,47 @@ function wait {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        ((_COUNTER++))
+        _COUNTER=$((_COUNTER + 1))
     done
     echo "Rebooting container"
     exit 1
 }
 
-function set_TZ {
-    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
-        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-        echo "$TZ" > /etc/timezone
-        echo "Timezone set to: $TZ"
-    fi
-}
-
-function update_ca_certificates {
+update_ca_certificates_action() {
     send_message "updating the certificates"
     update-ca-certificates
 }
 
-function get_migasfree_setting() {
-    echo -n $(DJANGO_SETTINGS_MODULE=migasfree.settings.production python3 -c "from django.conf import settings; print(settings.$1)")
+get_migasfree_setting() {
+    DJANGO_SETTINGS_MODULE=migasfree.settings.production python3 -c "from django.conf import settings; print(settings.$1)"
 }
 
-function ncores {
-    LANG=C lscpu|grep '^Core(s) per socket'| awk -F: '{print $2}'| tr -d  " "
+ncores() {
+    _CORES=$(lscpu | grep '^Core(s) per socket' | awk -F: '{print $2}' | tr -d " ")
+    echo "${_CORES:-1}"
 }
 
 # owner resource user
-function owner() {
-    if [ ! -f "$1" -a ! -d "$1" ]
+owner() {
+    _PATH=$1
+    _OWNER=$2
+    if [ ! -f "$_PATH" ] && [ ! -d "$_PATH" ]
     then
-        mkdir -p "$1"
+        mkdir -p "$_PATH"
     fi
 
-    _OWNER=$(stat -c %U "$1" 2> /dev/null)
-    if [ "$_OWNER" != "$2" ]
+    _CURRENT_OWNER=$(stat -c %U "$_PATH" 2> /dev/null)
+    if [ "$_CURRENT_OWNER" != "$_OWNER" ]
     then
-        chown -R $2:$2 "$1"
+        chown -R "$_OWNER:$_OWNER" "$_PATH"
     fi
 }
 
-function get_settings {
+get_settings() {
     send_message "reading settings"
     if ! [ -f "$_SETTINGS" ]
     then
-        cp /default_settings.py $_SETTINGS
+        cp /default_settings.py "$_SETTINGS"
     fi
     _HOST=$(get_migasfree_setting "DATABASES['default']['HOST']")
     _PORT=$(get_migasfree_setting "DATABASES['default']['PORT']")
@@ -87,61 +88,51 @@ function get_settings {
     _PASSWORD=$(get_migasfree_setting "DATABASES['default']['PASSWORD']")
 }
 
-function set_permissions() {
+set_permissions() {
     send_message "setting permissions"
-    local _USER=www-data
+    _TARGET_USER=www-data
 
     # owner for repositories
-    local _PUBLIC_PATH=$(get_migasfree_setting MIGASFREE_PUBLIC_DIR)
-    owner $_PUBLIC_PATH $_USER
+    _PUBLIC_PATH=$(get_migasfree_setting MIGASFREE_PUBLIC_DIR)
+    owner "$_PUBLIC_PATH" "$_TARGET_USER"
 
     # owner for keys
-    local _KEYS_PATH=$(get_migasfree_setting MIGASFREE_KEYS_DIR)
-    owner $_KEYS_PATH $_USER
-    chmod 700 $_KEYS_PATH
-
+    _KEYS_PATH=$(get_migasfree_setting MIGASFREE_KEYS_DIR)
+    owner "$_KEYS_PATH" "$_TARGET_USER"
+    chmod 700 "$_KEYS_PATH"
 }
 
-function run_as_www_data {
-    su www-data -s /bin/bash -c "$1"
+run_as_www_data() {
+    su www-data -s /bin/sh -c "$1"
 }
 
-#function create_keys {
-#    send_message "checking keys"
-#    run_as_www_data 'export GPG_TTY=$(tty);DJANGO_SETTINGS_MODULE=migasfree.settings.production python3 -c "import django; django.setup(); from migasfree.secure import create_server_keys; create_server_keys()"'
-#}
-
-function is_db_empty() {
+is_db_empty() {
     send_message "checking database is empty"
-    local _RET=$(PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER $_NAME -tAc "SELECT count(*) FROM information_schema.tables WHERE table_type='BASE TABLE' and table_schema='public';")
-    test $_RET -eq 0
+    _RET=$(PGPASSWORD="$_PASSWORD" psql -h "$_HOST" -p "$_PORT" -U "$_USER" "$_NAME" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_type='BASE TABLE' and table_schema='public';")
+    [ "${_RET:-1}" -eq 0 ]
 }
 
-function is_db_exists() {
+is_db_exists() {
     send_message "checking is exists database"
-    PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER -tAc "SELECT 1 from pg_database WHERE datname='$_NAME'" 2> /dev/null | grep -q 1
-    test $? -eq 0
+    PGPASSWORD="$(get_secret_pass)" psql -h "$_HOST" -p "$_PORT" -U "$POSTGRES_USER" -tAc "SELECT 1 from pg_database WHERE datname='$_NAME'" 2> /dev/null | grep -q 1
 }
 
-function is_user_exists() {
+is_user_exists() {
     send_message "checking user exists in database"
-    PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER -tAc "SELECT 1 FROM pg_roles WHERE rolname='$_USER';" | grep -q 1
-    test $? -eq 0
+    PGPASSWORD="$(get_secret_pass)" psql -h "$_HOST" -p "$_PORT" -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$_USER';" | grep -q 1
 }
 
-function create_user() {
+create_db_user() {
     send_message "creating user in database"
-    PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER -tAc "CREATE USER $_USER WITH CREATEDB ENCRYPTED PASSWORD '$_PASSWORD';"
-    test $? -eq 0
+    PGPASSWORD="$(get_secret_pass)" psql -h "$_HOST" -p "$_PORT" -U "$POSTGRES_USER" -tAc "CREATE USER \"$_USER\" WITH CREATEDB ENCRYPTED PASSWORD '$_PASSWORD';"
 }
 
-function create_database() {
+create_database() {
     send_message "creating database"
-    PGPASSWORD=$_PASSWORD psql -h $_HOST -p $_PORT -U $_USER -tAc "CREATE DATABASE $_NAME WITH OWNER = $_USER ENCODING='UTF8';"
-    test $? -eq 0
+    PGPASSWORD="$(get_secret_pass)" psql -h "$_HOST" -p "$_PORT" -U "$POSTGRES_USER" -tAc "CREATE DATABASE \"$_NAME\" WITH OWNER = \"$_USER\" ENCODING='UTF8';"
 }
 
-function migrate {
+migrate() {
     send_message "running database migrations"
     su -c "DJANGO_SETTINGS_MODULE=migasfree.settings.production django-admin migrate auth" www-data
     if [ "$1" = "fake-initial" ]
@@ -152,7 +143,7 @@ function migrate {
     fi
 }
 
-function apply_fixtures {
+apply_fixtures() {
     send_message "applying fixtures to database"
     su -c "DJANGO_SETTINGS_MODULE=migasfree.settings.production django-admin initialize_db --skip-fixtures --force" www-data
     su -c "python3 -" www-data <<EOF
@@ -182,11 +173,11 @@ if sql:
 EOF
 }
 
-function create_superuser() {
-    local USERNAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
-    local PASSWD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
-    local EMAIL=""
-    local COMMAND="
+create_superuser() {
+    _USERNAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
+    _PASSWD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+    _EMAIL=""
+    _PY_COMMAND="
 import os
 import django
 from migasfree.core.models.user_profile import UserProfile
@@ -195,20 +186,17 @@ def create_superuser(username,  password, email):
     if not UserProfile.objects.filter(username=username).exists():
         UserProfile.objects.create_superuser(username=username, password=password, email=email)
         print('Superuser created successfully')
-create_superuser('${USERNAME}', '${PASSWD}', '${EMAIL}' )
+create_superuser('${_USERNAME}', '${_PASSWD}', '${_EMAIL}' )
 "
-
-    run_as_www_data "django-admin shell --settings=migasfree.settings.production -c \"${COMMAND}\"" >/dev/null
-
+    run_as_www_data "django-admin shell --settings=migasfree.settings.production -c \"${_PY_COMMAND}\"" >/dev/null
 }
 
 
-function migasfree_init {
+migasfree_init() {
     set_permissions
 
     is_db_exists || create_database
-
-    is_user_exists || create_user
+    is_user_exists || create_db_user
 
     if is_db_empty
     then
@@ -217,15 +205,14 @@ function migasfree_init {
         apply_fixtures
     else
         send_message "checking for pending migrations"
-        if su -c "django-admin showmigrations | grep '\[ \]' " www-data >/dev/null
+        if su -c "django-admin showmigrations | grep '\[ \]' " www-data > /dev/null
         then
-            migrate
+            migrate ""
             apply_fixtures
         fi
     fi
 
     create_superuser
-
 }
 
 
@@ -233,40 +220,41 @@ function migasfree_init {
 # =====
 
 export MIGASFREE_CONF_DIR=/var/lib/migasfree-backend/conf
-mkdir -p "$(dirname ${MIGASFREE_CONF_DIR})"
-ln -s "${DATASHARE_MOUNT_PATH}/conf" ${MIGASFREE_CONF_DIR}
+mkdir -p "$(dirname "${MIGASFREE_CONF_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/conf" "${MIGASFREE_CONF_DIR}"
 
 export MIGASFREE_PUBLIC_DIR=/var/lib/migasfree-backend/public
-mkdir -p "$(dirname ${MIGASFREE_PUBLIC_DIR})"
-ln -s "${DATASHARE_MOUNT_PATH}/public" ${MIGASFREE_PUBLIC_DIR}
+mkdir -p "$(dirname "${MIGASFREE_PUBLIC_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/public" "${MIGASFREE_PUBLIC_DIR}"
 
 export MIGASFREE_KEYS_DIR=/var/lib/migasfree-backend/keys
-mkdir -p "$(dirname ${MIGASFREE_KEYS_DIR})"
-ln -s "${DATASHARE_MOUNT_PATH}/keys" ${MIGASFREE_KEYS_DIR}
+mkdir -p "$(dirname "${MIGASFREE_KEYS_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/keys" "${MIGASFREE_KEYS_DIR}"
 
 export MIGASFREE_TMP_DIR=/var/lib/migasfree-backend/tmp
-mkdir -p "$(dirname ${MIGASFREE_TMP_DIR})"
-ln -s "${DATASHARE_MOUNT_PATH}/tmp" ${MIGASFREE_TMP_DIR}
+mkdir -p "$(dirname "${MIGASFREE_TMP_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/tmp" "${MIGASFREE_TMP_DIR}"
 
+# shellcheck source=/dev/null
 . /venv/bin/activate
 
 send_message "waiting datastore"
-wait "$REDIS_HOST" "$REDIS_PORT"
+wait_for_service "$REDIS_HOST" "$REDIS_PORT"
 
 send_message "waiting database"
-wait "$POSTGRES_HOST" "$POSTGRES_PORT"
+wait_for_service "$POSTGRES_HOST" "$POSTGRES_PORT"
 
-send_message "starting ${SERVICE:(${#STACK})+1}"
+_SERVICE_NAME=${SERVICE#${STACK}_}
+send_message "starting $_SERVICE_NAME"
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
     get_settings
-    update_ca_certificates
+    update_ca_certificates_action
     migasfree_init
-
-    _PROCESS=$(pip freeze | grep daphne)
+    _PROCESS=$(pip freeze | grep daphne || :)
 else
-    _PROCESS=$(pip freeze | grep celery)
+    _PROCESS=$(pip freeze | grep celery || :)
 fi
 
 echo "
@@ -285,24 +273,24 @@ echo "
 
         $SERVICE ($TAG)
         $_PROCESS
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
 
 "
-
 
 send_message ""
 
 if [ "$SERVICE" = "${STACK}_beat" ]
 then
     # BEAT
-    DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree beat --uid=890 --pidfile /var/tmp/celery.pid --schedule /var/tmp/celerybeat-schedule --loglevel INFO
+    exec env DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree beat --uid=www-data --pidfile /var/tmp/celery.pid --schedule /var/tmp/celerybeat-schedule --loglevel INFO
 elif [ "$SERVICE" = "${STACK}_worker" ]
 then
     # WORKER
     /usr/bin/migrate_db &
-    DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree worker --queues=${QUEUES} --uid 890 --without-gossip --loglevel INFO
+    exec env DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree worker --queues="${QUEUES}" --uid 890 --without-gossip --loglevel INFO
 else
     # CORE
-    su -c "uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $((2* $(ncores) + 1 ))" www-data
+    _WORKERS=$((2 * $(ncores) + 1))
+    exec su -c "uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $_WORKERS" www-data
 fi

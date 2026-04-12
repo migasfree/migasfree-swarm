@@ -1,297 +1,312 @@
 #!/usr/bin/python3
 
-import os
-import sys
-import shutil
-import fnmatch
-import requests
 import json
+import logging
+import sys
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Tuple
 
+import requests
 from django.conf import settings
-from requests_toolbelt.multipart.encoder import MultipartEncoder
-
-from migasfree.utils import get_secret, get_setting, read_file, write_file
 from migasfree.core.pms import get_pms
 from migasfree.core.validators import build_magic
-from migasfree.secure import wrap, unwrap
+from migasfree.secure import unwrap, wrap
+from migasfree.utils import get_secret, get_setting
+from requests.adapters import HTTPAdapter
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+from urllib3.util.retry import Retry
 
-SERVER_URL = f'http://{get_setting("MIGASFREE_FQDN")}'
-API_URL = f'{SERVER_URL}/api/v1/token'
-UPLOAD_PKG_URL = f'{SERVER_URL}/api/v1/safe/packages/'
+# --- Configuration & Constants ---
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
-PRIVATE_KEY = os.path.join(get_setting('MIGASFREE_KEYS_DIR'), 'migasfree-packager.pri')
-PUBLIC_KEY = os.path.join(get_setting('MIGASFREE_KEYS_DIR'), 'migasfree-server.pub')
-TMP_PATH = '/tmp'
-OLD_STORE_TRAILING = 'STORES'
+SERVER_URL = f"http://{get_setting('MIGASFREE_FQDN')}"
+API_URL = f"{SERVER_URL}/api/v1/token"
+UPLOAD_PKG_URL = f"{SERVER_URL}/api/v1/safe/packages/"
 
-
-def get_auth_token():
-    return f'Token {get_secret("token_pms")}'
-
-
-def headers():
-    return {'Authorization': get_auth_token()}
-
-
-def get_locations():
-    locations = []
-
-    for root, dirnames, filenames in os.walk(settings.MEDIA_ROOT):
-        for filename in fnmatch.filter(dirnames, get_setting('MIGASFREE_STORE_TRAILING_PATH')):
-            locations.append(os.path.join(root, filename))
-
-    return locations
+PRIVATE_KEY = Path(get_setting("MIGASFREE_KEYS_DIR")) / "migasfree-packager.pri"
+PUBLIC_KEY = Path(get_setting("MIGASFREE_KEYS_DIR")) / "migasfree-server.pub"
+TMP_DIR = Path("/tmp")
+OLD_STORE_TRAILING = "STORES"
 
 
-def migrate_structure(projects):
-    for prj in projects:
-        source = os.path.join(
-            settings.MEDIA_ROOT,
-            prj['name'],
-            OLD_STORE_TRAILING
+class Migrator:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({"Authorization": self._get_auth_token()})
+
+        # Reliability strategy: Retry on common transient errors
+        retries = Retry(
+            total=5,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504],
+            raise_on_status=False,
         )
-        if os.path.exists(source):
-            target = os.path.join(
-                settings.MEDIA_ROOT,
-                prj['slug'],
-                get_setting('MIGASFREE_STORE_TRAILING_PATH')
-            )
-            shutil.move(source, target)
-            print(f'{source} migrated to {target} path')
-            shutil.rmtree(os.path.join(settings.MEDIA_ROOT, prj['name']))
+        self.session.mount("http://", HTTPAdapter(max_retries=retries))
+        self.session.mount("https://", HTTPAdapter(max_retries=retries))
 
+    def _get_auth_token(self) -> str:
+        return f"Token {get_secret('token_pms')}"
 
-def upload_package(data, upload_files):
-    data = json.dumps({
-        'msg': wrap(
-            data,
-            sign_key=PRIVATE_KEY,
-            encrypt_key=PUBLIC_KEY
-        ),
-        'project': data['project']
-    })
+    def get_locations(self) -> Generator[Path, None, None]:
+        """Memory-efficient exploration of media directory using generators."""
+        media_root = Path(settings.MEDIA_ROOT)
+        store_path = get_setting("MIGASFREE_STORE_TRAILING_PATH")
 
-    my_magic = build_magic()
+        for path in media_root.iterdir():
+            if path.is_dir():
+                for sub in path.rglob(store_path):
+                    if sub.is_dir():
+                        yield sub
 
-    files = []
-    for _file in upload_files:
-        content = read_file(_file)
+    def migrate_structure(self, projects: List[Dict[str, Any]]) -> None:
+        """Translates legacy directory structure to new standard naming."""
+        media_root = Path(settings.MEDIA_ROOT)
+        store_path = get_setting("MIGASFREE_STORE_TRAILING_PATH")
 
-        tmp_file = os.path.join(TMP_PATH, os.path.basename(_file))
-        write_file(tmp_file, content[0:1023])  # only header
-        mime = my_magic.file(tmp_file)
-        os.remove(tmp_file)
+        for prj in projects:
+            source = media_root / prj["name"] / OLD_STORE_TRAILING
+            if source.exists():
+                target = media_root / prj["slug"] / store_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source.rename(target)
+                logger.info(f"{source} migrated to {target}")
 
-        files.append(
-            ('file', (_file, content, mime))
-        )
+                # Cleanup old project base if empty
+                old_root = media_root / prj["name"]
+                if old_root.exists() and not any(old_root.iterdir()):
+                    old_root.rmdir()
 
-    data = json.loads(data)
-
-    fields = data
-    fields.update(dict(files))
-    data = MultipartEncoder(fields=fields)
-    headers = {'content-type': data.content_type}
-
-    req = requests.post(UPLOAD_PKG_URL, data=data, headers=headers)
-
-    if 'msg' in req.json():
-        response = unwrap(
-            req.json()['msg'],
-            decrypt_key=PRIVATE_KEY,
-            verify_key=PUBLIC_KEY
+    def upload_package(
+        self, data: Dict[str, Any], upload_files: List[Path]
+    ) -> Dict[str, Any]:
+        """Securely prepares and uploads package with JWE/JWS wrapping."""
+        payload = json.dumps(
+            {
+                "msg": wrap(
+                    data, sign_key=str(PRIVATE_KEY), encrypt_key=str(PUBLIC_KEY)
+                ),
+                "project": data["project"],
+            }
         )
 
-        return response
+        my_magic = build_magic()
+        file_list: List[Tuple[str, Tuple[str, bytes, str]]] = []
 
-    return req.json()
+        for _file in upload_files:
+            content = _file.read_bytes()
+            tmp_header = TMP_DIR / _file.name
+            tmp_header.write_bytes(content[:1024])
+            mime = my_magic.file(str(tmp_header))
+            tmp_header.unlink(missing_ok=True)
 
+            file_list.append(("file", (_file.name, content, mime)))
 
-def migrate_packages():
-    locations = get_locations()
-    packages = []
+        fields = json.loads(payload)
+        fields.update(dict(file_list))
 
-    for location in locations:
-        len_location = len(location.replace(settings.MEDIA_ROOT, '').split('/'))
-        for root, _, filenames in os.walk(location):
-            for _file in filenames:
-                len_candidate = len(
-                    os.path.join(root, _file).replace(settings.MEDIA_ROOT, '').split('/')
+        encoder = MultipartEncoder(fields=fields)
+        headers = {"Content-Type": encoder.content_type}
+
+        try:
+            resp = self.session.post(UPLOAD_PKG_URL, data=encoder, headers=headers)
+            resp.raise_for_status()
+            json_resp = resp.json()
+
+            if "msg" in json_resp:
+                return unwrap(
+                    json_resp["msg"],
+                    decrypt_key=str(PRIVATE_KEY),
+                    verify_key=str(PUBLIC_KEY),
                 )
-                if len_location == (len_candidate - 2):
-                    parts = root.replace(settings.MEDIA_ROOT, '').split('/')
-                    packages.append({
-                        'location': os.path.join(root, _file),
-                        'fullname': _file,
-                        'project': parts[1],
-                        'store': parts[-1],
-                    })
+            return json_resp
+        except requests.RequestException as e:
+            logger.error(f"Upload failed for {data.get('fullname')}: {e}")
+            return {"error": str(e)}
 
-    if len(packages) > 0:
-        for item in packages:
-            req = requests.get(
-                f'{API_URL}/packages/',
-                {
-                    'fullname__icontains': item['fullname'],
-                    'project__name__icontains': item['project'],
-                    'store__name__icontains': item['store']
-                },
-                headers=headers()
-            )
+    def migrate_packages(self) -> None:
+        """Finds and migrates individual packages based on Ic-containing match."""
+        media_root = Path(settings.MEDIA_ROOT)
+        packages: List[Dict[str, Any]] = []
 
-            response = req.json()
-            if response['count'] == 1:
-                package = response['results'][0]
-                print(f'Migrating {package["fullname"]}...')
-                ret = upload_package(
-                    data={
-                        'project': package['project']['name'],
-                        'store': package['store']['name'],
-                        'is_package': True
-                    },
-                    upload_files=[item['location']]
-                )
-                print(ret)  # DEBUG
-
-
-def migrate_package_sets():
-    locations = get_locations()
-    package_sets = []
-
-    for location in locations:
-        len_location = len(location.replace(settings.MEDIA_ROOT, '').split('/'))
-        for root, dirnames, filenames in os.walk(location):
-            for dirname in dirnames:
-                for _root, _dir, _filenames in os.walk(os.path.join(location, dirname)):
-                    len_candidate_set = len(_root.replace(settings.MEDIA_ROOT, '').split('/'))
-                    if _filenames and not _dir and len_candidate_set - len_location > 1:
-                        parts = _root.replace(settings.MEDIA_ROOT, '').split('/')
-                        package_sets.append({
-                            'location': _root,
-                            'name': parts[-1],
-                            'project': parts[1],
-                            'store': parts[-2],
-                            'packages': _filenames
-                        })
-
-    if len(package_sets) > 0:
-        for item in package_sets:
-            req = requests.get(
-                f'{API_URL}/package-sets/',
-                {
-                    'name': item['name'],
-                    'project__name__icontains': item['project'],
-                    'store__name__icontains': item['store']
-                },
-                headers=headers()
-            )
-
-            response = req.json()
-            if response['count'] == 1:
-                package_set = response['results'][0]
-                print(f'Migrating {package_set["name"]}...')
-
-                files = []
-                for package in item['packages']:
-                    files.append(
-                        (
-                            'files',
-                            (
-                                package,
-                                open(os.path.join(item['location'], package), 'rb').read(),
-                                get_pms(package_set['project']['pms']).mimetype[0]
-                            )
-                        )
+        for location in self.get_locations():
+            # Calculate depth relative to media root
+            base_parts = location.relative_to(media_root).parts
+            for item in location.iterdir():
+                if item.is_file():
+                    packages.append(
+                        {
+                            "location": item,
+                            "fullname": item.name,
+                            "project": base_parts[0],
+                            "store": base_parts[-1],
+                        }
                     )
 
-                mp_encoder = MultipartEncoder(fields=files)
-                response = requests.patch(
-                    f'{API_URL}/package-sets/{package_set["id"]}/',
-                    data=mp_encoder,
-                    headers={
-                        'Authorization': get_auth_token(),
-                        'Content-Type': mp_encoder.content_type
-                    }
+        for pkg in packages:
+            try:
+                resp = self.session.get(
+                    f"{API_URL}/packages/",
+                    params={
+                        "fullname__icontains": pkg["fullname"],
+                        "project__name__icontains": pkg["project"],
+                        "store__name__icontains": pkg["store"],
+                    },
                 )
-                print(response.text)
+                resp.raise_for_status()
+                data = resp.json()
 
-                if response.status_code == requests.codes.ok:
-                    print(f'Package set {package_set["name"]} migrated successfully!!!')
+                if data["count"] == 1:
+                    target = data["results"][0]
+                    logger.info(f"Migrating {target['fullname']}...")
+                    self.upload_package(
+                        data={
+                            "project": target["project"]["name"],
+                            "store": target["store"]["name"],
+                            "is_package": True,
+                        },
+                        upload_files=[pkg["location"]],
+                    )
+            except requests.RequestException as e:
+                logger.warning(f"Could not query package {pkg['fullname']}: {e}")
+
+    def migrate_package_sets(self) -> None:
+        """Finds and migrates package sets by matching directory structures."""
+        media_root = Path(settings.MEDIA_ROOT)
+        package_sets: List[Dict[str, Any]] = []
+
+        for location in self.get_locations():
+            for entry in location.iterdir():
+                if entry.is_dir() and any(entry.iterdir()):
+                    parts = entry.relative_to(media_root).parts
+                    package_sets.append(
+                        {
+                            "location": entry,
+                            "name": entry.name,
+                            "project": parts[0],
+                            "store": parts[-2],
+                            "packages": [
+                                f.name for f in entry.iterdir() if f.is_file()
+                            ],
+                        }
+                    )
+
+        for pset in package_sets:
+            try:
+                resp = self.session.get(
+                    f"{API_URL}/package-sets/",
+                    params={
+                        "name": pset["name"],
+                        "project__name__icontains": pset["project"],
+                        "store__name__icontains": pset["store"],
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if data["count"] == 1:
+                    target = data["results"][0]
+                    logger.info(f"Migrating package set {target['name']}...")
+
+                    files_to_upload = []
+                    for pkg_name in pset["packages"]:
+                        pkg_path = pset["location"] / pkg_name
+                        files_to_upload.append(
+                            (
+                                "files",
+                                (
+                                    pkg_name,
+                                    pkg_path.read_bytes(),
+                                    get_pms(target["project"]["pms"]).mimetype[0],
+                                ),
+                            )
+                        )
+
+                    encoder = MultipartEncoder(fields=files_to_upload)
+                    patch_resp = self.session.patch(
+                        f"{API_URL}/package-sets/{target['id']}/",
+                        data=encoder,
+                        headers={"Content-Type": encoder.content_type},
+                    )
+                    if patch_resp.status_code == requests.codes.ok:
+                        logger.info(
+                            f"Package set {target['name']} migrated successfully."
+                        )
+                    else:
+                        logger.error(
+                            f"Failed to migrate {target['name']}: {patch_resp.text}"
+                        )
+            except requests.RequestException as e:
+                logger.warning(
+                    f"Connectivity issue during package set {pset['name']} migration: {e}"
+                )
+
+    def get_projects(self) -> List[Dict[str, Any]]:
+        """Retrieves and paginates projects from the API."""
+        try:
+            resp = self.session.get(f"{API_URL}/projects/")
+            if resp.status_code != requests.codes.ok:
+                logger.error("Invalid credentials. Review token.")
+                sys.exit(1)
+
+            data = resp.json()
+            if "detail" in data:
+                logger.error(data["detail"])
+                sys.exit(1)
+
+            # Paginate to get all results
+            resp = self.session.get(
+                f"{API_URL}/projects/", params={"page_size": data["count"]}
+            )
+            return resp.json()["results"]
+        except requests.RequestException as e:
+            logger.critical(f"Failed to fetch projects: {e}")
+            sys.exit(1)
+
+    def update_projects(self, projects: List[Dict[str, Any]]) -> None:
+        """Normalizes PMS naming conventions."""
+        for prj in projects:
+            if prj["pms"].startswith("apt"):
+                prj["pms"] = "apt"
+
+            prj["platform"] = prj["platform"]["id"]
+            try:
+                resp = self.session.patch(f"{API_URL}/projects/{prj['id']}/", json=prj)
+                if resp.status_code == requests.codes.ok:
+                    logger.info(f"Project {prj['name']} normalized.")
+            except requests.RequestException as e:
+                logger.error(f"Failed to update project {prj['name']}: {e}")
+
+    def regenerate_metadata(self) -> None:
+        """Trigger metadata regeneration for all internal-source deployments."""
+        try:
+            resp = self.session.get(f"{API_URL}/deployments/internal-sources/")
+            data = resp.json()
+
+            resp = self.session.get(
+                f"{API_URL}/deployments/internal-sources/",
+                params={"page_size": data["count"]},
+            )
+
+            for deploy in resp.json()["results"]:
+                m_resp = self.session.get(
+                    f"{API_URL}/deployments/internal-sources/{deploy['id']}/metadata/"
+                )
+                if m_resp.status_code == requests.codes.ok:
+                    logger.info(f"Metadata for {deploy['name']} regenerated.")
                 else:
-                    print(f'Package set {package_set["name"]} NOT migrated!')
-
-                print()
-
-
-def get_projects():
-    req = requests.get(
-        f'{API_URL}/projects/',
-        headers=headers()
-    )
-    if req.status_code != requests.codes.ok:
-        print('Invalid credentials. Review token.')
-        sys.exit(1)
-
-    response = req.json()
-    if 'detail' in response:
-        print(response['detail'])
-        sys.exit(1)
-
-    req = requests.get(
-        f'{API_URL}/projects/',
-        {
-            'page_size': response['count']
-        },
-        headers=headers()
-    )
-    response = req.json()
-
-    return response['results']
+                    logger.error(f"Metadata regeneration failed for {deploy['name']}.")
+        except requests.RequestException as e:
+            logger.error(f"Metadata task failed: {e}")
 
 
-def update_projects(projects):
-    for prj in projects:
-        if prj['pms'].startswith('apt'):
-            prj['pms'] = 'apt'
+if __name__ == "__main__":
+    migrator = Migrator()
 
-        prj['platform'] = prj['platform']['id']
-        req = requests.patch(f'{API_URL}/projects/{prj["id"]}/', prj, headers=headers())
-        if req.status_code == requests.codes.ok:
-            print(f'Project {prj["name"]} updated')
-        else:
-            print(f'Project {prj["name"]} update failed!!! ({req.status_code})')
-
-
-def regenerate_metadata():
-    req = requests.get(
-        f'{API_URL}/deployments/internal-sources/',
-        headers=headers()
-    )
-    response = req.json()
-
-    req = requests.get(
-        f'{API_URL}/deployments/internal-sources/',
-        {
-            'page_size': response['count']
-        },
-        headers=headers()
-    )
-    response = req.json()
-    for deploy in response['results']:
-        req = requests.get(
-            f'{API_URL}/deployments/internal-sources/{deploy["id"]}/metadata/',
-            headers=headers()
-        )
-        if req.status_code == requests.codes.ok:
-            print(f'Deployment {deploy["name"]} regenerated')
-        else:
-            print(f'Deployment {deploy["name"]} regenerating failed!!!')
-
-
-if __name__ == '__main__':
-    projects = get_projects()
-    update_projects(projects)
-    migrate_structure(projects)
-    migrate_packages()
-    migrate_package_sets()
-    regenerate_metadata()
+    # Execution sequence
+    all_projects = migrator.get_projects()
+    migrator.update_projects(all_projects)
+    migrator.migrate_structure(all_projects)
+    migrator.migrate_packages()
+    migrator.migrate_package_sets()
+    migrator.regenerate_metadata()

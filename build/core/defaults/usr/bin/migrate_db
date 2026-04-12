@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export DJANGO_SETTINGS_MODULE=migasfree.settings.production 
+# shellcheck source=/dev/null
 . /venv/bin/activate
 
 # Waiting worker
