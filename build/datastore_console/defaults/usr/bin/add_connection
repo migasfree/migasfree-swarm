@@ -6,11 +6,10 @@ sleep 5
 
 # add the connection to datastore if not exist
 # ============================================
-curl -X GET -H "Content-Type: application/json" \
-    http://127.0.0.1:5540/api/databases | grep ',"name":"'${STACK}'",'
-if [ $? -ne 0 ]
+if ! curl -X GET -H "Content-Type: application/json" "http://127.0.0.1:5540/api/databases" | grep -q ',"name":"'"${STACK}"'","'
 then
+    _PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
     curl -X POST -H "Content-Type: application/json" \
-        -d '{"host": "datastore", "port": 6379, "name": "'${STACK}'", "username": "default", "password": "'$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass)'"}' \
-        http://127.0.0.1:5540/api/databases
+        -d "{\"host\": \"datastore\", \"port\": 6379, \"name\": \"${STACK}\", \"username\": \"default\", \"password\": \"${_PASS}\"}" \
+        "http://127.0.0.1:5540/api/databases"
 fi
