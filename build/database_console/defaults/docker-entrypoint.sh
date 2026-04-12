@@ -3,19 +3,21 @@ set -e
 
 MIGASFREE_SECRET_DIR=/var/run/secrets
 
-export PGADMIN_DEFAULT_EMAIL="$(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name)@${FQDN}"
+PGADMIN_DEFAULT_EMAIL="$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")@${FQDN}"
+export PGADMIN_DEFAULT_EMAIL
 
-function set_TZ {
+set_TZ() {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]
     then
         TZ="Europe/Madrid"
     fi
     # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
+    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
 }
 
-send_message "starting ${SERVICE:(${#STACK})+1}"
+_SERVICE_NAME=${SERVICE#${STACK}_}
+send_message "starting $_SERVICE_NAME"
 
 set_TZ
 
@@ -45,18 +47,17 @@ echo "
 
         $SERVICE ($TAG)
         pgadmin4 $(/venv/bin/python3 -c 'import version;print(version.APP_VERSION)')
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
 
-
-
 send_message ""
 
 # Changes to USER pgadmin
-if [ "$(id -u)" = '0' ]; then
+if [ "$(id -u)" = '0' ]
+then
     exec su-exec pgadmin "$0" "$@"
 fi
 

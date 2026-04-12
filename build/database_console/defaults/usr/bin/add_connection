@@ -7,8 +7,7 @@ PG_HOST=${POSTGRES_HOST:-database}
 
 while true
 do
-    timeout 1 curl --fail --silent --head --request GET http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping > /dev/null
-    if [ $? = 0 ]
+    if timeout 1 curl --fail --silent --head --request GET "http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping" > /dev/null
     then
         break
     else
@@ -57,5 +56,5 @@ SERVERS_JSON="${SERVERS_JSON} }}"
 
 echo "$SERVERS_JSON" > /var/tmp/server.json
 
-cd /pgadmin4
-/venv/bin/python3 setup.py load-servers /var/tmp/server.json --user ${PGADMIN_DEFAULT_EMAIL} --replace
+cd /pgadmin4 || exit 1
+/venv/bin/python3 setup.py load-servers /var/tmp/server.json --user "${PGADMIN_DEFAULT_EMAIL}" --replace
