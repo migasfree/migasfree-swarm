@@ -2,12 +2,15 @@
 set -e
 
 # Load password from secret if available
-if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
-    export DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
+if [ -f "$POSTGRES_PASSWORD_FILE" ]
+then
+    DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
+    export DB_PASSWORD
 fi
 
 # Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
+then
     ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
     echo "$TZ" > /etc/timezone
 fi
@@ -17,8 +20,6 @@ fi
 # ==========================================
 
 PGPOOL_PIDFILE="/var/run/pgpool/pgpool_main.pid"
-BACKENDS_STATE="/var/run/pgpool/backends.state"
-RESTART_FLAG="/var/run/pgpool/restart_requested"
 PCP_PORT=9898
 PCP_USER="$POSTGRES_USER"
 PCP_PASSWORD="$DB_PASSWORD"
@@ -39,7 +40,8 @@ backend_config_block() {
 
     local flag
     local weight
-    if [ "$role" = "PRIMARY" ]; then
+    if [ "$role" = "PRIMARY" ]
+    then
         flag="ALWAYS_PRIMARY|ALLOW_TO_FAILOVER"
         weight=0  # Primary handles only writes and transactional queries
     else
@@ -57,41 +59,6 @@ BLOCK
 }
 
 # Build backends config from static IPs
-generate_backends_from_static() {
-    local backend_id=0
-    local backends=""
-    local state=""
-
-    echo "    $PRIMARY_IP → PRIMARY (backend_$backend_id)"
-    backends="${backends}
-$(backend_config_block $backend_id "$PRIMARY_IP" "PRIMARY")
-"
-    state="${state}${backend_id}:${PRIMARY_IP}:PRIMARY
-"
-    backend_id=$((backend_id + 1))
-
-    # Process Comma-separated or Space-separated REPLICAS_IP list
-    if [ -n "$REPLICAS_IP" ]; then
-        local replica_list
-        replica_list=$(echo "$REPLICAS_IP" | tr ',' ' ')
-        for IP in $replica_list; do
-            echo "    $IP → REPLICA (backend_$backend_id)"
-            backends="${backends}
-$(backend_config_block $backend_id "$IP" "REPLICA")
-"
-            state="${state}${backend_id}:${IP}:REPLICA
-"
-            backend_id=$((backend_id + 1))
-        done
-    fi
-
-    PGPOOL_BACKENDS="$backends"
-    BACKEND_COUNT=$backend_id
-    
-    mkdir -p /var/run/pgpool
-    echo "$state" > "$BACKENDS_STATE"
-    return 0
-}
 
 generate_pgpool_conf() {
     cat <<EOF > /etc/pgpool/pgpool.conf
@@ -203,17 +170,20 @@ discover_topology() {
 
 # Generate pgpool.conf with fixed slots for each Swarm Node IP
 generate_dynamic_config() {
-    local nodes_count=$(jq '.nodes | length' /var/run/pgpool/topology.json)
     local backends=""
     local index=0
     
-    local nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
-    local primary_ip=$(curl -s "http://manager:8080/v1/internal/backends" | jq -r '.[] | select(.role == "PRIMARY") | .ip')
+    local nodes_ips
+    nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
+    local primary_ip
+    primary_ip=$(curl -s "http://manager:8080/v1/internal/backends" | jq -r '.[] | select(.role == "PRIMARY") | .ip')
     
-    for node_ip in $nodes_ips; do
+    for node_ip in $nodes_ips
+    do
         # Primary gets weight 0 (only writes). Replicas get weight 1 (reads).
         local weight=1
-        if [ "$node_ip" = "$primary_ip" ]; then
+        if [ "$node_ip" = "$primary_ip" ]
+        then
             weight=0
         fi
         
@@ -228,7 +198,6 @@ backend_flag${index} = 'ALLOW_TO_FAILOVER'
     done
     
     PGPOOL_BACKENDS="$backends"
-    BACKEND_COUNT=$nodes_count
     generate_pgpool_conf
 }
 
@@ -238,17 +207,24 @@ start_topology_watchdog() {
         echo "[watchdog] Starting Topology Watchdog..."
         sleep 30  # Wait for pgpool to stabilize 
         
-        while true; do
-            if [ -f "$PGPOOL_PIDFILE" ]; then
+        while true
+        do
+            if [ -f "$PGPOOL_PIDFILE" ]
+            then
                 local index=0
-                local nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
+                local nodes_ips
+                nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
                 
-                for node_ip in $nodes_ips; do
-                    local current_status=$(pcp_node_info -h localhost -p $PCP_PORT -U "$PCP_USER" -w $index | awk '{print $3}')
+                for node_ip in $nodes_ips
+                do
+                    local current_status
+                    current_status=$(pcp_node_info -h localhost -p "$PCP_PORT" -U "$PCP_USER" -w "$index" | awk '{print $3}')
                     
-                    if [ "$current_status" = "3" ]; then
+                    if [ "$current_status" = "3" ]
+                    then
                         # Node is marked down by pgpool. Check network availability
-                        if nc -zv "$node_ip" "$PORT_DATABASE" >/dev/null 2>&1; then
+                        if nc -zv "$node_ip" "$PORT_DATABASE" >/dev/null 2>&1
+                        then
                             echo "[watchdog] Node $index ($node_ip) is reachable again. Attempting to attach..."
                             pcp_attach_node -h localhost -p $PCP_PORT -U "$PCP_USER" -w $index || true
                         fi
@@ -266,7 +242,8 @@ start_topology_watchdog() {
 # ==========================================
 
 echo "Waiting for Manager topology API..."
-until discover_topology; do
+until discover_topology
+do
     echo "Retrying in 5 seconds..."
     sleep 5
 done
@@ -283,7 +260,8 @@ start_topology_watchdog
 echo "Generating pgpool.conf..."
 generate_pgpool_conf
 
-if [ -n "$POSTGRES_USER" ] && [ -n "$DB_PASSWORD" ]; then
+if [ -n "$POSTGRES_USER" ] && [ -n "$DB_PASSWORD" ]
+then
     echo "Generating pool_passwd..."
     echo "${POSTGRES_USER}:${DB_PASSWORD}" > /etc/pgpool/pool_passwd
 fi
@@ -315,21 +293,25 @@ trap cleanup SIGTERM SIGINT
 (
     sleep 30  # wait for pgpool to stabilize
     echo "[auto-attach] Service started. Monitoring for recovered nodes..."
-    while true; do
+    while true
+    do
         sleep 15
         
         # We read all nodes and iterate with an index
         index=0
-        while read -r line; do
+        while read -r line
+        do
             if [ -z "$line" ]; then continue; fi
             
             # Status code is the 3rd column
             status=$(echo "$line" | awk '{print $3}')
             ip=$(echo "$line" | awk '{print $1}')
             
-            if [ "$status" = "3" ]; then
+            if [ "$status" = "3" ]
+            then
                 # Node is DOWN. Check if it's reachable now.
-                if nc -zv "$ip" "$PORT_DATABASE" >/dev/null 2>&1; then
+                if nc -zv "$ip" "$PORT_DATABASE" >/dev/null 2>&1
+                then
                     echo "[auto-attach] Node $index ($ip) is reachable. Attempting to attach..."
                     pcp_attach_node -h localhost -p $PCP_PORT -U "$PCP_USER" -w "$index" || true
                 fi
@@ -338,7 +320,6 @@ trap cleanup SIGTERM SIGINT
         done < <(pcp_node_info -h localhost -p $PCP_PORT -U "$PCP_USER" -w)
     done
 ) &
-
 
 echo "
 
@@ -356,12 +337,11 @@ echo "
 
         $SERVICE ($TAG)
         $(pgpool -v 2>&1)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
-
 
 # ==========================================
 # Start Pgpool and keep container alive
@@ -370,14 +350,16 @@ echo "
 start_pgpool
 
 # Supervision loop
-while true; do
+while true
+do
     CURRENT_PID=$(cat "$PGPOOL_PIDFILE" 2>/dev/null)
-    if [ -n "$CURRENT_PID" ]; then
+    if [ -n "$CURRENT_PID" ]
+    then
         wait "$CURRENT_PID" 2>/dev/null
         EXIT_CODE=$?
     fi
 
     # Pgpool exited unexpectedly — exit the container
     echo "Pgpool-II exited unexpectedly (code ${EXIT_CODE:-unknown}). Container will restart."
-    exit ${EXIT_CODE:-1}
+    exit "${EXIT_CODE:-1}"
 done

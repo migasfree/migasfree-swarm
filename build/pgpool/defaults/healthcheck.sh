@@ -2,12 +2,12 @@
 
 # Load password from secret if available
 if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
-    export DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
+    DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
+    export DB_PASSWORD
 fi
 
-PCP_PORT=${PCP_PORT:-9898}
-PCP_USER=${POSTGRES_USER:-postgres}
-PCP_PASSWORD=${DB_PASSWORD}
+PCP_PORT="${PCP_PORT:-9898}"
+PCP_USER="${POSTGRES_USER:-postgres}"
 
 # 1. Check if pgpool process is running
 if ! pgrep pgpool > /dev/null; then
