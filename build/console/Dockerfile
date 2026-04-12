@@ -14,11 +14,10 @@ RUN apk upgrade --no-cache && \
     git checkout $TAG && \
     echo 'MIGASFREE_SERVER=https://__FQDN__' > /migasfree-frontend/.env
 
-RUN cd migasfree-frontend && \
-    cp package*.json /app && \
-    yarn global add @quasar/cli && \
-    yarn && \
-    quasar build
+RUN corepack enable && \
+    cd migasfree-frontend && \
+    yarn install && \
+    yarn dlx @quasar/cli build
 
 FROM nginx:1.29-alpine3.22 AS production-stage
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
