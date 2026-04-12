@@ -3,22 +3,21 @@
 _LOG=/var/log/backup
 
 {
-    _PATH=${DATASHARE_MOUNT_PATH}/dump
+    _PATH="${DATASHARE_MOUNT_PATH}/dump"
 
-    DUMP_SCHEMA="migasfree-schema.txt"
     DUMP_FILE="${1:-migasfree.sql}"
 
     mkdir -p "$_PATH" || :
 
-    export PGPASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
+    PGPASSWORD=$(cat "/run/secrets/${STACK}_superadmin_pass")
+    export PGPASSWORD
     echo "Time zone: $TZ"
 
 
     # DUMP DATABASE
     echo "$(date) Dump database to $_PATH/$DUMP_FILE ..."
-    $(/usr/bin/which pg_dump) -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" \
+    if pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" \
         "$POSTGRES_DB" -U "$POSTGRES_USER" > "$_PATH/$DUMP_FILE"
-    if [ $? = 0 ]
     then
         echo "$(date) Done!"
     else
@@ -28,11 +27,10 @@ _LOG=/var/log/backup
     echo ""
     echo "-----------------------------------------"
     echo "$(date) VACUUM database $POSTGRES_DB..."
-    /bin/su postgres -c "psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c 'VACUUM VERBOSE'"
-    if [ $? = 0 ]
+    if /bin/su postgres -c "psql -h '$POSTGRES_HOST' -p '$POSTGRES_PORT' -U '$POSTGRES_USER' -d '$POSTGRES_DB' -c 'VACUUM VERBOSE'"
     then
         echo "$(date) VACUUM Done!"
     else
         echo "$(date) VACUUM ERROR !!! "
     fi
-} 2>&1 | tee $_LOG
+} 2>&1 | tee "$_LOG"

@@ -77,7 +77,8 @@ then
         SLOT_NAME=$(echo "slot_${CURRENT_NODE}" | tr '-' '_' | tr '[:upper:]' '[:lower:]')
         
         if [ -f "$REPLICATION_PASSWORD_FILE" ]; then
-            export PGPASSWORD=$(cat "$REPLICATION_PASSWORD_FILE")
+            PGPASSWORD=$(cat "$REPLICATION_PASSWORD_FILE")
+            export PGPASSWORD
         fi
 
         # Discover the real primary IP from tasks.database
@@ -100,7 +101,7 @@ then
         echo "Valid database system not found in $PGDATA (pg_control missing)."
         echo "Wiping 'dirty' directory and starting fresh synchronization from $PRIMARY_IP using slot $SLOT_NAME..."
         
-        rm -rf "$PGDATA"/*
+        rm -rf "${PGDATA:?}"/*
         mkdir -p "$PGDATA"
         chown postgres:postgres "$PGDATA"
 
@@ -166,8 +167,8 @@ function apply_postgresql_params {
         echo "Applying parameters to $config_file"
         IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
         for param_value in "${PARAMS[@]}"; do
-            param=$(echo $param_value | cut -d= -f1)
-            value=$(echo $param_value | cut -d= -f2)
+            param=$(echo "$param_value" | cut -d= -f1)
+            value=$(echo "$param_value" | cut -d= -f2)
             if grep -q "^#*\s*${param}\s*=" "$config_file"; then
                 sed -i "s|^#*\s*${param}\s*=.*|${param} = ${value}|" "$config_file"
             else
@@ -197,8 +198,8 @@ if [ -n "\$REAL_CONFIG" ]; then
     echo "Initialization hook: Applying parameters to \$REAL_CONFIG"
     IFS='|' read -ra PARAMS <<< "$POSTGRESQL_CONF"
     for param_value in "\${PARAMS[@]}"; do
-        param=\$(echo \$param_value | cut -d= -f1)
-        value=\$(echo \$param_value | cut -d= -f2)
+        param=\$(echo "\$param_value" | cut -d= -f1)
+        value=\$(echo "\$param_value" | cut -d= -f2)
         if grep -q "^#*\s*\${param}\s*=" "\$REAL_CONFIG"; then
             sed -i "s|^#*\s*\${param}\s*=.*|\${param} = \${value}|" "\$REAL_CONFIG"
         else
@@ -233,6 +234,40 @@ function ensure_replication_user {
     "
 }
 
+# Function to ensure MCP RO user exists with correct password
+function ensure_mcp_ro_user {
+    # Wait for postgres to be ready
+    until pg_isready -U "$POSTGRES_USER" > /dev/null 2>&1; do
+        sleep 5
+    done
+
+    if [ -n "$MCP_RO_USER" ]; then
+        if [ -f "$MCP_RO_PASSWORD_FILE" ]; then
+            MCP_RO_PASSWORD=$(cat "$MCP_RO_PASSWORD_FILE")
+        fi
+
+        echo "Ensuring MCP RO user '$MCP_RO_USER' exists using local trust..."
+        
+        # Create user and grant permissions
+        # Grant CONNECT on database, USAGE on public schema, and SELECT on all tables
+        psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '$MCP_RO_USER') THEN
+                    CREATE USER $MCP_RO_USER WITH ENCRYPTED PASSWORD '$MCP_RO_PASSWORD';
+                ELSE
+                    ALTER USER $MCP_RO_USER WITH ENCRYPTED PASSWORD '$MCP_RO_PASSWORD';
+                END IF;
+            END
+            \$\$;
+            GRANT CONNECT ON DATABASE $POSTGRES_DB TO $MCP_RO_USER;
+            GRANT USAGE ON SCHEMA public TO $MCP_RO_USER;
+            GRANT SELECT ON ALL TABLES IN SCHEMA public TO $MCP_RO_USER;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $MCP_RO_USER;
+        "
+    fi
+}
+
 # Replication user and HBA configuration (Primary only)
 if [ "$PG_ROLE" == "primary" ] || [ -z "$PG_ROLE" ]
 then
@@ -243,11 +278,12 @@ then
     # Launch background task to ensure user existence
     # We unset PGPASSWORD here to force psql to use the 'trust' rule via socket
     (ensure_replication_user) &
+    (ensure_mcp_ro_user) &
 fi
 
 # --- GLOBAL pg_hba.conf OVERWRITE ---
 # We do this at the very end to ensure all files are caught
-for hba in $(find /var/lib/postgresql -name pg_hba.conf); do
+find /var/lib/postgresql -name pg_hba.conf -print0 | while IFS= read -r -d '' hba; do
     echo "Force updating $hba with broad internal trust..."
     cat <<EOF > "$hba"
 # TYPE  DATABASE        USER            ADDRESS                 METHOD

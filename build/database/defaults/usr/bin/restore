@@ -47,8 +47,7 @@ DUMP_FILE="${1:-migasfree.sql}"
         PGPASSWORD=$POSTGRES_PASSWORD createdb -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" "$POSTGRES_DB"
 
         echo "$(date) Restore DB ..."
-        su postgres -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -f $_PATH/$DUMP_FILE" -
-        if [ $? -eq 0 ]
+        if su postgres -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -f \"$_PATH/$DUMP_FILE\"" -
         then
             echo "$(date) Done."
         else
