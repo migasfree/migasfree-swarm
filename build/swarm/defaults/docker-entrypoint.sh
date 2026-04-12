@@ -1,24 +1,22 @@
 #!/bin/sh
 
 set_TZ() {
-    : ${TZ:=Europe/Madrid}
+    : "${TZ:=Europe/Madrid}"
     # Link only if the target differs (reduces noisy “File exists” errors)
     [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ] && \
         ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
 }
 
 get_swarm_role() {
-    local info
-
-    info=$(docker info 2>/dev/null) || { echo ""; return; }
-    echo "$info" | grep -q "Swarm: active" || { echo ""; return; }
-    echo "$info" | grep -q "Is Manager: true" && echo "MANAGER" || echo "WORKER"
+    _info=$(docker info 2>/dev/null) || { echo ""; return; }
+    echo "$_info" | grep -q "Swarm: active" || { echo ""; return; }
+    echo "$_info" | grep -q "Is Manager: true" && echo "MANAGER" || echo "WORKER"
 }
 
 
 run_manager() {
-    local _COMMAND="$1"
-    local _SILENT="${2:-}"
+    _COMMAND="$1"
+    _SILENT="${2:-}"
     if [ -z "${ROLE}" ]
     then
         echo "This host is not part of a Swarm cluster."
@@ -63,6 +61,7 @@ COMMAND="$1"
 ROLE="$(get_swarm_role)"
 
 [ -d /stack ] && cp /tools/migasfree-swarm /stack/migasfree-swarm
+# shellcheck source=/dev/null
 . /venv/bin/activate
 
 case "$COMMAND" in
@@ -131,7 +130,7 @@ case "$COMMAND" in
     *)
         echo "
             $SERVICE ($TAG)
-            Container: $HOSTNAME
+            Container: $(hostname)
             Time zone: $TZ $(date)
             Processes: $(nproc)"
         echo

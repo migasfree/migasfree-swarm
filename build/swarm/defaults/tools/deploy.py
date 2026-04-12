@@ -447,6 +447,17 @@ def main():
     create_secret(
         client, f"{context['STACK']}_replication_pass", repl_password.encode()
     )
+    
+    # MCP RO secrets
+    ro_user = context.get("MCP_RO_USER", "mcp_ro")
+    _, ro_password = credentials(
+        f"{context['STACK']}_mcp_ro",
+        user=ro_user,
+        password=generate_password(32),
+    )
+    create_secret(
+        client, f"{context['STACK']}_mcp_ro_pass", ro_password.encode()
+    )
 
     create_labels(client)
     create_network_overlay("infra_network")

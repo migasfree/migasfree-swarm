@@ -113,7 +113,7 @@ class ContextLoader:
 
         # Network Management
         # ==================
-        self.default("NETWORK_MNG", "0.0.0.0/0")
+        self.default("NETWORK_MNG", "127.0.0.1")
         self.default("NETWORK_MCP", "127.0.0.1")
 
         # Exposed Ports
@@ -127,6 +127,8 @@ class ContextLoader:
         self.default("POSTGRES_PORT", "5432")
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
+        self.default("REPLICATION_USER", "repuser")
+        self.default("MCP_RO_USER", "mcp_ro")
         self.default("POSTGRESQL_CONF", "work_mem=32MB")
 
         db_port_default = (
@@ -150,8 +152,7 @@ class ContextLoader:
 
         # PMS
         # ===
-        # self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-apk,pms-wpt")
-        self.default("PMS_ENABLED", "pms-apt,pms-yum")
+        self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-apk,pms-wpt")
 
         for key in [
             "REPLICAS_console",

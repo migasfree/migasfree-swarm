@@ -1,7 +1,9 @@
 #!/bin/sh
+set -e
 
 VERSION=$(cat /VERSION)
 
+# shellcheck source=/dev/null
 . /stack/env.py
 
 
@@ -32,7 +34,7 @@ then
     echo "         -v /var/run/docker.sock:/var/run/docker.sock \\"
     echo "         migasfree/swarm:${VERSION} pull"
     echo
-    echo -n "  5.$(docker swarm join-token worker)"
+    printf "  5.%s" "$(docker swarm join-token worker)"
     echo
     echo
     echo "==================================================================================================================="
@@ -43,13 +45,14 @@ else
 
     echo
     echo
-    echo "When DATASHARE_FS is set to '$DATASHARE_FS', you cannot add a node to the cluster."
+    echo "When DATASHARE_FS is set to '${DATASHARE_FS}', you cannot add a node to the cluster."
 
-    read -p "Do you want to switch to NFS mode? (y/n): " response
+    printf "Do you want to switch to NFS mode? (y/n): "
+    read -r response
     response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
-    if [[ "$response" == "y" || "$response" == "yes" ]]; then
+    if [ "$response" = "y" ] || [ "$response" = "yes" ]
+    then
             echo "DATASHARE_FS='nfs'" > /stack/env.py
             python3 /tools/config.py
     fi
-
 fi

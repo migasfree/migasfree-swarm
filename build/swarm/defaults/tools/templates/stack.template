@@ -264,6 +264,8 @@ services:
             - MY_NODE_HOSTNAME={{ '{{.Node.Hostname}}' }}
             - REPLICATION_USER={{REPLICATION_USER}}
             - REPLICATION_PASSWORD_FILE=/run/secrets/{{STACK}}_replication_pass
+            - MCP_RO_USER={{MCP_RO_USER}}
+            - MCP_RO_PASSWORD_FILE=/run/secrets/{{STACK}}_mcp_ro_pass
             - BACKUP_CRON='{{BACKUP_CRON}}'
 
         {% if PORT_DATABASE %}  #  Expose PostgreSQL port to external access from the Swarm cluster
@@ -277,6 +279,7 @@ services:
         secrets:
             - source: {{STACK}}_superadmin_pass
             - source: {{STACK}}_replication_pass
+            - source: {{STACK}}_mcp_ro_pass
         deploy:
             mode: global
             restart_policy:
@@ -513,13 +516,12 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
-            - POSTGRES_USER={{POSTGRES_USER}}
+            - POSTGRES_USER={{MCP_RO_USER}}
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
         secrets:
-            - source: {{STACK}}_superadmin_name
-            - source: {{STACK}}_superadmin_pass
+            - source: {{STACK}}_mcp_ro_pass
         depends_on:
             - core
             - manager
@@ -587,6 +589,8 @@ secrets:
 
 {% if POSTGRES_HOST == "database" or POSTGRES_HOST == "pgpool" %}
     {{STACK}}_replication_pass:
+        external: true
+    {{STACK}}_mcp_ro_pass:
         external: true
 {% endif %}
 
