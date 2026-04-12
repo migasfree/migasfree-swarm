@@ -2,12 +2,13 @@
 
 _MESSAGE="$1"
 _SERVER="${2:-manager}"
-_POINT="http://manager:8080/v1/internal/message"
-_DATA="{\"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\", \"node\":\"$NODE\", \"container\":\"$HOSTNAME\"}"
+_POINT="http://${_SERVER}:8080/v1/internal/message"
+_DATA="{\"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\", \"node\":\"$NODE\", \"container\":\"$(hostname)\"}"
 
-_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 -d "$_DATA" -H "Content-Type: application/json" -X POST $_POINT)
-if ! [ "$_STATUS" = "200" ]
+_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 -d "$_DATA" -H "Content-Type: application/json" -X POST "$_POINT")
+if [ "$_STATUS" != "200" ]
 then
     echo "Notice: Could not send message to $_SERVER (Status: $_STATUS). Continuing..."
 fi
+
 exit 0
