@@ -22,7 +22,8 @@ RUN apt-get update && \
     apt-get install -y postgresql-client curl ca-certificates sudo && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && \
-    groupadd -r -g 890 mcpuser && useradd -r -u 890 -g mcpuser mcpuser && \
+    getent group mcpuser || groupadd -r -g 890 mcpuser && \
+    getent passwd mcpuser || useradd -r -u 890 -g mcpuser mcpuser && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh

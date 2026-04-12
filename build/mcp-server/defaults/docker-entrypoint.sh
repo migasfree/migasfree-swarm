@@ -4,7 +4,7 @@ send_message "init mcp-server"
 
 sudo update-ca-certificates
 
-cd /app
+cd /app || exit 1
 
 echo "
 

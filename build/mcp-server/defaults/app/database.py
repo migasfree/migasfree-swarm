@@ -12,9 +12,19 @@ logger = logging.getLogger("migasfree-mcp")
 
 def get_secret_pass():
     stack = os.environ.get("STACK", "migasfree")
+    user = os.environ.get("POSTGRES_USER", "migasfree")
+
+    # 1. Try user-specific secret (e.g. migasfree_mcp_ro_pass)
+    secret_path = f"/run/secrets/{stack}_{user}_pass"
+    if os.path.exists(secret_path):
+        return read_file(secret_path).strip()
+
+    # 2. Try legacy superadmin secret
     secret_path = f"/run/secrets/{stack}_superadmin_pass"
     if os.path.exists(secret_path):
         return read_file(secret_path).strip()
+
+    # 3. Fallback to env var
     return os.getenv("POSTGRES_PASSWORD", "migasfree")
 
 
