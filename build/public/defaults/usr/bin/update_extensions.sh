@@ -11,7 +11,7 @@ update_haproxy_extensions() {
         return 1
     fi
 
-    acl_info=$(echo "show acl" | socat stdio tcp-connect:${proxy_host}:${proxy_port} | grep "virt@extensions.txt")
+    acl_info=$(echo "show acl" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}" | grep "virt@extensions.txt")
     acl_id=$(echo "$acl_info" | head -n1 | grep -o '^[^ ]*' | grep -o '[0-9]*')
 
     if [ -z "$acl_id" ]
@@ -20,7 +20,7 @@ update_haproxy_extensions() {
         return 1
     fi
 
-    result=$(echo "prepare acl #${acl_id}" | socat stdio tcp-connect:${proxy_host}:${proxy_port})
+    result=$(echo "prepare acl #${acl_id}" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}")
 
     new_version=$(echo "$result" | grep -o 'New version created: [0-9]*' | grep -o '[0-9]*$')
 
@@ -30,7 +30,7 @@ update_haproxy_extensions() {
         return 1
     fi
 
-    echo "clear acl @${new_version} #${acl_id}" | socat stdio tcp-connect:${proxy_host}:${proxy_port}
+    echo "clear acl @${new_version} #${acl_id}" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}"
 
     for ext in "$@"
     do
@@ -41,22 +41,23 @@ update_haproxy_extensions() {
             *) clean_ext=".$clean_ext" ;;
         esac
 
-        echo "add acl @${new_version} #${acl_id} $clean_ext" | socat stdio tcp-connect:${proxy_host}:${proxy_port}
+        echo "add acl @${new_version} #${acl_id} $clean_ext" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}"
     done
 
-    echo "commit acl @${new_version} #${acl_id}" | socat stdio tcp-connect:${proxy_host}:${proxy_port}
+    echo "commit acl @${new_version} #${acl_id}" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}"
 
     echo ""
     echo "Final virt@extensions.txt content:"
-    echo "show acl #${acl_id}" | socat stdio tcp-connect:${proxy_host}:${proxy_port}
+    echo "show acl #${acl_id}" | socat stdio "tcp-connect:${proxy_host}:${proxy_port}"
 
     return 0
 }
 
 
-EXTENSIONS="$(curl -X GET proxy:8001/services/extensions)"
+EXTENSIONS="$(curl -s -X GET http://manager:8080/manager/v1/private/extensions)"
 
 for ip in $(getent hosts tasks.proxy | awk '{print $1}')
 do
+    # shellcheck disable=SC2086
     update_haproxy_extensions "$ip" "9999" $EXTENSIONS
 done

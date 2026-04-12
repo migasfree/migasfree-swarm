@@ -1,24 +1,24 @@
+#!/bin/sh
+set -e
 
-
-function set_TZ {
+set_TZ() {
     # send_message "setting the time zone"
     if [ -z "$TZ" ]
     then
         TZ="Europe/Madrid"
     fi
     # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime || :
 }
 
-function wait {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
+wait_for_service() {
+    _SERVER=$1
+    _PORT=$2
+    _COUNTER=0
 
-    until [ $_COUNTER -gt 60 ]
+    until [ "$_COUNTER" -gt 60 ]
     do
-        nc -z $_SERVER $_PORT 2> /dev/null
-        if [ $? -eq 0 ]
+        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
             echo "$_SERVER:$_PORT is running."
             return
@@ -26,27 +26,28 @@ function wait {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        _COUNTER=$(( $_COUNTER + 1 ))
+        _COUNTER=$((_COUNTER + 1))
     done
     echo "Rebooting container"
     exit 1
 }
 
-send_message "starting ${SERVICE:(${#STACK})+1}"
+_SERVICE_NAME=${SERVICE#${STACK}_}
+send_message "starting $_SERVICE_NAME"
 
 set_TZ
 
 export MIGASFREE_CONF_DIR=/var/lib/migasfree-backend/conf
-mkdir -p $(dirname ${MIGASFREE_CONF_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/conf ${MIGASFREE_CONF_DIR}
+mkdir -p "$(dirname "${MIGASFREE_CONF_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/conf" "${MIGASFREE_CONF_DIR}"
 
 export MIGASFREE_PUBLIC_DIR=/var/migasfree/public
-mkdir -p $(dirname ${MIGASFREE_PUBLIC_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/public ${MIGASFREE_PUBLIC_DIR}
+mkdir -p "$(dirname "${MIGASFREE_PUBLIC_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/public" "${MIGASFREE_PUBLIC_DIR}"
 
 export MIGASFREE_POOL_DIR=/var/migasfree/pool
-mkdir -p $(dirname ${MIGASFREE_POOL_DIR})
-ln -s ${DATASHARE_MOUNT_PATH}/pool ${MIGASFREE_POOL_DIR}
+mkdir -p "$(dirname "${MIGASFREE_POOL_DIR}")"
+ln -snf "${DATASHARE_MOUNT_PATH}/pool" "${MIGASFREE_POOL_DIR}"
 
 _CONTAINER=$(hostname)
 sed -i "s/@container@/$_CONTAINER/g" /var/migasfree/404.html
@@ -54,10 +55,10 @@ sed -i "s/@container@/$_CONTAINER/g" /var/migasfree/50x.html
 
 # TODO: Remove link. Warning!!! Afect to symbolic links of packages in REPOSITORIES.
 # ¿Changes MIGASFREE_PUBLIC_DIR = '/var/migasfree/repo' in source?
-ln -s /var/migasfree/public /var/migasfree/repo
+ln -snf /var/migasfree/public /var/migasfree/repo
 
 send_message "waiting core"
-wait core 8080
+wait_for_service core 8080
 
 echo "
 
@@ -75,20 +76,20 @@ echo "
 
         $SERVICE ($TAG)
         $(nginx -v 2>&1)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
 "
 
-# Reload extensions for haproxy.cfg
+# Reload extensions for haproxy.cfg (even if named haproxy, it seems to be used here)
 # ======================================
 /usr/bin/update_extensions.sh
 
 # Get external deployments extensions from manager
 # ================================================
-echo "$(curl http://manager:8080/manager/v1/private/nginx_extensions 2>/dev/null)" > /var/tmp/external-deployments.conf
+curl -s http://manager:8080/manager/v1/private/nginx_extensions > /var/tmp/external-deployments.conf || :
 
 send_message ""
 
-nginx -g 'daemon off;'
+exec nginx -g 'daemon off;'

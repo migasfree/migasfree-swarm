@@ -31,11 +31,12 @@ COPY defaults/usr/bin /usr/bin
 COPY defaults/etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
-
 COPY defaults/healthcheck.sh /healthcheck.sh
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
 
 CMD [""]
 
-ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+# Reverted: let entrypoint handle initialization as root
+# USER nginx
 
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]

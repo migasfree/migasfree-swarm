@@ -1,3 +1,3 @@
 #!/bin/sh
 
-curl -f http://127.0.0.1:80/public/
+curl -f http://127.0.0.1:80/public/ > /dev/null 2>&1
