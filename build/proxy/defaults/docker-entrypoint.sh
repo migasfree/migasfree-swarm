@@ -1,19 +1,19 @@
-#!/bin/bash
+#!/bin/sh
+set -e
 
 # Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
+then
     ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
     echo "$TZ" > /etc/timezone
 fi
 
-set -e
+wait() {
+    _SERVER=$1
+    _PORT=$2
+    _COUNTER=0
 
-function wait {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
-
-    until [ $_COUNTER -gt 30 ]
+    until [ "$_COUNTER" -gt 30 ]
     do
         if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
@@ -23,28 +23,27 @@ function wait {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        ((_COUNTER++))
+        _COUNTER=$((_COUNTER + 1))
     done
     echo "Rebooting container"
     exit 1
 }
-
 
 if ! [ -f /mnt/cluster/certificates/inv/ca/ca.crt ]
 then
     wait "manager" "8080"
 fi
 
-cd /usr/share/proxy
-. /venv/bin/activate
+cd /usr/share/proxy || exit 1
 
+# shellcheck source=/dev/null
+. /venv/bin/activate
 
 # first arg is `-f` or `--some-option`
 if [ "${1#-}" != "$1" ]
 then
     set -- haproxy "$@"
 fi
-
 
 send_message "Initial configuration"
 
@@ -63,8 +62,8 @@ echo "
 
 
         $SERVICE ($TAG)
-        $(haproxy -v | head -1)
-        Container: $HOSTNAME
+        $(haproxy -v | head -n 1)
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
@@ -74,16 +73,15 @@ echo "
 # =============
 mkdir -p /var/run/haproxy/
 
-
 # Certificates
 rm -rf /usr/local/etc/haproxy/certificates || :
-ln -s /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
+ln -snf /mnt/cluster/certificates /usr/local/etc/haproxy/certificates
 
-cd /usr/share/proxy
+cd /usr/share/proxy || exit 1
 python3 init.py
-cd -
+cd - > /dev/null
 
 send_message ""
 
-haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
+exec haproxy -W -db -S /var/run/haproxy/haproxy-master-socket -f /etc/haproxy/haproxy.cfg \
     -p /var/run/haproxy/haproxy.pid -4

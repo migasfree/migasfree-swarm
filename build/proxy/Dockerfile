@@ -3,8 +3,6 @@ FROM haproxy:lts-alpine3.22 AS builder
 
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
-USER root
-
 ARG TAG=latest
 
 COPY VERSION /VERSION
@@ -15,6 +13,7 @@ ENV TAG=${TAG} \
     RUNTIME_DEPENDS='bash tzdata inotify-tools openssl ca-certificates socat curl bind-tools python3 py3-virtualenv curl' \
     RUNTIME_PIP='jinja2'
 
+USER root
 RUN apk upgrade --no-cache && \
     apk add --update --no-cache $BUILD_DEPENDS $RUNTIME_DEPENDS && \
     mkdir /usr/share/proxy && \
@@ -31,5 +30,10 @@ COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
 COPY defaults/healthcheck.sh /healthcheck.sh
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+
+RUN mkdir -p /var/run/haproxy /usr/local/etc/haproxy && \
+    chown -R haproxy:haproxy /var/run/haproxy /usr/local/etc/haproxy /usr/share/proxy /venv
+
+# USER haproxy
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
