@@ -1,9 +1,10 @@
 #!/bin/bash
 
+# shellcheck source=/dev/null
 . ../config/env/stack
 
-DB_V5=$(docker ps | grep ${STACK}_database | awk '{print $1}')
-BE_V5=$(docker ps | grep ${STACK}_core | awk '{print $1}' | head -n 1)
+DB_V5=$(docker ps | grep "${STACK}_database" | awk '{print $1}')
+BE_V5=$(docker ps | grep "${STACK}_core" | awk '{print $1}' | head -n 1)
 
 OLD_HOST=$1
 OLD_PORT=$2
@@ -47,7 +48,7 @@ fi
 
 echo
 echo "WARNING !!!!"
-read -p "This process import the database from the v4 instance: $OLD_HOST:$OLD_PORT. Are you sure [yes/N]?"
+read -r -p "This process import the database from the v4 instance: $OLD_HOST:$OLD_PORT. Are you sure [yes/N]?"
 echo
 if [[ $REPLY = "yes" ]]
 then
@@ -56,35 +57,35 @@ then
     echo "DATA MIGRATION"
     echo "=============="
 
-    _REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_core)
-    _REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' ${STACK}_console)
-    bash ../run/scale.sh ${STACK}_core 0
-    bash ../run/scale.sh ${STACK}_console 0
+    _REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_core")
+    _REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_console")
+    bash ../run/scale.sh "${STACK}_core" 0
+    bash ../run/scale.sh "${STACK}_console" 0
     echo "***** CORE & CONSOLE: DISABLED *****"
 
-    /usr/bin/time -f "Time DATA MIGRATION: %E" docker exec ${DB_V5} bash -c "echo yes| bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
+    /usr/bin/time -f "Time DATA MIGRATION: %E" docker exec "${DB_V5}" bash -c "echo yes| bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
 
-    bash ../run/scale.sh ${STACK}_core $_REPLICAS_BE
-    bash ../run/scale.sh ${STACK}_console $_REPLICAS_FE
+    bash ../run/scale.sh "${STACK}_core" "$_REPLICAS_BE"
+    bash ../run/scale.sh "${STACK}_console" "$_REPLICAS_FE"
     echo "***** CORE & CONSOLE: ENABLED *****"
 
-    BE_V5=$(docker ps | grep ${STACK}_core | awk '{print $1}' | head -n 1)
+    BE_V5=$(docker ps | grep "${STACK}_core" | awk '{print $1}' | head -n 1)
 
     # SUMMARIZE SYNCS
     # ================
-    let _COUNTER=0
+    _COUNTER=0
     while true
     do
         _YEAR=$(date -d "now -$_COUNTER year" +"%Y")
 
         echo "Calculate syncronizations ${_YEAR} ..."
-        /usr/bin/time -f "Time ${_YEAR}: %E" docker exec ${BE_V5} bash -c ". /venv/bin/activate; django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null"
+        /usr/bin/time -f "Time ${_YEAR}: %E" docker exec "${BE_V5}" bash -c ". /venv/bin/activate; django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null"
 
         if [ "$_YEAR" = "2010" ]
         then
             break
         fi
-        _COUNTER=$(($_COUNTER -1))
+        _COUNTER=$((_COUNTER - 1))
     done
 
     # MIGRATE PACKAGES
@@ -92,10 +93,10 @@ then
     echo
     echo "PACKAGE MIGRATION"
     echo "================="
-    read -p "Do you want to migrate packages and projects now? (Make sure the v4 'STORES' directory is copied/mounted into the new volume) [yes/N]? "
+    read -r -p "Do you want to migrate packages and projects now? (Make sure the v4 'STORES' directory is copied/mounted into the new volume) [yes/N]? "
     if [[ $REPLY = "yes" ]]
     then
         echo "Migrating packages..."
-        /usr/bin/time -f "Time PACKAGE MIGRATION: %E" docker exec ${BE_V5} bash -c "migrate-packages"
+        /usr/bin/time -f "Time PACKAGE MIGRATION: %E" docker exec "${BE_V5}" bash -c "migrate-packages"
     fi
 fi
