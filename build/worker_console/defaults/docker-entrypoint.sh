@@ -1,20 +1,23 @@
 #!/bin/sh
+set -e
 
 export MIGASFREE_SECRET_DIR=/var/run/secrets
-BROKER_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
+BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
 
 set_TZ() {
-    : ${TZ:=Europe/Madrid}
+    TZ="${TZ:-Europe/Madrid}"
     # Link only if the target differs (reduces noisy “File exists” errors)
-    [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ] && \
-        ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
+    if [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ]
+    then
+        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+    fi
 }
 
 wait() {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
-    until [ $_COUNTER -gt 30 ]
+    _SERVER=$1
+    _PORT=$2
+    _COUNTER=0
+    until [ "$_COUNTER" -gt 30 ]
     do
         if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
@@ -24,15 +27,15 @@ wait() {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        ((_COUNTER++))
+        _COUNTER=$((_COUNTER + 1))
     done
     echo "Rebooting container"
     exit 1
 }
 
-send_message "init worker console"
-# send_message "wait worker"
-# wait worker 8080
+set_TZ
+_SERVICE_NAME=${SERVICE#${STACK}_}
+send_message "starting $_SERVICE_NAME"
 
 echo "
 
@@ -50,7 +53,7 @@ echo "
 
         $SERVICE ($TAG)
         celery $(celery --version)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
@@ -59,13 +62,22 @@ echo "
 # CELERY CONFIG
 # =============
 CONFIG_FILE=celeryconfig.py
-echo "broker_url = '${BROKER_URL}'" > ${CONFIG_FILE}
-echo "result_backend = '${BROKER_URL}'" >> ${CONFIG_FILE}
-echo "broker_connection_retry_on_startup = True" >> ${CONFIG_FILE}
-echo "enable_utc = False" >> ${CONFIG_FILE}
-echo "timezone = '${TZ}'" >> ${CONFIG_FILE}
+{
+    echo "broker_url = '${BROKER_URL}'"
+    echo "result_backend = '${BROKER_URL}'"
+    echo "broker_connection_retry_on_startup = True"
+    echo "enable_utc = False"
+    echo "timezone = '${TZ}'"
+} > "${CONFIG_FILE}"
 
 send_message ""
 
 export FLOWER_UNAUTHENTICATED_API=True
+
+if [ "$(id -u)" = '0' ]
+then
+    chown flower:flower "${CONFIG_FILE}"
+    exec su flower -s /bin/sh -c "celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api='${BROKER_URL}/api/'"
+fi
+
 celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api="${BROKER_URL}/api/"
