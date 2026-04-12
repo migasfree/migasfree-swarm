@@ -1,4 +1,3 @@
-
 FROM filebrowser/filebrowser:v2.46.1 AS base
 
 FROM alpine:3.22
@@ -20,7 +19,6 @@ COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
 COPY defaults/usr/bin /usr/bin
 
-
 # Define non-root user UID and GID
 ENV UID=890
 ENV GID=890
@@ -36,9 +34,10 @@ COPY --from=base /JSON.sh /JSON.sh
 RUN mkdir -p /config /database /srv
 RUN chown -R user:user /config /database /srv
 
-
-
 COPY defaults/healthcheck.sh /healthcheck.sh
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+
+# Reverted: let entrypoint handle user switch after root-only tasks
+# USER user
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

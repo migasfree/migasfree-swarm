@@ -1,7 +1,6 @@
 #!/bin/sh
 set -e
 
-
 MIGASFREE_SECRET_DIR=/var/run/secrets
 
 set_TZ() {
@@ -11,10 +10,11 @@ set_TZ() {
         TZ="Europe/Madrid"
     fi
     # /etc/timezone for TZ setting
-    ln -fs /usr/share/zoneinfo/$TZ /etc/localtime || :
+    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
 }
 
-send_message "starting ${SERVICE:(${#STACK})+1}"
+_SERVICE_NAME=${SERVICE#${STACK}_}
+send_message "starting $_SERVICE_NAME"
 
 set_TZ
 
@@ -36,7 +36,7 @@ echo "
 
         $SERVICE ($TAG)
         $(filebrowser version)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 
@@ -91,9 +91,9 @@ init_datashare() {
 
     if [ "${HTTPSMODE}" = "manual" ]
     then
-        cp /mnt/cluster/certificates/${STACK}/ca/ca.crt ${_ROOT}/pool/install/ca-${FQDN}.crt
+        cp "/mnt/cluster/certificates/${STACK}/ca/ca.crt" "${_ROOT}/pool/install/ca-${FQDN}.crt"
 
-        cat <<-EOF > ${_ROOT}/pool/install/migasfree-client.txt
+        cat <<-EOF > "${_ROOT}/pool/install/migasfree-client.txt"
 # Run as root
 
 # The public certificate from the certification authority is required.
@@ -107,7 +107,7 @@ wget -O - https://migasfree.org/pub/install-client | bash
 sed -i 's/# Server = localhost/Server = ${FQDN}:443/g' /etc/migasfree.conf
 EOF
     else
-        cat <<-EOF > ${_ROOT}/pool/install/migasfree-client.txt
+        cat <<-EOF > "${_ROOT}/pool/install/migasfree-client.txt"
 # Run as root
 
 # Install migasfree-client:
@@ -117,7 +117,7 @@ wget -O - https://migasfree.org/pub/install-client | bash
 sed -i 's/# Server = localhost/Server = ${FQDN}:443/g' /etc/migasfree.conf
 EOF
     fi
-    chown 890:890 ${_ROOT}/pool/install/*
+    chown 890:890 "${_ROOT}/pool/install/"*
 }
 
 
@@ -158,10 +158,10 @@ cat << EOF > /.filebrowser.json
 }
 EOF
 
-if ! [ -f ${_DATABASE} ]
+if ! [ -f "${_DATABASE}" ]
 then
     su user -c "/bin/filebrowser config init --branding.name datashare"
-    su user -c "/bin/filebrowser users add $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name) $(cat ${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass) --perm.admin"
+    su user -c "/bin/filebrowser users add $(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name") $(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass") --perm.admin"
 fi
 
 send_message ""
