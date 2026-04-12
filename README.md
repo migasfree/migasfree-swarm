@@ -1,8 +1,9 @@
 # Migasfree Swarm
 
-![Migasfree Logo](doc/logo.svg)
-
 Migasfree Swarm is the containerized infrastructure implementation of the **Migasfree Server Suite 5** designed to run on [Docker Swarm](https://docs.docker.com/engine/swarm/).
+
+> [!IMPORTANT]
+> **Security First**: This project implements a Zero Trust model with non-root execution, mTLS identity, and encrypted overlay networks.
 
 ## 📚 Documentation (Diátaxis)
 
