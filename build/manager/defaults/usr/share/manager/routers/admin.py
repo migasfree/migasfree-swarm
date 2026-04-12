@@ -17,7 +17,7 @@ from core.core_client import get_current_superuser
 
 logger = logging.getLogger(__name__)
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="/usr/share/manager/templates")
 
 router_public = APIRouter(prefix=f"{API_VERSION}/public/mtls", tags=["mtls-admin"])
 
@@ -74,9 +74,9 @@ async def admin_request_form(request: Request, token: str):
         raise HTTPException(status_code=500, detail="Corrupted token file content")
 
     return templates.TemplateResponse(
+        request,
         "admin.html",
         {
-            "request": request,
             "common_name": common_name,
             "validity_days": int(validity_days),
             "token": token,

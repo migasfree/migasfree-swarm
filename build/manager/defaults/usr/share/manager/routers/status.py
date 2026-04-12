@@ -56,7 +56,7 @@ router_public = APIRouter(prefix=f"{API_VERSION}/public", tags=["status"])
 
 logger = logging.getLogger(__name__)
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="/usr/share/manager/templates")
 
 
 @asynccontextmanager
@@ -118,8 +118,8 @@ async def favicon():
 async def status_page(request: Request):
     """Status page"""
     cache_result = await docker_monitor.cache()
-    context = {"services": cache_result, "request": request}
-    return templates.TemplateResponse("status.html", context)
+    context = {"services": cache_result}
+    return templates.TemplateResponse(request, "status.html", context)
 
 
 # SSE endpoint: manager stream

@@ -51,4 +51,4 @@ async def metrics_dashboard(request: Request):
     """
     Render metrics dashboard.
     """
-    return templates.TemplateResponse("metrics.html", {"request": request})
+    return templates.TemplateResponse(request, "metrics.html", {})

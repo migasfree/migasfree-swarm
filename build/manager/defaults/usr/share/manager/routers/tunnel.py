@@ -43,7 +43,7 @@ async def get_redis():
 @router.get("/console", response_class=HTMLResponse)
 async def tunnel_console(request: Request):
     """Web-based remote access console"""
-    return templates.TemplateResponse("tunnel.html", {"request": request})
+    return templates.TemplateResponse(request, "tunnel.html", {})
 
 
 class AgentRegister(BaseModel):

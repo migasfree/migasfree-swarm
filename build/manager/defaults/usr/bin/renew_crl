@@ -3,28 +3,28 @@
 PATH_CA="/mnt/cluster/certificates"
 PATH_DATASHARE="/mnt/cluster/datashares"
 
-function renew {
-    local STACK="$1"
-    local TYPE="$2"
-    local CA_CONF="${PATH_CA}/${STACK}/${TYPE}/openssl.cnf"
-    local CRL_FILE="${PATH_CA}/${STACK}/${TYPE}/crl/crl.pem"
-    openssl ca -config ${CA_CONF} -gencrl -out "${CRL_FILE}"
+renew() {
+    _STACK="$1"
+    _TYPE="$2"
+    _CA_CONF="${PATH_CA}/${_STACK}/${_TYPE}/openssl.cnf"
+    _CRL_FILE="${PATH_CA}/${_STACK}/${_TYPE}/crl/crl.pem"
+    openssl ca -config "${_CA_CONF}" -gencrl -out "${_CRL_FILE}"
 }
 
 
 STACKS=$(find "${PATH_DATASHARE}" -mindepth 1 -maxdepth 1 -type d)
 for STACK in $STACKS; do
-    STACK=$(basename ${STACK})
+    STACK=$(basename "${STACK}")
     CRL_FILE_COMBINED="${PATH_CA}/${STACK}/crl.pem"
-    rm ${CRL_FILE_COMBINED} || :
+    rm "${CRL_FILE_COMBINED}" || :
     renew "${STACK}" "admin"
     renew "${STACK}" "computer"
     cat "${PATH_CA}/${STACK}/admin/crl/crl.pem" \
-        "${PATH_CA}/${STACK}/computer/crl/crl.pem" > ${CRL_FILE_COMBINED}
+        "${PATH_CA}/${STACK}/computer/crl/crl.pem" > "${CRL_FILE_COMBINED}"
 
     for ip in $(getent hosts tasks.proxy | awk '{ print $1 }'); do
-        echo -e "set ssl crl-file ${CRL_FILE_COMBINED} <<\n$(cat ${CRL_FILE_COMBINED})\n" | socat stdio tcp4-connect:"$ip":9999
-        echo -e "commit ssl crl-file ${CRL_FILE_COMBINED}" | socat stdio tcp4-connect:"$ip":9999
+        printf "set ssl crl-file %s <<\n%s\n\n" "${CRL_FILE_COMBINED}" "$(cat "${CRL_FILE_COMBINED}")" | socat stdio "tcp4-connect:${ip}:9999"
+        printf "commit ssl crl-file %s\n" "${CRL_FILE_COMBINED}" | socat stdio "tcp4-connect:${ip}:9999"
     done
 
 done

@@ -7,17 +7,19 @@ if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
 fi
 
 MIGASFREE_SECRET_DIR='/var/run/secrets'
-export REDIS_URL=redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0
-export POSTGRES_PASSWORD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+REDIS_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
+export REDIS_URL
+POSTGRES_PASSWORD=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+export POSTGRES_PASSWORD
 
 set -e
 
 wait_for_service() {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
+    _SERVER=$1
+    _PORT=$2
+    _COUNTER=0
 
-    until [ $_COUNTER -gt 30 ]
+    until [ "$_COUNTER" -gt 30 ]
     do
         if nc -z "$_SERVER" "$_PORT" 2> /dev/null
         then
@@ -27,7 +29,7 @@ wait_for_service() {
             echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
             sleep 1
         fi
-        ((_COUNTER++))
+        _COUNTER=$((_COUNTER + 1))
     done
     echo "Rebooting container"
     exit 1
@@ -35,7 +37,7 @@ wait_for_service() {
 
 # send_message "Starting Certificate Authority"
 
-/usr/bin/create_local_ca.sh ${STACK}
+/usr/bin/create_local_ca.sh "${STACK}"
 
 wait_for_service "datastore" "6379"
 
@@ -55,7 +57,7 @@ echo "
 
         $SERVICE ($TAG)
         Uvicorn: $(uvicorn --version)
-        Container: $HOSTNAME
+        Container: $(hostname)
         Time zone: $TZ $(date)
         Processes: $(nproc)
 

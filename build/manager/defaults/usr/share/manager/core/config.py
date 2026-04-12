@@ -30,7 +30,6 @@ SYNC_MAX_CONCURRENCY = int(os.environ.get("SYNC_MAX_CONCURRENCY", 50))
 METRICS_RECORDING_INTERVAL = int(os.environ.get("METRICS_RECORDING_INTERVAL", 10))
 METRICS_RETENTION_LIMIT = int(os.environ.get("METRICS_RETENTION_LIMIT", 4 * 3600))
 
-
 CORE_URL = "http://core:8080"
 CORE_LOGIN_URL = f"{CORE_URL}/rest-auth/login/"
 CORE_USER_URL = f"{CORE_URL}/rest-auth/user/"

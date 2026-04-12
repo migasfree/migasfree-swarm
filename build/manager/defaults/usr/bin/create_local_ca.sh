@@ -6,11 +6,11 @@ PATH_COMPUTER=/mnt/cluster/certificates/${STACK}/computer
 
 DAYS=7305  # 20 years
 
-mkdir -p $PATH_CA
+mkdir -p "$PATH_CA"
 
-if ! [ -f ${PATH_CA}/ca.key ]
+if ! [ -f "${PATH_CA}/ca.key" ]
 then
-    cd ${PATH_CA}
+    cd "${PATH_CA}" || exit 1
     
     # Create config file for CA with correct extensions
     echo "[ req ]
@@ -37,15 +37,12 @@ keyUsage = critical, digitalSignature, cRLSign, keyCertSign
     chmod 600 ca.key
 fi
 
-
-/usr/bin/create_cert_server.sh ${FQDN} ${STACK}
-
-
+/usr/bin/create_cert_server.sh "${FQDN}" "${STACK}"
 
 # Config for Admin Certificate mTLS
 # ================================
-mkdir -p ${PATH_ADMIN}
-cd ${PATH_ADMIN}
+mkdir -p "${PATH_ADMIN}"
+cd "${PATH_ADMIN}" || exit 1
 
 if ! [ -f "${PATH_ADMIN}/openssl.cnf" ];
 then
@@ -91,34 +88,30 @@ emailAddress            = optional
 
 " > "${PATH_ADMIN}/openssl.cnf"
 
-    mkdir -p ${PATH_ADMIN}/certs
-    mkdir -p ${PATH_ADMIN}/crl
-    mkdir -p ${PATH_ADMIN}/newcerts
-    mkdir -p ${PATH_ADMIN}/private
+    mkdir -p "${PATH_ADMIN}/certs"
+    mkdir -p "${PATH_ADMIN}/crl"
+    mkdir -p "${PATH_ADMIN}/newcerts"
+    mkdir -p "${PATH_ADMIN}/private"
     touch "${PATH_ADMIN}/index.txt"
 
     echo 1000 > "${PATH_ADMIN}/serial"
     echo 1000 > "${PATH_ADMIN}/crlnumber"
 
-    chmod 700 ${PATH_ADMIN}/private
-    chmod 755 ${PATH_ADMIN}/newcerts
-    chmod 644 ${PATH_ADMIN}/serial
-    chmod 644 ${PATH_ADMIN}/index.txt
+    chmod 700 "${PATH_ADMIN}/private"
+    chmod 755 "${PATH_ADMIN}/newcerts"
+    chmod 644 "${PATH_ADMIN}/serial"
+    chmod 644 "${PATH_ADMIN}/index.txt"
 
     # create crl
     openssl ca -config "${PATH_ADMIN}/openssl.cnf" -gencrl -out "${PATH_ADMIN}/crl/crl.pem"
 
     chown -R 890:890 "${PATH_ADMIN}"
-
 fi
-
-
-
 
 # Config for Computer Certificate mTLS
 # ====================================
-mkdir -p ${PATH_COMPUTER}
-cd ${PATH_COMPUTER}
+mkdir -p "${PATH_COMPUTER}"
+cd "${PATH_COMPUTER}" || exit 1
 
 if ! [ -f "${PATH_COMPUTER}/openssl.cnf" ];
 then
@@ -163,23 +156,22 @@ emailAddress            = optional
 
 " > "${PATH_COMPUTER}/openssl.cnf"
 
-    mkdir -p ${PATH_COMPUTER}/certs
-    mkdir -p ${PATH_COMPUTER}/crl
-    mkdir -p ${PATH_COMPUTER}/newcerts
-    mkdir -p ${PATH_COMPUTER}/private
+    mkdir -p "${PATH_COMPUTER}/certs"
+    mkdir -p "${PATH_COMPUTER}/crl"
+    mkdir -p "${PATH_COMPUTER}/newcerts"
+    mkdir -p "${PATH_COMPUTER}/private"
     touch "${PATH_COMPUTER}/index.txt"
 
     echo 1000 > "${PATH_COMPUTER}/serial"
     echo 1000 > "${PATH_COMPUTER}/crlnumber"
 
-    chmod 700 ${PATH_COMPUTER}/private
-    chmod 755 ${PATH_COMPUTER}/newcerts
-    chmod 644 ${PATH_COMPUTER}/serial
-    chmod 644 ${PATH_COMPUTER}/index.txt
+    chmod 700 "${PATH_COMPUTER}/private"
+    chmod 755 "${PATH_COMPUTER}/newcerts"
+    chmod 644 "${PATH_COMPUTER}/serial"
+    chmod 644 "${PATH_COMPUTER}/index.txt"
 
     # create crl
     openssl ca -config "${PATH_COMPUTER}/openssl.cnf" -gencrl -out "${PATH_COMPUTER}/crl/crl.pem"
 
     chown -R 890:890 "${PATH_COMPUTER}"
-
 fi

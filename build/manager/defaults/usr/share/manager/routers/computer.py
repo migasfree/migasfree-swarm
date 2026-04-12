@@ -23,7 +23,7 @@ from core.core_client import (
 
 logger = logging.getLogger(__name__)
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="/usr/share/manager/templates")
 
 router_public = APIRouter(prefix=f"{API_VERSION}/public/mtls", tags=["mtls-computer"])
 
@@ -106,9 +106,9 @@ async def get_computer_cert_request_form(request: Request, token: str):
         raise HTTPException(status_code=500, detail="Corrupted token file content")
 
     return templates.TemplateResponse(
+        request,
         "computer.html",
         {
-            "request": request,
             "common_name": common_name,
             "validity_days": int(validity_days),
             "token": token,

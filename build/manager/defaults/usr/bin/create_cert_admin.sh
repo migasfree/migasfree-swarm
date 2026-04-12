@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 FQDN="$1"
 HOST="$2"
 STACK="$3"
@@ -9,10 +8,10 @@ PASSWORD="$5"
 DAYS_VALID="$6"
 EMAIL="$7"
 
-
 CERT_NAME="${CN}"
 
-if [ -z "${DAYS_VALID}" ]; then
+if [ -z "${DAYS_VALID}" ]
+then
    DAYS_VALID="7305"
 fi
 
@@ -20,15 +19,12 @@ PATH_CA="/mnt/cluster/certificates/${STACK}/ca"
 PATH_RESOURCE="/mnt/cluster/certificates/${STACK}/admin"
 PATH_CERTS="/mnt/cluster/certificates/${STACK}/admin/certs"
 
-
 CA_CERT="${PATH_CA}/ca.crt"       # CA Certificate
-CA_KEY="${PATH_CA}/ca.key"        # CA Private Key
 CONFIG_EXT="${PATH_CERTS}/${CERT_NAME}.cnf"
 
+cd "${PATH_CERTS}" || exit 1
 
-cd ${PATH_CERTS}
-
-cat > $CONFIG_EXT <<EOF
+cat > "$CONFIG_EXT" <<EOF
 [ v3_ext ]
 extendedKeyUsage = clientAuth, 1.2.3.4.5.6.7.8.1
 subjectAltName = DNS:${FQDN}, email:copy
@@ -36,19 +32,18 @@ crlDistributionPoints = URI:http://${HOST}/manager/v1/public/crl
 
 EOF
 
-
 # Generate client private key protected with password
-openssl genrsa -aes256 -passout pass:$PASSWORD -out ${CERT_NAME}.key 2048
+openssl genrsa -aes256 -passout "pass:${PASSWORD}" -out "${CERT_NAME}.key" 2048
 
 # Generate CSR with private key
-openssl req -new -key ${CERT_NAME}.key -passin pass:$PASSWORD -out ${CERT_NAME}.csr -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=ADMINS/O=${FQDN}"
+openssl req -new -key "${CERT_NAME}.key" -passin "pass:${PASSWORD}" -out "${CERT_NAME}.csr" -subj "/emailAddress=${EMAIL}/CN=${CERT_NAME}/OU=ADMINS/O=${FQDN}"
 
 # Sign the CSR with the CA to create the client certificate
-openssl ca -config ${PATH_RESOURCE}/openssl.cnf -extensions v3_ext -extfile $CONFIG_EXT \
-    -in ${CERT_NAME}.csr -out ${CERT_NAME}.crt -days $DAYS_VALID -batch
+openssl ca -config "${PATH_RESOURCE}/openssl.cnf" -extensions v3_ext -extfile "$CONFIG_EXT" \
+    -in "${CERT_NAME}.csr" -out "${CERT_NAME}.crt" -days "${DAYS_VALID}" -batch
 
 # Create PKCS#12 file for import (contains private key and certificate)
-openssl pkcs12 -export -out ${CERT_NAME}.p12 -inkey ${CERT_NAME}.key -passin pass:$PASSWORD -in ${CERT_NAME}.crt -certfile $CA_CERT -passout pass:$PASSWORD
+openssl pkcs12 -export -out "${CERT_NAME}.p12" -inkey "${CERT_NAME}.key" -passin "pass:${PASSWORD}" -in "${CERT_NAME}.crt" -certfile "$CA_CERT" -passout "pass:${PASSWORD}"
 
 echo "
 
@@ -100,7 +95,7 @@ To import '${CERT_NAME}.p12' certificate file into Mozilla Firefox, follow these
 
     (In other web browsers, the steps are quite similar)
 
-" > ${CERT_NAME}.README
+" > "${CERT_NAME}.README"
 
 cn=$(openssl x509 -in "${CERT_NAME}.crt" -noout -subject | sed -n 's/.*CN=\([^,]*\).*/\1/p')
 cert_id=$(openssl x509 -in "${CERT_NAME}.crt" -noout -serial 2>/dev/null | sed 's/serial=//')
@@ -110,19 +105,21 @@ issuance=$(openssl x509 -in "${CERT_NAME}.crt" -noout -startdate 2>/dev/null)
 expiry=$(openssl x509 -in "${CERT_NAME}.crt" -noout -enddate 2>/dev/null)
 
 echo ""
-echo "                    File: ${CERT_NAME}.p12" >> ${CERT_NAME}.README
-echo "          Certificate ID: ${cert_id}" >> ${CERT_NAME}.README
-echo "             Common Name: ${cn}" >> ${CERT_NAME}.README
-echo "                DNS Name: ${dns}" >> ${CERT_NAME}.README
-echo "                   email: ${email}" >> ${CERT_NAME}.README
-echo "              Issue date: ${issuance#*=}" >> ${CERT_NAME}.README
-echo "             Expiry date: ${expiry#*=}" >> ${CERT_NAME}.README
+{
+    echo "                    File: ${CERT_NAME}.p12"
+    echo "          Certificate ID: ${cert_id}"
+    echo "             Common Name: ${cn}"
+    echo "                DNS Name: ${dns}"
+    echo "                   email: ${email}"
+    echo "              Issue date: ${issuance#*=}"
+    echo "             Expiry date: ${expiry#*=}"
+} >> "${CERT_NAME}.README"
 echo ""
 
-tar -cvf ${CERT_NAME}.tar ${CERT_NAME}.p12 ${CERT_NAME}.README
+tar -cvf "${CERT_NAME}.tar" "${CERT_NAME}.p12" "${CERT_NAME}.README"
 
-rm ${CERT_NAME}.p12
-rm ${CERT_NAME}.README
-rm ${CERT_NAME}.key
-rm ${CERT_NAME}.csr
-rm ${CERT_NAME}.cnf
+rm "${CERT_NAME}.p12"
+rm "${CERT_NAME}.README"
+rm "${CERT_NAME}.key"
+rm "${CERT_NAME}.csr"
+rm "${CERT_NAME}.cnf"

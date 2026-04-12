@@ -1,3 +1,3 @@
 #!/bin/sh
 
-curl -f http://127.0.0.1:8080/manager/v1/internal/health
+curl -f http://127.0.0.1:8080/manager/v1/internal/health > /dev/null 2>&1
