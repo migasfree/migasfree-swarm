@@ -461,20 +461,12 @@ class TunnelClient {
     async startSession(username) {
         console.log('Starting session for:', this.currentAgent?.name);
 
-        // ✅ Ocultar TODOS los elementos de la UI cuando se conecta
         const welcomeScreen = document.getElementById('welcome-screen');
         const connectionPanel = document.getElementById('connection-panel');
-        const sidebar = document.getElementById('sidebar');
-        const agentList = document.getElementById('agents-list'); // ✅ AGENT-LIST OCULTO
-        const header = document.getElementById('header-content'); // ✅ Header OCULTO
-
-
-        // ✅ Ocultar los elementos
+        // We keep the sidebar and header visible for better UX
+        
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         if (connectionPanel) connectionPanel.classList.remove('hidden');
-        if (sidebar) sidebar.classList.add('hidden');
-        if (agentList) agentList.style.display = 'none'; // ✅ OCULTAR agent-list   
-        if (header) header.style.display = 'none'; // ✅ OCULTAR header    
 
         // Update Connection Panel Header
         const agentNameEl = document.getElementById('current-agent-name');
@@ -482,29 +474,26 @@ class TunnelClient {
         if (agentNameEl) agentNameEl.textContent = this.currentAgent.name;
         if (serviceEl) serviceEl.textContent = this.currentService.toUpperCase();
 
-        const termDiv = document.getElementById('terminal');
+        const termContainer = document.getElementById('terminal-container');
         const vncDiv = document.getElementById('vnc-container');
         const rdpDiv = document.getElementById('rdp-container');
 
+        // Hide all service containers first
+        if (termContainer) termContainer.classList.add('hidden');
+        if (vncDiv) vncDiv.classList.add('hidden');
+        if (rdpDiv) rdpDiv.classList.add('hidden');
+
         if (this.currentService === 'vnc') {
-            if (termDiv) termDiv.classList.add('hidden');
             if (vncDiv) vncDiv.classList.remove('hidden');
-            if (rdpDiv) rdpDiv.classList.add('hidden');
             this.startVNC(username);
         } else if (this.currentService === 'rdp') {
-            if (termDiv) termDiv.classList.add('hidden');
-            if (vncDiv) vncDiv.classList.add('hidden');
             if (rdpDiv) rdpDiv.classList.remove('hidden');
             this.startRDP(username);
         } else if (this.currentService === 'sync') {
-            if (termDiv) termDiv.classList.remove('hidden');
-            if (vncDiv) vncDiv.classList.add('hidden');
-            if (rdpDiv) rdpDiv.classList.add('hidden');
+            if (termContainer) termContainer.classList.remove('hidden');
             this.startSync();
         } else {
-            if (termDiv) termDiv.classList.remove('hidden');
-            if (vncDiv) vncDiv.classList.add('hidden');
-            if (rdpDiv) rdpDiv.classList.add('hidden');
+            if (termContainer) termContainer.classList.remove('hidden');
             this.startSSH(username);
         }
     }
