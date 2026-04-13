@@ -317,12 +317,6 @@ class TunnelClient {
             this.currentService = 'ssh'; // Fallback
         }
 
-        const infoContainer = document.getElementById('agent-info');
-        if (!infoContainer) return;
-
-        // Clean hostname (remove [AgentID] suffix if present)
-        const cleanHostname = agent.name.split(' [')[0];
-
         // Update Modal Title
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) {
@@ -330,14 +324,6 @@ class TunnelClient {
                 ? `${serviceType.toUpperCase()} to ${agent.name}`
                 : `${agent.name}`;
         }
-
-        infoContainer.innerHTML = `
-            <div class="info-row">
-                <span class="info-label">Hostname:</span>
-                <span><strong class="hostname-text">${cleanHostname}</strong></span>
-            </div>
-             <!-- Project info removed -->
-        `;
 
         const modal = document.getElementById('agent-modal');
         if (modal) {
@@ -357,40 +343,36 @@ class TunnelClient {
 
     updateInputFields() {
         const usernameInput = document.getElementById('username-input');
+        const confirmationMsg = document.getElementById('confirmation-msg');
+        const modalConnect = document.getElementById('modal-connect');
+        const inputField = document.getElementById('ssh-username');
+        const label = usernameInput ? usernameInput.querySelector('label') : null;
 
-        if (usernameInput) {
-            const inputField = document.getElementById('ssh-username');
-            const hint = document.querySelector('.input-hint');
+        if (usernameInput) usernameInput.classList.add('hidden');
+        if (confirmationMsg) confirmationMsg.classList.add('hidden');
 
-            // Reset input value to prevent password leakage when switching
-            if (inputField) {
-                if (this.currentService === 'ssh' || this.currentService === 'rdp') {
-                    // Default to root for SSH, do NOT keep VNC password
+        if (modalConnect) {
+            if (this.currentService === 'ssh' || this.currentService === 'rdp') {
+                if (usernameInput) usernameInput.classList.remove('hidden');
+                if (label) label.textContent = 'Login Credentials';
+                if (inputField) {
+                    inputField.type = 'text';
+                    inputField.placeholder = 'e.g. root';
                     inputField.value = 'root';
-                } else {
-                    // Start empty for VNC
+                }
+                modalConnect.textContent = 'Connect';
+            } else if (this.currentService === 'vnc') {
+                if (usernameInput) usernameInput.classList.remove('hidden');
+                if (label) label.textContent = 'VNC Password';
+                if (inputField) {
+                    inputField.type = 'password';
+                    inputField.placeholder = 'Password';
                     inputField.value = '';
                 }
-            }
-
-            if (this.currentService === 'ssh' || this.currentService === 'rdp') {
-                usernameInput.classList.remove('hidden');
-                if (inputField) {
-                    inputField.placeholder = "Enter username (e.g., root)";
-                    inputField.type = "text";
-                }
-                if (hint) hint.classList.remove('hidden');
-            } else if (this.currentService === 'vnc') {
-                usernameInput.classList.remove('hidden');
-                if (inputField) {
-                    inputField.placeholder = "Enter VNC Password";
-                    inputField.type = "password";
-                    if (inputField.value === 'root') inputField.value = ''; // Clear default
-                }
-                if (hint) hint.classList.add('hidden');
-            } else {
-                // Hide input for sync and other services
-                usernameInput.classList.add('hidden');
+                modalConnect.textContent = 'Connect';
+            } else if (this.currentService === 'sync') {
+                if (confirmationMsg) confirmationMsg.classList.remove('hidden');
+                modalConnect.textContent = 'Synchronize';
             }
         }
     }

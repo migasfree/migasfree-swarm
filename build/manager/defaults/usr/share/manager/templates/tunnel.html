@@ -122,13 +122,21 @@
                 <button class="modal-close" id="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="username-input" class="username-input">
+                <!-- Credentials Section (SSH/RDP) -->
+                <div id="username-input" class="username-input hidden">
                     <label for="ssh-username">Login Credentials</label>
-                    <div class="flex-row">
-                        <input type="text" id="ssh-username" class="input-text" placeholder="e.g. root" />
-                        <button class="btn btn-primary" id="modal-connect">Connect</button>
-                    </div>
+                    <input type="text" id="ssh-username" class="input-text" placeholder="e.g. root" />
                     <span class="hint-text">Enter the username for the remote session.</span>
+                </div>
+
+                <!-- Confirmation Section (SYNC/Others) -->
+                <div id="confirmation-msg" class="confirmation-text hidden">
+                    <p>Are you sure you want to trigger a synchronization on this agent?</p>
+                </div>
+
+                <!-- Global Action Button -->
+                <div class="modal-actions" style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary full-width" id="modal-connect">Connect</button>
                 </div>
             </div>
         </div>
