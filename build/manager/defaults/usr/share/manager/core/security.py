@@ -110,15 +110,16 @@ async def create_admin_cert(
     host: str,
     stack: str,
     common_name: str,
-    password: str,
+    password: str | None,
     days: str,
-    email: str,
+    email: str | None,
 ) -> bool:
     try:
         stack_clean = sanitize_input(stack)
         common_name_clean = sanitize_input(common_name)
-        email_clean = sanitize_input(email, r"[^a-zA-Z0-9@._+-]")
+        email_clean = sanitize_input(email or "", r"[^a-zA-Z0-9@._+-]")
         days_clean = sanitize_input(days, r"[^0-9]")
+        password_safe = password or ""
 
         cmd = [
             "/usr/bin/create_cert_admin.sh",
@@ -126,7 +127,7 @@ async def create_admin_cert(
             host,
             stack_clean,
             common_name_clean,
-            password,
+            password_safe,
             days_clean,
             email_clean,
         ]

@@ -90,7 +90,7 @@ async def admin_request_form(request: Request, token: str):
 @router_public.post("/admin-certificates")
 async def create_admin_certificate(
     token: str = Form(...),
-    email: EmailStr = Form(...),
+    email: str | None = Form(None),
     password: str | None = Form(None),
 ):
     """
