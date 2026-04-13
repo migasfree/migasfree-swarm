@@ -408,30 +408,7 @@ class TunnelClient {
         }
 
         this.closeModal();
-
-        const params = new URLSearchParams();
-        params.append('agent', this.currentAgent.id);
-        params.append('service', this.currentService);
-
-        let hashParams = '';
-        if (username) {
-            if (this.currentService === 'vnc') {
-                // For VNC, pass password in HASH to avoid server logs/history visibility
-                // URL params are NOT encrypted in GET requests logs, but fragments (#) are not sent to server.
-                hashParams = `#password=${encodeURIComponent(username)}`;
-            } else {
-                // For SSH/RDP, 'user' can be in URL
-                params.append('user', username);
-            }
-        }
-
-        const url = `${window.location.pathname}?${params.toString()}${hashParams}`;
-        console.log('Opening session URL:', url);
-
-        const win = window.open(url, '_blank');
-        if (!win) {
-            alert('Pop-up blocked. Please allow pop-ups to open remote sessions.');
-        }
+        this.startSession(username);
     }
 
     async checkAutoConnect(retries = 10) {
