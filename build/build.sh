@@ -7,6 +7,7 @@ function build
     then
         mkdir -p "$_CONTEXT/defaults/usr/bin/"
         cp scripts/* "$_CONTEXT/defaults/usr/bin/"
+        chmod +x "$_CONTEXT/defaults/usr/bin/"*
 
         pushd "$_CONTEXT" > /dev/null || return 1
         local _TAG
@@ -17,7 +18,9 @@ function build
         echo "BUILD: ${_CONTEXT}:${_TAG}"
         echo "============================================================================"
         docker --debug build ${_NO_CACHE} . --build-arg "TAG=${_TAG}" -t "migasfree/${_CONTEXT}:${_TAG}"
+        _RET=$?
         popd > /dev/null || return 1
+        return $_RET
     fi
 }
 
@@ -70,7 +73,42 @@ then
     _IMAGES="$DEFAULT_IMAGES"
 fi
 
+SUCCESS_COUNT=0
+FAILURE_COUNT=0
+SUCCESS_IMAGES=""
+FAILURE_IMAGES=""
+
 for _IMAGE in ${_IMAGES}
 do
-    build "${_IMAGE}"
+    if build "${_IMAGE}"
+    then
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        SUCCESS_IMAGES="${SUCCESS_IMAGES} ${_IMAGE}"
+    else
+        FAILURE_COUNT=$((FAILURE_COUNT + 1))
+        FAILURE_IMAGES="${FAILURE_IMAGES} ${_IMAGE}"
+    fi
 done
+
+echo
+echo "============================================================================"
+echo "BUILD SUMMARY"
+echo "============================================================================"
+echo "Total images: $((SUCCESS_COUNT + FAILURE_COUNT))"
+echo "Success:      ${SUCCESS_COUNT}"
+echo "Failure:      ${FAILURE_COUNT}"
+
+if [ "${FAILURE_COUNT}" -gt 0 ]
+then
+    echo
+    echo "FAILED IMAGES:"
+    for img in ${FAILURE_IMAGES}
+    do
+        echo "  - ${img}"
+    done
+    exit 1
+fi
+
+echo
+echo "All images built successfully!"
+exit 0
