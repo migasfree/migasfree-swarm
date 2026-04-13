@@ -292,43 +292,28 @@ async def service_websocket(
         if server_url:
             # Prioritize reverse tunnel (Relay) for Zero Trust architecture
             target_url = server_url
-            # Internal resolution fix: if target_url uses our own FQDN, point to internal 'proxy' service
+            # Internal resolution fix: Bypass proxy and connect directly to 'tunnel' service
             if FQDN in target_url:
-                target_url = target_url.replace(FQDN, "proxy")
-                # Also, inside the cluster we might not have valid SSL for 'proxy' hostname
-                # so we can use insecure connection to the proxy or the tunnel service directly.
-                # Since proxy handles SSL, we'll keep wss but we might need to skip verification.
-                logger.info(f"Internal routing: redirecting {FQDN} to 'proxy'")
+                target_url = "ws://tunnel:8080"
+                logger.info(
+                    "Internal routing: bypassing proxy, connecting directly to 'ws://tunnel:8080'"
+                )
         elif server_ip:
             # Fallback to direct IP only if no relay is registered (Internal networks only)
             target_url = f"ws://{server_ip}:8080"
 
         if not target_url:
-            await websocket.send_json(
-                {"error": "Agent has no relay or ip registered"}
-            )
+            await websocket.send_json({"error": "Agent has no relay or ip registered"})
             await websocket.close()
             return
-            
+
         logger.info(
             f"Web Console ({service.upper()}): {username if username else 'N/A'}@{hostname} (agent: {agent_id})"
         )
         logger.info(f"Attempting to connect to relay at: {target_url}")
 
         # 2. Connect to tunnel relay
-        # Note: We use ssl=False for internal 'proxy' name as it won't match the cert SANs
-        connect_args = {
-            "uri": target_url,
-            "open_timeout": 10,
-            "ping_interval": None
-        }
-        
-        if "proxy" in target_url:
-             import ssl
-             ssl_context = ssl.create_default_context()
-             ssl_context.check_hostname = False
-             ssl_context.verify_mode = ssl.CERT_NONE
-             connect_args["ssl"] = ssl_context
+        connect_args = {"uri": target_url, "open_timeout": 10, "ping_interval": None}
 
         async with websockets.connect(**connect_args) as ws_server:
             logger.info(f"Successfully connected to relay: {target_url}")
