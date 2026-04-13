@@ -248,11 +248,15 @@ class TunnelClient {
     appendAgents(agents, container) {
         if (!agents || agents.length === 0 || !container) return;
 
+        const serviceIcons = {
+            'ssh': 'mdi-console',
+            'vnc': 'mdi-monitor-remote',
+            'rdp': 'mdi-microsoft-windows',
+            'sync': 'mdi-sync'
+        };
+
         const html = agents.map(agent => {
             const services = agent.services || [];
-            // project info was removed in backend refactor, removing unknown display or keep hardcoded?
-            // User removed 'info' dict. So info.project is gone.
-            // I will remove project display from the card.
             return `
                 <div class="agent-card" data-agent-id="${agent.id}">
                     <div class="agent-header">
@@ -262,8 +266,16 @@ class TunnelClient {
                         <span class="agent-status"></span>
                     </div>
                     <div class="agent-services">
-                        ${services.filter(s => s.toLowerCase() !== 'sync').map(s => `<span class="service-tag" data-service="${s.toLowerCase()}">${s.toUpperCase()}</span>`).join('')}
-                        <span class="service-tag" data-service="sync">SYNC</span>
+                        ${services.filter(s => s.toLowerCase() !== 'sync').map(s => `
+                            <span class="service-tag" data-service="${s.toLowerCase()}">
+                                <span class="mdi ${serviceIcons[s.toLowerCase()] || 'mdi-server'}"></span>
+                                ${s.toUpperCase()}
+                            </span>
+                        `).join('')}
+                        <span class="service-tag" data-service="sync">
+                            <span class="mdi mdi-sync"></span>
+                            SYNC
+                        </span>
                     </div>
                 </div>
             `;
