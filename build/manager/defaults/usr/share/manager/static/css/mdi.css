@@ -1,0 +1,28 @@
+/* Material Design Icons local host */
+@font-face {
+  font-family: "Material Design Icons";
+  src: url("../fonts/materialdesignicons-webfont.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.mdi:before,
+.mdi-set {
+  display: inline-block;
+  font: normal normal normal 24px/1 "Material Design Icons";
+  font-size: inherit;
+  text-rendering: auto;
+  line-height: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Essential icons for Manager */
+.mdi-remote-desktop::before { content: "\F0437"; }
+.mdi-monitor::before { content: "\F01D8"; }
+.mdi-check-circle::before { content: "\F05E0"; }
+.mdi-alert-circle::before { content: "\F0028"; }
+.mdi-information::before { content: "\F02FD"; }
+.mdi-cog::before { content: "\F0493"; }
+.mdi-shield-check::before { content: "\F0565"; }
+.mdi-tunnel::before { content: "\F18BB"; }

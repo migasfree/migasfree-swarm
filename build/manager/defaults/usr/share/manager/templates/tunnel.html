@@ -6,11 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Access</title>
 
+    <!-- Fonts: Dosis for UI, JetBrains Mono for Code -->
+    <link rel="stylesheet" href="/manager/static/css/branding.css">
+
     <!-- Xterm.js for terminal emulation -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+    <link rel="stylesheet" href="/manager/static/js/xterm/xterm.css" />
+    <script src="/manager/static/js/xterm/xterm.js"></script>
+    <script src="/manager/static/js/xterm/xterm-addon-fit.js"></script>
+    <script src="/manager/static/js/xterm/xterm-addon-web-links.js"></script>
 
     <link rel="stylesheet" href="/manager/static/css/tunnel.css">
 </head>
@@ -20,9 +23,8 @@
         <!-- Header -->
         <header class="header">
             <div class="header-content" id="header-content">
-                <h1>
-                    <img src="/manager/static/img/remote-session.svg" alt="" width="32" height="32"
-                        style="vertical-align: top;">
+                <h1 class="brand-title">
+                    <span class="mdi mdi-remote-desktop brand-icon"></span>
                     Migasfree Remote Access Console
                 </h1>
             </div>

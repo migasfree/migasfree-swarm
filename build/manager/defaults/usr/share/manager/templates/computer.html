@@ -4,101 +4,155 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Migasfree Computer Certificate (mTLS)</title>
+  <link rel="stylesheet" href="{{root_path}}/static/css/branding.css">
   <style>
-    @font-face {
-      font-family: Pompiere;
-      src: url('{{root_path}}/static/fonts/Pompiere-Regular.ttf') format('truetype');
-    }
     body {
-      font-family: Pompiere;
-      background: #f4f6f8;
+      background: var(--brand-primary);
+      background: linear-gradient(135deg, var(--brand-primary) 0%, #1a0804 100%);
       margin: 0;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      color: var(--text-primary);
+      overflow: hidden;
     }
 
     .container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: var(--glass-border);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
       text-align: center;
-      width: 320px;
+      width: 420px;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     h2 {
-      margin-bottom: 20px;
-      color: #333;
+      margin-top: 15px;
+      margin-bottom: 5px;
+      color: var(--brand-tertiary);
+      font-weight: 700;
+      letter-spacing: 1px;
+      line-height: 1.2;
     }
 
     h3 {
+      font-size: 1.1rem;
+      color: var(--text-primary);
       margin-bottom: 20px;
-      color: black;
+      opacity: 0.9;
     }
 
-    body {
-        color: black;
+    .info-group {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 25px;
+      text-align: left;
     }
 
-    input[type="email"] {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid gray;
-      border-radius: 6px;
-      font-size: 1rem;
+    .info-group p {
+      margin: 5px 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
     }
 
-    input[type="password"] {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid gray;
-      border-radius: 6px;
-      font-size: 1rem;
+    .info-group b {
+      color: var(--text-primary);
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--brand-tertiary);
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
     }
 
     #passwordError {
-      color: red;
+      color: var(--error);
       font-size: 0.85rem;
-      margin: 8px 0;
+      margin: 5px 0 15px;
       display: block;
+      font-weight: 600;
+    }
+
+    .note {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin: 15px 0 25px;
+      line-height: 1.4;
+      font-style: italic;
     }
 
     button {
-      background-color: #1976d2;
-      color: #fff;
+      background: var(--brand-tertiary);
+      color: var(--brand-primary);
       border: none;
-      padding: 12px 20px;
-      border-radius: 6px;
+      padding: 14px 20px;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 1rem;
-      margin-top: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
       width: 100%;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     button:hover {
-      background-color: #1565c0;
+      background: white;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <image src="{{root_path}}/static/img/mtls.svg" height="96" width="96" />
-    <h2>Migasfree Computer Certificate (mTLS)</h2>
-    <h3>Common Name: {{ common_name }}</h3>
-    <p>DNS Name: {{ fqdn }}</p>
-    <p>Validity: {{ validity_days }} days</p>
+    <div style="margin-bottom: 20px;">
+        <image src="{{root_path}}/static/img/mtls.svg" height="80" width="80" />
+    </div>
+    <h2>Migasfree Computer Certificate</h2>
+    <h3>(mTLS)</h3>
+    
+    <div class="info-group">
+        <p><b>Common Name:</b> {{ common_name }}</p>
+        <p><b>DNS Name:</b> {{ fqdn }}</p>
+        <p><b>Validity:</b> {{ validity_days }} days</p>
+    </div>
 
     <form action="{{root_path}}/v1/public/mtls/computer-certificates" method="POST" id="certForm">
       <input type="hidden" name="token" value="{{ token }}">
-      <input type="email" id="email" name="email" placeholder="Email" pattern=".*" />
-      <input type="password" id="password" name="password" placeholder="Password" pattern />
-      <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" required />
+      <input type="email" id="email" name="email" placeholder="Email (optional)" />
+      <input type="password" id="password" name="password" placeholder="Certificate Password (optional)" />
+      <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" />
       <span id="passwordError"></span>
-      <p>Please note: You will need this password when importing the computer certificate in migasfree-client.<p>
+      <p class="note">Please note: You will need this password when importing the computer certificate in migasfree-client.</p>
       <button type="submit">Download</button>
     </form>
   </div>

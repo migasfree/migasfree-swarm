@@ -4,14 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Migasfree Admin Certificate (mTLS)</title>
+  <link rel="stylesheet" href="/manager/static/css/branding.css">
+
   <style>
-    @font-face {
-      font-family: Pompiere;
-      src: url('{{root_path}}/static/fonts/Pompiere-Regular.ttf') format('truetype');
-    }
     body {
-      font-family: Pompiere;
-      background: #f4f6f8;
+      font-family: var(--font-ui);
+      background-color: var(--bg-body);
+      color: var(--brand-primary);
       margin: 0;
       display: flex;
       justify-content: center;
@@ -20,67 +19,70 @@
     }
 
     .container {
-      background: #fff;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
       padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
       text-align: center;
       width: 320px;
     }
 
     h2 {
       margin-bottom: 20px;
-      color: #333;
+      color: var(--brand-primary);
+      font-weight: 700;
     }
 
     h3 {
       margin-bottom: 20px;
-      color: black;
+      color: var(--brand-primary);
+      font-weight: 600;
     }
 
-    body {
-        color: black;
-    }
-
-    input[type="email"] {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid gray;
-      border-radius: 6px;
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       font-size: 1rem;
+      font-family: var(--font-ui);
+      background: #fff;
     }
 
-    input[type="password"] {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid gray;
-      border-radius: 6px;
-      font-size: 1rem;
+    input:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 2px rgba(var(--brand-primary-rgb), 0.1);
     }
 
     #passwordError {
-      color: red;
+      color: var(--error);
       font-size: 0.85rem;
       margin: 8px 0;
       display: block;
     }
 
     button {
-      background-color: #1976d2;
-      color: #fff;
+      background-color: var(--brand-primary);
+      color: var(--brand-on-primary);
       border: none;
       padding: 12px 20px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
+      font-weight: 700;
       margin-top: 10px;
       width: 100%;
+      transition: all 0.2s;
     }
 
     button:hover {
-      background-color: #1565c0;
+      opacity: 0.9;
+      transform: translateY(-1px);
     }
   </style>
 </head>

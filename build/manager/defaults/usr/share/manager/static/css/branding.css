@@ -1,0 +1,131 @@
+/* =========================================
+   MIGASFREE BRANDING (Swarm Edition)
+   Integrated Design Tokens & Base Styles
+   ========================================= */
+
+@import url("mdi.css");
+
+/* Local Fonts */
+@font-face {
+  font-family: 'Dosis';
+  src: url('../fonts/dosis-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Dosis';
+  src: url('../fonts/dosis-latin-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  --brand-primary: #431407;
+  --brand-primary-rgb: 67, 20, 7;
+  --brand-on-primary: #ffffff;
+  --brand-secondary: #8d7772;
+  --brand-tertiary: #feda00;
+  --brand-tertiary-rgb: 254, 218, 0;
+
+  /* Semantics */
+  --success: #166534;
+  --success-surface: rgba(22, 101, 52, 0.08);
+  --warning: #a16207;
+  --warning-surface: rgba(161, 98, 7, 0.08);
+  --error: #dc2626;
+  --error-surface: rgba(220, 38, 38, 0.08);
+  --info: #1e40af;
+  --info-surface: rgba(30, 64, 175, 0.08);
+
+  /* Neutrals */
+  --neutral-50: #fcfaf9;
+  --neutral-100: #f7f2f0;
+  --neutral-200: #eee4e1;
+  --neutral-300: #dfcfca;
+  --neutral-400: #c4b5b0;
+  --neutral-500: #a38c86;
+  --neutral-800: #251b19;
+  --neutral-900: #1a1210;
+
+  /* Typography Colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+
+  /* Typography Families */
+  --font-ui: "Dosis", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", monospace;
+  
+  /* Layout */
+  --bg-body: var(--neutral-50);
+  --bg-card: #ffffff;
+  --text-main: var(--brand-primary);
+  --border: var(--neutral-200);
+  --radius: 12px;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(12px);
+}
+
+[data-theme="dark"] {
+  --bg-body: #1a1210;
+  --bg-card: #251b19;
+  --text-main: #feda00;
+  --border: #431407;
+  --glass-bg: rgba(67, 20, 7, 0.3);
+  --glass-border: rgba(254, 218, 0, 0.1);
+}
+
+/* Base resets and overrides */
+body {
+  font-family: var(--font-ui);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  transition: all 0.25s ease;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+.btn-premium {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--brand-primary-rgb), 0.2);
+}
+
+.text-mono {
+  font-family: var(--font-mono) !important;
+}
