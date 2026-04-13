@@ -34,10 +34,9 @@ RUN dnf -y update && \
 COPY --from=builder /venv /venv
 COPY --from=core --chown=www-data:www-data /migasfree /pms/migasfree
 COPY defaults/usr/bin /usr/bin
-COPY defaults/healthcheck.sh /healthcheck.sh
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 RUN chown -R www-data:www-data /venv /pms
 # Reverted: let entrypoint handle initialization as root

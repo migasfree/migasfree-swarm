@@ -14,8 +14,7 @@ RUN apk --no-cache upgrade && \
 COPY defaults/docker-entrypoint.sh  /usr/local/bin/
 COPY defaults/usr/bin /usr/bin
 
-COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 

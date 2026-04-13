@@ -20,6 +20,12 @@
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         depends_on:
             - core
         secrets:

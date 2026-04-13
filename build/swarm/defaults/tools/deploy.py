@@ -210,6 +210,73 @@ def deploy_stack(compose_file, stack_name, max_retries=5, initial_delay=5):
             )
 
 
+def wait_for_stack_healthy(client, stack_name, timeout=300):
+    print(f"  Waiting for services in stack '{stack_name}' to be healthy...")
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            services = client.services.list(
+                filters={"label": f"com.docker.stack.namespace={stack_name}"}
+            )
+        except Exception as e:
+            print(f"    Error listing services: {e}")
+            time.sleep(2)
+            continue
+
+        if not services:
+            time.sleep(2)
+            continue
+
+        all_ok = True
+        status_line = []
+
+        for service in services:
+            # Skip services with 0 replicas desired
+            # Swarm service attributes structure: service.attrs['Spec']['Mode']['Replicated']['Replicas']
+            mode = service.attrs.get("Spec", {}).get("Mode", {})
+            if "Replicated" in mode:
+                desired = mode["Replicated"].get("Replicas", 0)
+            elif "Global" in mode:
+                desired = len(client.nodes.list())
+            else:
+                desired = 0
+
+            if desired == 0:
+                continue
+
+            # Count healthy tasks
+            tasks = service.tasks(filters={"desired-state": "running"})
+            healthy = 0
+            for task in tasks:
+                if task["Status"]["State"] == "running":
+                    # Check health status
+                    health = task["Status"].get("ContainerStatus", {}).get("Health", {})
+                    if health:
+                        if health.get("Status") == "healthy":
+                            healthy += 1
+                    else:
+                        # No healthcheck defined, assume 'running' is enough
+                        healthy += 1
+
+            status_line.append(f"{service.name.replace(stack_name + '_', '')} ({healthy}/{desired})")
+            if healthy < desired:
+                all_ok = False
+
+        # Clear line and print status
+        sys.stdout.write("\033[K")
+        print(f"    {' | '.join(status_line)}", end="\r")
+
+        if all_ok:
+            print(f"\n  Stack '{stack_name}' is healthy!")
+            return True
+
+        time.sleep(2)
+
+    print(f"\n  Warning: Timeout reached waiting for stack '{stack_name}' to be healthy.")
+    return False
+
+
 def create_network_overlay(network_name):
     subprocess.run(
         [
@@ -293,6 +360,7 @@ def deploy_infra(client, context):
     create_secret_file(client, cred_name, _PATH_CREDENTIALS / cred_name)
 
     deploy_stack(str(deploy), "infra")
+    wait_for_stack_healthy(client, "infra")
     deploy.unlink(missing_ok=True)
 
 
@@ -410,6 +478,7 @@ def deploy_migasfree(client, context):
     }
 
     deploy_stack(str(file_yml), f"{context['STACK']}")
+    wait_for_stack_healthy(client, f"{context['STACK']}")
 
     file_yml.unlink(missing_ok=True)
     print()

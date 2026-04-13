@@ -3,6 +3,12 @@ services:
 
     manager:
         image: migasfree/manager:{{TAG}}
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -73,6 +79,12 @@ services:
                 condition: on-failure
                 delay: 10s
                 max_attempts: 0
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
 #            placement:
 #                constraints:
 #                    - node.role == manager
@@ -112,6 +124,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         depends_on:
             - core
         volumes:
@@ -135,6 +153,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         depends_on:
             - core
         networks:
@@ -164,6 +188,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 90s
         secrets:
             - source: {{STACK}}_superadmin_name
             - source: {{STACK}}_superadmin_pass
@@ -201,6 +231,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 90s
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -213,6 +249,12 @@ services:
 
     beat:
         image: migasfree/core:{{TAG}}
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -290,6 +332,12 @@ services:
             placement:
                 constraints:
                     - node.labels.database != false
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 120s
         volumes:
             - database:/var/lib/postgresql
             - migasfree-swarm:{{DATASHARE_MOUNT_PATH}}
@@ -318,6 +366,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
         secrets:
             - source: {{STACK}}_superadmin_pass
         depends_on:
@@ -329,6 +383,12 @@ services:
 
     datastore:
         image: migasfree/datastore:{{TAG}}
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -444,6 +504,12 @@ services:
             - DATASHARE_MOUNT_PATH=/srv
             - DATASHARE_FS={{DATASHARE_FS}}
             - HTTPSMODE={{HTTPSMODE}}
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
         deploy:
             replicas: 1
             restart_policy:
@@ -501,6 +567,12 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
         networks:
             - {{STACK}}_network
             - infra_network
@@ -510,6 +582,12 @@ services:
 
     mcp-server:
         image: migasfree/mcp-server:{{TAG}}
+        healthcheck:
+            test: ["CMD", "/usr/bin/healthcheck.sh"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}

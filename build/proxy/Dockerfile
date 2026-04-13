@@ -28,8 +28,8 @@ COPY defaults/usr /usr
 COPY defaults/etc /etc
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
-COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+COPY defaults/usr/bin /usr/bin
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 RUN mkdir -p /var/run/haproxy /usr/local/etc/haproxy && \
     chown -R haproxy:haproxy /var/run/haproxy /usr/local/etc/haproxy /usr/share/proxy /venv

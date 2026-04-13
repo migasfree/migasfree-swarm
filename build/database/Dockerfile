@@ -15,7 +15,7 @@ COPY defaults/usr /usr
 COPY defaults/etc /etc
 COPY defaults/docker-entrypoint-extend.sh /docker-entrypoint-extend.sh
 
-COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+COPY defaults/usr/bin /usr/bin
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 ENTRYPOINT ["/docker-entrypoint-extend.sh"]

@@ -13,10 +13,9 @@ RUN apk upgrade --no-cache && \
     apk add --no-cache pgpool postgresql-client bash curl bind-tools jq tzdata musl-locales
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
-COPY defaults/healthcheck.sh /healthcheck.sh
+COPY defaults/usr/bin /usr/bin
 
-RUN chmod +x /docker-entrypoint.sh /healthcheck.sh
-
-HEALTHCHECK --start-period=30s --interval=30s --timeout=5s CMD /healthcheck.sh || exit 1
+RUN chmod +x /docker-entrypoint.sh /usr/bin/healthcheck.sh
+HEALTHCHECK --start-period=30s --interval=30s --timeout=5s CMD /usr/bin/healthcheck.sh || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

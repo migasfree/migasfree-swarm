@@ -34,8 +34,7 @@ COPY --from=base /JSON.sh /JSON.sh
 RUN mkdir -p /config /database /srv
 RUN chown -R user:user /config /database /srv
 
-COPY defaults/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 # Reverted: let entrypoint handle user switch after root-only tasks
 # USER user

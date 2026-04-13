@@ -101,9 +101,9 @@ COPY --from=builder /static /static
 COPY defaults/usr /usr
 COPY defaults/default_settings.py /default_settings.py
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
-COPY defaults/healthcheck.sh /healthcheck.sh
 
-HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh || exit 1
+COPY defaults/usr/bin /usr/bin
+HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
 
 # Change ownership of application directories
 RUN chown -R www-data:www-data /venv /migasfree /static
