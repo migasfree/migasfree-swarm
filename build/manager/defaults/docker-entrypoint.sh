@@ -3,7 +3,6 @@
 . /usr/bin/common.sh
 set_tz
 
-MIGASFREE_SECRET_DIR='/var/run/secrets'
 load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
 REDIS_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 export REDIS_URL
