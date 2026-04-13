@@ -72,6 +72,14 @@ cd build
 bash build.sh
 ```
 
+The build script will provide a **BUILD SUMMARY** at the end, listing successes and failures.
+
+To build specific images:
+
+```bash
+bash build.sh core database manager
+```
+
 To list available images:
 
 ```bash

@@ -64,7 +64,7 @@ To access the various consoles, navigate to `http://<FQDN>/status`
 
 ## manager
 
-TODO
+* The **Migasfree Manager** is the infrastructure's heartbeat. It handles real-time monitoring of all swarm services, health status aggregation, and secure management of mTLS identities for both administrators and devices.
 
 ## remote access
 

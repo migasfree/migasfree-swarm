@@ -37,21 +37,44 @@ chmod 600 /path/to/shared/volume/server/${FQDN}.pem
 
 ---
 
-## Mutual TLS (mTLS) for Admins
+## Mutual TLS (mTLS) for Identity
 
-mTLS adds a layer of identity verification for administrative consoles.
+mTLS adds a layer of identity verification for administrative consoles and secure agent communication.
 
 **To Enable**:
 
 1. Set `MTLS = 'True'` in `env.py`.
 2. Redeploy: `./migasfree-swarm redeploy`
 
-**Client Access**:
-Generate a certificate URL for admins:
+### Generating Certificates
+
+#### 1. Via One-Time URL (Recommended for Admins)
+
+Generating a one-time URL allows an administrator to create their own certificate securely from their browser.
 
 ```bash
 ./migasfree-swarm url-admin-certificate
 ```
+
+#### 2. Manual Generation (Advanced/Computers)
+
+The project uses a unified script `create_cert_mtls.sh` (located in the `manager` service) to generate client certificates manually.
+
+**For Administrators**:
+
+```bash
+docker exec -it $(docker ps -q -f name=manager) \
+  /usr/bin/create_cert_mtls.sh admin <FQDN> <HOST> <STACK> <NAME> <PASSWORD>
+```
+
+**For Computers (Agents)**:
+
+```bash
+docker exec -it $(docker ps -q -f name=manager) \
+  /usr/bin/create_cert_mtls.sh computer <FQDN> <HOST> <STACK> <NAME> <PASSWORD>
+```
+
+The resulting `.tar` bundle will be available in `/mnt/cluster/certificates/<STACK>/<TYPE>/certs/`.
 
 ---
 

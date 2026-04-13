@@ -44,3 +44,14 @@ Migasfree Swarm is built on a **Zero Trust** foundation:
 * **mTLS Identity**: Client-server communication is protected by Mutual TLS (mTLS) with a cluster-specific Root CA.
 * **Network Isolation**: Management consoles are restricted to a specific CIDR (`NETWORK_MNG`) to prevent unauthorized access.
 * **Least Privilege**: Services like the MCP bridge use dedicated Read-Only database profiles and rigorous SQL validation.
+
+## Infrastructure Standardization
+
+To ensure consistency and maintainability across the entire stack, Migasfree Swarm uses a shared infrastructure library:
+
+* **Infrastructure Library (`common.sh`)**: Every service image includes a standardized `/usr/bin/common.sh` script that provides helpers for:
+  * **Initialization**: `set_tz` for timezone synchronization and `start_message` for deployment auditing.
+  * **Healthchecks**: Unified `check_http`, `check_tcp`, and `check_celery_worker` implementations.
+  * **Connectivity**: `wait_for_service` to manage startup dependencies.
+  * **Secrets Management**: `load_secret` for secure retrieval of credentials from Docker Secrets.
+* **Standardized Entrypoints**: All Docker entrypoints follow a common pattern that sources the infrastructure library, ensuring predictable behavior and easier troubleshooting.
