@@ -27,14 +27,7 @@
       grid-template-columns: auto auto 1fr auto;
       align-items: center;
       gap: 20px;
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--glass-border);
-      border-radius: 8px;
-      padding: 15px 20px;
       margin-bottom: 10px;
-      box-shadow: var(--shadow);
     }
 
     .info-text {
@@ -55,24 +48,7 @@
       text-align: left;
     }
 
-    .info-panel h2 {
-      display: none;
-    }
-
-    .status-text {
-      font-size: 2.5px;
-      font-style: italic;
-      fill: #000;
-    }
-
     .svg-section {
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--glass-border);
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: var(--shadow);
       margin-bottom: 20px;
       display: flex;
       justify-content: center;
@@ -247,26 +223,44 @@
     .loading {
       animation: pulse 1.5s ease-in-out infinite;
     }
+
+    .hidden {
+      display: none;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .action-link {
+      text-decoration: none;
+      color: inherit;
+    }
   </style>
 </head>
 
 <body>
   <!-- Info Panel -->
-  <div class="info-panel">
-    <h2>Information</h2>
+  <div class="info-panel panel">
+    <h2 class="hidden">Information</h2>
     <p class="info-text" id="organization" title="Organization"></p>
     <p class="info-text" id="stack"></p>
     <p class="info-text" id="tag" title="Tag"></p>
-    <div style="display: flex; gap: 10px;">
-      <a id="pool_emoji_link" href="/pool/" target="_blank" style="text-decoration:none; font-size: 1.5em;"
-        title="Pool">📂</a>
-      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" target="_blank"
-        style="text-decoration:none; font-size: 1.5em;" title="Metrics Dashboard">📊</a>
+    <div class="flex-row">
+      <a id="pool_emoji_link" href="/pool/" target="_blank" class="action-link" title="Open Public Pool">
+        <span class="mdi mdi-package-variant-closed"></span>
+        Pool
+      </a>
+      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" target="_blank" class="action-link" title="Metrics Dashboard">
+        <span class="mdi mdi-chart-box"></span>
+        Metrics
+      </a>
     </div>
   </div>
 
   <!-- SVG Section -->
-  <div class="svg-section">
+  <div class="svg-section panel">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 60" id="main-svg">
       <defs>
         <filter id="glow">

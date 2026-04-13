@@ -7,27 +7,21 @@
   <link rel="stylesheet" href="{{root_path}}/static/css/branding.css">
   <style>
     body {
-      background: var(--brand-primary);
-      background: linear-gradient(135deg, var(--brand-primary) 0%, #1a0804 100%);
+      background: var(--bg-body);
       margin: 0;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      color: var(--text-primary);
+      color: var(--text-main);
       overflow: hidden;
+      font-family: var(--font-ui);
     }
 
     .container {
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border: var(--glass-border);
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+      width: 480px;
+      padding: 3rem;
       text-align: center;
-      width: 420px;
       animation: fadeIn 0.8s ease-out;
     }
 
@@ -37,108 +31,73 @@
     }
 
     h2 {
-      margin-top: 15px;
-      margin-bottom: 5px;
-      color: var(--brand-tertiary);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--brand-primary);
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       line-height: 1.2;
+      text-transform: uppercase;
     }
 
     h3 {
       font-size: 1.1rem;
-      color: var(--text-primary);
-      margin-bottom: 20px;
+      color: var(--brand-secondary);
+      margin-bottom: 2rem;
       opacity: 0.9;
     }
 
     .info-group {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(var(--brand-primary-rgb), 0.03);
+      border: 1px solid var(--glass-border);
       border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 25px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
       text-align: left;
     }
 
     .info-group p {
-      margin: 5px 0;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
+      margin: 0.5rem 0;
+      font-size: 0.95rem;
+      color: var(--brand-secondary);
     }
 
     .info-group b {
-      color: var(--text-primary);
+      color: var(--brand-primary);
     }
 
-    input {
-      width: 100%;
-      padding: 12px 15px;
-      margin: 10px 0;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.05);
-      color: white;
-      font-family: inherit;
-      box-sizing: border-box;
-      transition: all 0.3s ease;
+    .actions {
+        margin-top: 2rem;
     }
 
-    input:focus {
-      outline: none;
-      border-color: var(--brand-tertiary);
-      background: rgba(255, 255, 255, 0.1);
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+    .mascot-container {
+        margin-bottom: 20px;
+    }
+
+    .note {
+      font-size: 0.8rem;
+      color: var(--brand-secondary);
+      margin: 1.5rem 0;
+      line-height: 1.4;
+      font-style: italic;
     }
 
     #passwordError {
       color: var(--error);
       font-size: 0.85rem;
-      margin: 5px 0 15px;
+      margin-bottom: 1rem;
       display: block;
       font-weight: 600;
-    }
-
-    .note {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin: 15px 0 25px;
-      line-height: 1.4;
-      font-style: italic;
-    }
-
-    button {
-      background: var(--brand-tertiary);
-      color: var(--brand-primary);
-      border: none;
-      padding: 14px 20px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 1.1rem;
-      font-weight: 700;
-      width: 100%;
-      transition: all 0.3s ease;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    button:hover {
-      background: white;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    button:active {
-      transform: translateY(0);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div style="margin-bottom: 20px;">
+  <div class="container panel">
+    <div class="mascot-container">
         <image src="{{root_path}}/static/img/mtls.svg" height="80" width="80" />
     </div>
-    <h2>Migasfree Computer Certificate</h2>
-    <h3>(mTLS)</h3>
+
+    <h2>Computer Certificate</h2>
     
     <div class="info-group">
         <p><b>Common Name:</b> {{ common_name }}</p>
@@ -148,12 +107,18 @@
 
     <form action="{{root_path}}/v1/public/mtls/computer-certificates" method="POST" id="certForm">
       <input type="hidden" name="token" value="{{ token }}">
-      <input type="email" id="email" name="email" placeholder="Email (optional)" />
-      <input type="password" id="password" name="password" placeholder="Certificate Password (optional)" />
-      <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" />
-      <span id="passwordError"></span>
-      <p class="note">Please note: You will need this password when importing the computer certificate in migasfree-client.</p>
-      <button type="submit">Download</button>
+      <input type="email" id="email" name="email" class="input-text" placeholder="Email (optional)" />
+      <input type="password" id="password" name="password" class="input-text" placeholder="Certificate Password (optional)" />
+      <input type="password" id="password_confirm" name="input-text" class="input-text" placeholder="Confirm password" />
+      
+      <div class="actions">
+        <span id="passwordError" class="hidden"></span>
+        <p class="note">Please note: You will need this password when importing the computer certificate in migasfree-client.</p>
+        <button type="submit" class="btn-action full-width">
+            <span class="mdi mdi-download"></span>
+            Download
+        </button>
+      </div>
     </form>
   </div>
 
@@ -165,8 +130,10 @@
       if (pwd !== pwdConfirm) {
         event.preventDefault();
         errorElem.textContent = 'Passwords do not match.';
+        errorElem.classList.remove('hidden');
       } else {
         errorElem.textContent = '';
+        errorElem.classList.add('hidden');
       }
     });
   </script>

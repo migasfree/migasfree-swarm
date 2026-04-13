@@ -35,51 +35,38 @@
             <!-- Sidebar - Agent List -->
             <aside class="sidebar" id="sidebar">
                 <div class="search-box">
-                    <input type="text" id="search-agents" placeholder="🔍 Search agents..." />
+                    <div class="search-field">
+                        <span class="mdi mdi-magnify search-icon"></span>
+                        <input type="text" id="search-agents" class="input-text" placeholder="Search agents..." />
+                    </div>
                     <button class="btn-refresh" id="refresh-agents" title="Refresh">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
-                            <path
-                                d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
-                        </svg>
+                        <span class="mdi mdi-refresh"></span>
                     </button>
                 </div>
 
-
+                <div class="agents-list" id="agents-list">
+                    <div class="loading">Loading agents...</div>
+                </div>
             </aside>
 
             <!-- Main Panel - Terminal/VNC/RDP -->
             <main class="main-panel">
 
-                <div class="agents-list" id="agents-list">
-                    <div class="loading">Loading agents...</div>
-                </div>
-
                 <div class="connection-panel hidden" id="connection-panel">
                     <div class="panel-header">
                         <div class="panel-title">
                             <span class="agent-name" id="current-agent-name">Agent</span>
-                            <span class="service-badge" id="current-service">SSH</span>
+                            <span class="badge" id="current-service">SSH</span>
                         </div>
                         <div class="panel-actions">
                             <button class="btn-action" id="btn-disconnect" title="Disconnect">
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                    <path
-                                        d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
-                                </svg>
+                                <span class="mdi mdi-close"></span>
                             </button>
-                            <button class="btn-action" id="btn-vnc-menu" title="VNC Menu (F8)" style="display: none;">
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z" />
-                                </svg>
+                            <button class="btn-action hidden" id="btn-vnc-menu" title="VNC Menu (F8)">
+                                <span class="mdi mdi-menu"></span>
                             </button>
                             <button class="btn-action" id="btn-fullscreen" title="F11 - Fullscreen">
-
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                    <path
-                                        d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z" />
-                                </svg>
+                                <span class="mdi mdi-fullscreen"></span>
                             </button>
                         </div>
                     </div>
@@ -95,107 +82,76 @@
                     </div>
 
                     <!-- RDP Instruction Container -->
-                    <div class="rdp-container hidden" id="rdp-container"
-                        style="color: #e0e0e0; text-align: center; padding: 2rem; width: 100%; height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        <h2 style="margin-bottom: 1.5rem; color: #ffffff; font-size: 1.8rem; font-weight: 600;">RDP
-                            Connection</h2>
-                        <div
-                            style="background: #2a2a2a; padding: 2rem; border-radius: 12px; text-align: left; max-width: 900px; width: 90%; margin: 0 auto; border: 1px solid #444; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-                            <p style="margin-bottom: 15px; font-size: 1.1rem; color: #ffffff;">Run this command in your
-                                local terminal:</p>
-                            <div style="display: flex; gap: 15px; align-items: stretch; margin-bottom: 1.5rem;">
-                                <code id="rdp-command"
-                                    style="flex: 1; background: #000; padding: 16px; border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 1rem; color: #4CAF50; overflow-x: auto; white-space: nowrap; border: 1px solid #555;">Generating command...</code>
-                                <button class="btn btn-secondary" id="btn-copy-rdp" title="Copy to Clipboard"
-                                    style="padding: 0 25px; font-weight: bold; font-size: 1rem; cursor: pointer;">
+                    <div class="rdp-container hidden" id="rdp-container">
+                        <div class="rdp-content panel">
+                            <h2 class="rdp-title">RDP Connection Instructions</h2>
+                            <p class="hint-text">Run this command in your local terminal to establish the tunnel and connect:</p>
+                            
+                            <div class="command-box">
+                                <code id="rdp-command-text" class="command-code">Generating command...</code>
+                                <button class="btn-action" id="btn-copy-rdp" title="Copy to clipboard">
+                                    <span class="mdi mdi-content-copy"></span>
                                     Copy
                                 </button>
                             </div>
-                            <p style="margin-top: 1rem; font-size: 0.95rem; color: #bbbbbb; line-height: 1.5;">
-                                <strong style="color: #fff;">Note:</strong> This requires the <span
-                                    style="color: #fff; background: #444; padding: 2px 6px; border-radius: 4px;">migasfree-connect</span>
-                                package and <span
-                                    style="color: #fff; background: #444; padding: 2px 6px; border-radius: 4px;">xfreerdp</span>
-                                installed on your machine.
+
+                            <p class="hint-text">
+                                <strong>Note:</strong> This requires the <span class="code-badge">migasfree-connect</span> tool and an RDP client like <span class="code-badge">xfreerdp</span> or Microsoft Remote Desktop installed on your system.
                             </p>
                         </div>
                     </div>
                 </div>
+
+                <div id="welcome-screen" class="welcome-screen">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">🚀</div>
+                        <h2>Ready for Remote Access</h2>
+                        <p>Select an agent from the sidebar and choose a service (SSH, VNC, RDP) to start a secure session.</p>
+                    </div>
+                </div>
+
             </main>
         </div>
     </div>
 
-    <!-- Agent Details Modal -->
-    <div class="modal hidden" id="agent-modal">
-        <div class="modal-content">
+    <!-- Modals -->
+    <div id="service-modal" class="modal hidden">
+        <div class="modal-content panel">
             <div class="modal-header">
-                <h3 id="modal-title">Connect to Agent</h3>
-                <button class="modal-close" id="modal-close">&times;</button>
+                <h3>Select Service</h3>
+                <button class="modal-close" id="btn-close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="agent-info" id="agent-info">
-                    <!-- Agent details will be inserted here -->
+                <div class="agent-info">
+                    <div class="hostname-text" id="modal-agent-name">Agent Name</div>
                 </div>
-                <!-- Service Selector REMOVED as per request -->
-
-
-                <!-- SSH Username Input -->
-                <div class="username-input" id="username-input">
-                    <input type="text" id="ssh-username" placeholder="Enter username (e.g., root, ubuntu, admin)"
-                        value="root" />
+                <div class="service-options">
+                    <button class="service-btn" data-service="SSH">
+                        <span class="mdi mdi-console service-icon"></span>
+                        SSH
+                    </button>
+                    <button class="service-btn" data-service="VNC">
+                        <span class="mdi mdi-monitor service-icon"></span>
+                        VNC
+                    </button>
+                    <button class="service-btn" data-service="RDP">
+                        <span class="mdi mdi-microsoft-windows service-icon"></span>
+                        RDP
+                    </button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                <button class="btn btn-primary" id="modal-connect">Connect</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- VNC Tools Modal -->
-    <div class="modal hidden" id="vnc-tools-modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3>VNC Tools</h3>
-                <button class="modal-close" id="vnc-tools-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="service-options" style="grid-template-columns: 1fr; gap: 10px;">
-                    <button class="service-btn" id="btn-cad">
-                        Send Ctrl + Alt + Del
-                    </button>
-                    <button class="service-btn" id="btn-win-key">
-                        Send Windows Key
-                    </button>
-                    <button class="service-btn" id="btn-scaling">
-                        Toggle Scaling (Fit/Original)
-                    </button>
-
-                    <div class="clipboard-section"
-                        style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
-                        <div style="display: flex; gap: 5px;">
-                            <input type="text" id="vnc-clipboard-input" placeholder="text to send to clipboard..."
-                                style="flex: 1; padding: 5px; background: #333; border: 1px solid #444; color: white; border-radius: 4px;">
-                            <button class="btn btn-primary" id="btn-send-clipboard"
-                                style="padding: 5px 10px;">Send</button>
-                        </div>
+                
+                <div id="ssh-options" class="username-input hidden">
+                    <label for="ssh-user">Login Username (optional)</label>
+                    <div class="flex-row">
+                        <input type="text" id="ssh-user" class="input-text" placeholder="e.g. root" />
+                        <button class="btn-action" id="btn-connect-ssh">Connect</button>
                     </div>
-
-                    <button class="service-btn" id="btn-disconnect-vnc"
-                        style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
-                        Disconnect
-                    </button>
+                    <span class="hint-text">Leave blank to use agent defaults.</span>
                 </div>
             </div>
         </div>
     </div>
 
-
-    <script type="module">
-        import RFB from '/manager/static/novnc/core/rfb.js';
-        window.RFB = RFB;
-        console.log("noliloaded locally");
-    </script>
     <script src="/manager/static/js/tunnel.js"></script>
 </body>
 

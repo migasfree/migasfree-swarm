@@ -5,12 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Migasfree Admin Certificate (mTLS)</title>
   <link rel="stylesheet" href="/manager/static/css/branding.css">
-
   <style>
     body {
-      font-family: var(--font-ui);
-      background-color: var(--bg-body);
-      color: var(--brand-primary);
       margin: 0;
       display: flex;
       justify-content: center;
@@ -18,103 +14,131 @@
       height: 100vh;
     }
 
-    .container {
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--glass-border);
-      padding: 30px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+    .cert-card {
+      width: 380px;
+      padding: 2.5rem;
       text-align: center;
-      width: 320px;
+      animation: fadeIn 0.6s ease-out;
     }
 
-    h2 {
-      margin-bottom: 20px;
-      color: var(--brand-primary);
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .cert-card h2 {
+      margin: 1rem 0 0.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
-    }
-
-    h3 {
-      margin-bottom: 20px;
       color: var(--brand-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .cert-card h3 {
+      margin: 0 0 1.5rem;
+      font-size: 0.95rem;
       font-weight: 600;
+      color: var(--brand-secondary);
     }
 
-    input[type="email"], input[type="password"] {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
-      font-family: var(--font-ui);
-      background: #fff;
+    .cert-info {
+      background: rgba(var(--brand-primary-rgb), 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
     }
 
-    input:focus {
-      outline: none;
-      border-color: var(--brand-primary);
-      box-shadow: 0 0 0 2px rgba(var(--brand-primary-rgb), 0.1);
+    .cert-info p {
+      margin: 0.4rem 0;
+      font-size: 0.9rem;
+      color: var(--brand-secondary);
+    }
+
+    .cert-info b {
+      color: var(--brand-primary);
+    }
+
+    .cert-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .form-actions {
+      margin-top: 0.5rem;
+    }
+
+    .mascot {
+      margin-bottom: 0.5rem;
+    }
+
+    .form-note {
+      font-size: 0.8rem;
+      color: var(--brand-secondary);
+      line-height: 1.5;
+      font-style: italic;
+      margin: 0.75rem 0;
     }
 
     #passwordError {
-      color: var(--error);
       font-size: 0.85rem;
-      margin: 8px 0;
-      display: block;
-    }
-
-    button {
-      background-color: var(--brand-primary);
-      color: var(--brand-on-primary);
-      border: none;
-      padding: 12px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 700;
-      margin-top: 10px;
-      width: 100%;
-      transition: all 0.2s;
-    }
-
-    button:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+      color: var(--error);
+      font-weight: 600;
+      min-height: 1.2em;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <image src="{{root_path}}/static/img/mtls.svg" height="96" width="96" />
-    <h2>Migasfree Admin Certificate (mTLS)</h2>
-    <h3>Common Name: {{ common_name }}</h3>
-    <p>DNS Name: {{ fqdn }}</p>
-    <p>Validity: {{ validity_days }} days</p>
+  <div class="cert-card panel">
+    <image class="mascot" src="{{root_path}}/static/img/mtls.svg" height="80" width="80" />
+    <h2>Admin Certificate</h2>
+    <h3>mTLS</h3>
 
-    <form action="{{root_path}}/v1/public/mtls/admin-certificates" method="POST" id="certForm">
+    <div class="cert-info">
+      <p><b>Common Name:</b> {{ common_name }}</p>
+      <p><b>DNS Name:</b> {{ fqdn }}</p>
+      <p><b>Validity:</b> {{ validity_days }} days</p>
+    </div>
+
+    <form
+      action="{{root_path}}/v1/public/mtls/admin-certificates"
+      method="POST"
+      id="certForm"
+      class="cert-form"
+    >
       <input type="hidden" name="token" value="{{ token }}">
-      <input type="email" id="email" name="email" placeholder="Email" required />
-      <input type="password" id="password" name="password" placeholder="Password" required />
-      <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm password" required />
-      <span id="passwordError"></span>
-      <p>Please note: You will need this password when importing the admin certificate into your web browser.<p>
-      <button type="submit">Download</button>
+      <input type="email"    id="email"            name="email"            class="input-text" placeholder="Email (optional)" />
+      <input type="password" id="password"          name="password"          class="input-text" placeholder="Certificate password (optional)" />
+      <input type="password" id="password_confirm"  name="password_confirm"  class="input-text" placeholder="Confirm password" />
+
+      <div class="form-actions">
+        <span id="passwordError" class="hidden"></span>
+        <p class="form-note">
+          You will need this password when importing the admin certificate into your web browser.
+        </p>
+        <button type="submit" class="btn-action full-width">
+          <span class="mdi mdi-download"></span>
+          Download
+        </button>
+      </div>
     </form>
   </div>
 
   <script>
-    document.getElementById('certForm').addEventListener('submit', function(event) {
-      const pwd = document.getElementById('password').value;
+    document.getElementById('certForm').addEventListener('submit', function (event) {
+      const pwd        = document.getElementById('password').value;
       const pwdConfirm = document.getElementById('password_confirm').value;
-      const errorElem = document.getElementById('passwordError');
+      const errorElem  = document.getElementById('passwordError');
       if (pwd !== pwdConfirm) {
         event.preventDefault();
         errorElem.textContent = 'Passwords do not match.';
+        errorElem.classList.remove('hidden');
       } else {
         errorElem.textContent = '';
+        errorElem.classList.add('hidden');
       }
     });
   </script>

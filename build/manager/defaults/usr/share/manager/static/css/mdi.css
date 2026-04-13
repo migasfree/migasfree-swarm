@@ -18,11 +18,27 @@
 }
 
 /* Essential icons for Manager */
-.mdi-remote-desktop::before { content: "\F0437"; }
-.mdi-monitor::before { content: "\F01D8"; }
-.mdi-check-circle::before { content: "\F05E0"; }
-.mdi-alert-circle::before { content: "\F0028"; }
-.mdi-information::before { content: "\F02FD"; }
-.mdi-cog::before { content: "\F0493"; }
-.mdi-shield-check::before { content: "\F0565"; }
-.mdi-tunnel::before { content: "\F18BB"; }
+.mdi-remote-desktop::before         { content: "\F0437"; }
+.mdi-monitor::before                { content: "\F01D8"; }
+.mdi-check-circle::before           { content: "\F05E0"; }
+.mdi-alert-circle::before           { content: "\F0028"; }
+.mdi-information::before            { content: "\F02FD"; }
+.mdi-cog::before                    { content: "\F0493"; }
+.mdi-shield-check::before           { content: "\F0565"; }
+.mdi-tunnel::before                 { content: "\F18BB"; }
+.mdi-package-variant-closed::before { content: "\F03D7"; }
+.mdi-chart-box::before              { content: "\F154D"; }
+.mdi-sync::before                   { content: "\F04E7"; }
+.mdi-database::before               { content: "\F01BC"; }
+
+/* Tunnel & navigation icons */
+.mdi-magnify::before                { content: "\F0349"; }
+.mdi-refresh::before                { content: "\F0450"; }
+.mdi-close::before                  { content: "\F0156"; }
+.mdi-menu::before                   { content: "\F035C"; }
+.mdi-fullscreen::before             { content: "\F0294"; }
+.mdi-fullscreen-exit::before        { content: "\F0295"; }
+.mdi-console::before                { content: "\F0160"; }
+.mdi-microsoft-windows::before      { content: "\F05B3"; }
+.mdi-content-copy::before           { content: "\F018F"; }
+.mdi-download::before               { content: "\F01DA"; }

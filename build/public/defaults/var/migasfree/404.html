@@ -1,52 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta
-          name="viewport"
-          content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"
-        />
-        <style>
-            @font-face {
-                font-family: Pompiere;
-                src: url('/services-static/fonts/Pompiere-Regular.ttf') format('truetype');
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404 Not Found</title>
+    <link rel="icon" href="/manager/static/img/logo.svg" type="image/svg+xml" />
+    <style>
+        @font-face {
+            font-family: 'Dosis';
+            font-weight: 400;
+            font-style: normal;
+            src: url('/manager/static/fonts/dosis-latin-400.woff2') format('woff2');
+        }
+
+        @font-face {
+            font-family: 'Dosis';
+            font-weight: 700;
+            font-style: normal;
+            src: url('/manager/static/fonts/dosis-latin-700.woff2') format('woff2');
+        }
+
+        :root {
+            --brand-primary: #431407;
+            --brand-primary-rgb: 67, 20, 7;
+            --brand-secondary: #8c3b21;
+            --brand-tertiary: #fbbf24;
+            --brand-tertiary-rgb: 251, 191, 36;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-blur: blur(16px);
+            --bg-body: #f8f6f5;
+            --text-main: #2d2d2d;
+            --font-ui: "Dosis", system-ui, -apple-system, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --brand-primary: #f8f6f5;
+                --brand-primary-rgb: 248, 246, 245;
+                --brand-secondary: #d4a373;
+                --glass-bg: rgba(20, 20, 20, 0.6);
+                --glass-border: rgba(255, 255, 255, 0.1);
+                --bg-body: #121212;
+                --text-main: #f0f0f0;
             }
-            body {
-                width: 100%;
-                margin: 0 auto;
-                font-family: Pompiere, sans-serif;
-                color: #bbb;
-            }
-            .center {
-                position: absolute;
-                margin: auto;
-                top: -50%;
-                right: 0;
-                bottom: 0;
-                left: 0;
-                height: 125px;
-                text-align: center;
-                align-items: center;
-                justify-content: center;
-            }
-            h1 {
-                font-size: 20vh;
-                font-style: italic;
-                margin: 0;
-            }
-        </style>
-        <title>404</title>
-    </head>
-    <body>
-        <main class="center">
-            <div id="info">
-                <h1>Not found</h1>
-                <img
-                    src="/services-static/img/mascot-error.svg"
-                    alt=""
-                    title="proxy"
-                />
-            </div>
-        </main>
-    </body>
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2.5rem 4rem;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .mascot-container {
+            margin-bottom: 2rem;
+            max-height: 150px;
+        }
+
+        .mascot-container svg {
+            height: 150px;
+            width: auto;
+        }
+
+        .error-code {
+            font-size: 5rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, var(--brand-secondary), var(--brand-tertiary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height:  1;
+            padding-bottom: 0.5rem;
+        }
+
+        .error-msg {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 2rem;
+            color: var(--brand-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.75rem;
+            border-radius: 10px;
+            background: var(--brand-primary);
+            color: var(--bg-body);
+            font-weight: 700;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.85rem;
+            transition: all 0.25s ease;
+        }
+
+        .action-link:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(var(--brand-primary-rgb), 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="mascot-container">
+
+                <svg viewBox="0 0 311.74435 273.99712" version="1.0" id="svg2" height="150" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd">
+                <g transform="matrix(3.4729059,0,0,3.4729059,-393.19531,-100.50611)" id="g834">
+                    <path id="path3180" d="m142.57003,31.282665c-5.8392,0.494201-11.85716,3.778568-16.07537,11.19205-3.78073,7.213746-4.41669,18.142486-2.83816,27.266588,1.95501,11.688338,7.62457,21.739346,14.56423,23.736561,6.516,1.984479,13.26318-1.194945,18.86391-7.129547,4.22357-4.431938,8.23698-10.818485,9.51491-19.487133,1.65701-10.515874-1.40601-22.287737-6.62005-27.857863-4.9609-5.526133-10.9336-7.48499-16.72647-7.750203-0.22766,0.0099-0.45534,0.01967-0.683,0.02956z" style="fill:#ff6600;fill-opacity:1;fill-rule:nonzero;stroke:none;"/>
+                    <ellipse id="path3190" style="fill:#feda00;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.9500668" cx="178.0654" cy="92.226799" rx="15.120144" ry="13.581159"/>
+                </g>
+                <flowRoot xml:space="preserve" id="flowRoot840" style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;fill:#000000;stroke:none;" transform="matrix(0.93749997,0,0,0.93749997,-33.073666,-31.428358)">
+                    <flowRegion id="flowRegion842" style="fill:#000000;stroke:none;">
+                    <rect id="rect844" width="241.43697" height="42.502354" x="65.52446" y="299.39099" style="fill:#000000;stroke:none"/>
+                    </flowRegion>
+                    <flowPara id="flowPara846">migasfree</flowPara>
+                </flowRoot>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.50965" id="path851-3" cx="115.50024" cy="57.021214" rx="39.304623" ry="35.722122"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:6.64622" id="path999-6" cx="126.45432" cy="79.154388" rx="11.565677" ry="10.332875"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.28235" id="path851-36" cx="193.37764" cy="177.56129" rx="39.000744" ry="37.69202"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:5.54995" id="path999-7" cx="204.50668" cy="202.97212" rx="9.8137712" ry="9.3776884"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.34568" id="path851-3-5" cx="249.61089" cy="181.19221" rx="36.013748" ry="37.047085"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:5.80381" id="path999-6-3" cx="257.6033" cy="204.95424" rx="10.66977" ry="8.5411234"/>
+                <ellipse style="fill:#fff;stroke:#000;stroke-width:6.64195" id="path851" cx="53.434799" cy="51.201946" rx="40.191029" ry="40.882805"/>
+                <ellipse style="fill:#000;stroke:#000;stroke-width:6.6405" id="path999" cx="72.136505" cy="74.01577" rx="12.006441" ry="10.973491"/>
+                </svg>
+
+        </div>
+        <h1 class="error-code">404</h1>
+        <h2 class="error-msg">Not Found</h2>
+        <a href="/" class="action-link">Return to Safety</a>
+    </div>
+</body>
 </html>

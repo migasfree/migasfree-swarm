@@ -1,12 +1,5 @@
 /* Modern Remote Access Console Styles */
 
-@font-face {
-    font-family: 'Pompiere';
-    src: url('../fonts/Pompiere-Regular.ttf') format('truetype');
-    font-weight: 400;
-    font-style: normal;
-}
-
 :root {
     --primary: var(--brand-primary);
     --primary-rgb: var(--brand-primary-rgb);
@@ -151,20 +144,36 @@ body {
     align-items: center;
 }
 
-.search-box input {
+.search-field {
+    position: relative;
     flex: 1;
     min-width: 0;
-    padding: 0.75rem 1rem;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.search-field input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.25rem;
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     font-size: 0.875rem;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
-.search-box input:focus {
+.search-field input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
 }
 
 .agents-list {
@@ -411,24 +420,81 @@ body {
     overflow-y: auto !important;
 }
 
-/* VNC Container */
-.vnc-container {
-    flex: 1;
-    background: #000;
+/* RDP Instruction Panel */
+.rdp-container {
+    color: var(--text-main);
+    text-align: center;
+    padding: 2rem;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
-#vnc-canvas {
-    /* Always fit to container (Scaling ON by default) */
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    width: auto !important;
-    /* Override inline styles if needed */
-    height: auto !important;
-    object-fit: contain;
+.rdp-content {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    padding: 3rem;
+    border-radius: var(--radius);
+    text-align: left;
+    max-width: 900px;
+    width: 90%;
+    margin: 0 auto;
+    box-shadow: var(--shadow);
+}
+
+.rdp-title {
+    margin-bottom: 1.5rem;
+    color: var(--brand-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.command-box {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+    margin-bottom: 2rem;
+}
+
+.command-code {
+    flex: 1;
+    background: #000;
+    padding: 1.25rem;
+    border-radius: 8px;
+    font-family: var(--font-code);
+    font-size: 1rem;
+    color: #4CAF50;
+    overflow-x: auto;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hint-text {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--brand-secondary);
+    line-height: 1.6;
+}
+
+.hint-text strong {
+    color: var(--brand-primary);
+}
+
+.code-badge {
+    color: var(--brand-primary);
+    background: rgba(var(--brand-primary-rgb), 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-code);
+    font-size: 0.9em;
 }
 
 /* Modal */
