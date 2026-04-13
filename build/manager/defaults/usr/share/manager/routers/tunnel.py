@@ -289,14 +289,16 @@ async def service_websocket(
         server_url = agent_data.get("relay")
 
         target_url = None
-        if server_ip:
-            target_url = f"ws://{server_ip}:8080"
-        elif server_url:
+        if server_url:
+            # Prioritize reverse tunnel (Relay) for Zero Trust architecture
             target_url = server_url
+        elif server_ip:
+            # Fallback to direct IP only if no relay is registered (Internal networks only)
+            target_url = f"ws://{server_ip}:8080"
 
         if not target_url:
             await websocket.send_json(
-                {"error": "Agent has no server_url/ip registered"}
+                {"error": "Agent has no relay or ip registered"}
             )
             await websocket.close()
             return
