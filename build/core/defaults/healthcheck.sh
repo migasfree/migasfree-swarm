@@ -1,18 +1,16 @@
 #!/bin/sh
-set -e
+. /usr/bin/common.sh
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
     # core
-    curl -f http://127.0.0.1:8080 > /dev/null 2>&1
+    check_http http://127.0.0.1:8080
 elif [ "$SERVICE" = "${STACK}_worker" ]
 then
     # worker
-    MIGASFREE_SECRET_DIR=/var/run/secrets
-    BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
-    # shellcheck source=/dev/null
-    . /venv/bin/activate
-    timeout 1 celery -b "${BROKER_URL}" inspect ping -d "celery@$(hostname)" > /dev/null
+    load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+    BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
+    check_celery_worker "${BROKER_URL}"
 else
     # beat
     if [ -f /var/tmp/celery.pid ]; then

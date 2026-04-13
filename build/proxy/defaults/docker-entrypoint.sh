@@ -1,37 +1,12 @@
 #!/bin/sh
 set -e
 
-# Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
-then
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-    echo "$TZ" > /etc/timezone
-fi
-
-wait() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
-
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
+. /usr/bin/common.sh
+set_tz
 
 if ! [ -f /mnt/cluster/certificates/inv/ca/ca.crt ]
 then
-    wait "manager" "8080"
+    wait_for_service "manager" "8080"
 fi
 
 cd /usr/share/proxy || exit 1
@@ -45,29 +20,9 @@ then
     set -- haproxy "$@"
 fi
 
-send_message "Initial configuration"
+start_message
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(haproxy -v | head -n 1)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(haproxy -v | head -n 1)"
 
 # load proxy
 # =============

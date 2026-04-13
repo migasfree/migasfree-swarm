@@ -19,7 +19,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN apt-get update && \
-    apt-get install -y postgresql-client curl ca-certificates sudo && \
+    apt-get install -y postgresql-client curl ca-certificates sudo gosu && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && \
     getent group mcpuser || groupadd -r -g 890 mcpuser && \
@@ -34,7 +34,7 @@ RUN mkdir -p /app/docs && \
     chown -R mcpuser:mcpuser /app && \
     echo "mcpuser ALL=(ALL) NOPASSWD: /usr/sbin/update-ca-certificates" >> /etc/sudoers
 
-USER mcpuser
+# USER mcpuser
 
 EXPOSE 8080
 

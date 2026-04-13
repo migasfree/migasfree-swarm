@@ -1,48 +1,18 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
+. /usr/bin/common.sh
 export MIGASFREE_SECRET_DIR=/var/run/secrets
 
 _SETTINGS=/var/lib/migasfree-backend/conf/settings.py
 
 QUEUES="default"
-BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
+load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 export CELERY_BROKER_URL="${BROKER_URL}"
 
-set_TZ() {
-    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
-    then
-        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-        echo "$TZ" > /etc/timezone
-        echo "Timezone set to: $TZ"
-    fi
-}
-
 get_secret_pass() {
-    cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass"
-}
-
-set_TZ
-
-wait_for_service() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
-
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
+    echo "$SUPERADMIN_PASS"
 }
 
 update_ca_certificates_action() {
@@ -244,8 +214,8 @@ wait_for_service "$REDIS_HOST" "$REDIS_PORT"
 send_message "waiting database"
 wait_for_service "$POSTGRES_HOST" "$POSTGRES_PORT"
 
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
+start_message
+set_tz
 
 if [ "$SERVICE" = "${STACK}_core" ]
 then
@@ -257,26 +227,7 @@ else
     _PROCESS=$(pip freeze | grep celery || :)
 fi
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $_PROCESS
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-
-"
+show_banner "$_PROCESS"
 
 send_message ""
 

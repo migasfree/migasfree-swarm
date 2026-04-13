@@ -1,12 +1,7 @@
 #!/bin/bash
 
-# Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-    echo "$TZ" > /etc/timezone
-    echo "Timezone set to: $TZ"
-fi
-
+. /usr/bin/common.sh
+set_tz
 set -e
 
 function capture_message {
@@ -302,33 +297,13 @@ EOF
 done
 
 
-send_message "starting ${SERVICE:(${#STACK})+1}" &
+start_message
 if [ "$PG_ROLE" == "primary" ] || [ -z "$PG_ROLE" ]
 then
     cron_init
 fi
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(postgres -V)
-        Container: $HOSTNAME
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(postgres -V)"
 
 send_message "" &
 

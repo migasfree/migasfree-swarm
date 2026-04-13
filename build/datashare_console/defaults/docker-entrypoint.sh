@@ -1,46 +1,13 @@
 #!/bin/sh
 set -e
 
-MIGASFREE_SECRET_DIR=/var/run/secrets
+. /usr/bin/common.sh
+export MIGASFREE_SECRET_DIR=/var/run/secrets
 
-set_TZ() {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
-}
+start_message
+set_tz
 
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
-
-set_TZ
-
-send_message "init datashare"
-
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(filebrowser version)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(filebrowser version)"
 
 init_datashare() {
     # Structure of paths in datashare

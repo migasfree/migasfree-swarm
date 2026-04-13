@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN apt -y update && \
-    apt install -y curl netcat-openbsd
+    apt install -y curl netcat-openbsd gosu
 
 COPY defaults/usr /usr
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
@@ -21,6 +21,6 @@ HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /healthcheck.sh 
 RUN getent group migasfree || groupadd -g 890 migasfree && \
     getent passwd migasfree || useradd -u 890 -g migasfree -s /bin/bash -m migasfree
 
-USER migasfree
+# USER migasfree
 
 ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]

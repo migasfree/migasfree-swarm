@@ -1,19 +1,10 @@
 #!/bin/bash
 set -e
 
-# Load password from secret if available
-if [ -f "$POSTGRES_PASSWORD_FILE" ]
-then
-    DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
-    export DB_PASSWORD
-fi
+. /usr/bin/common.sh
+set_tz
 
-# Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]
-then
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-    echo "$TZ" > /etc/timezone
-fi
+load_secret "$(basename "$POSTGRES_PASSWORD_FILE")" "DB_PASSWORD"
 
 # ==========================================
 # Constants
@@ -237,9 +228,8 @@ start_topology_watchdog() {
     ) &
 }
 
-# ==========================================
+start_message
 # Initial configuration
-# ==========================================
 
 echo "Waiting for Manager topology API..."
 until discover_topology
@@ -321,27 +311,7 @@ trap cleanup SIGTERM SIGINT
     done
 ) &
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(pgpool -v 2>&1)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(pgpool -v 2>&1)"
 
 # ==========================================
 # Start Pgpool and keep container alive

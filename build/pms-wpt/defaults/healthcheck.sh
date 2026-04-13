@@ -1,17 +1,12 @@
 #!/bin/sh
-set -e
+. /usr/bin/common.sh
+load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 
-MIGASFREE_SECRET_DIR=/var/run/secrets
-BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
-
-# shellcheck source=/dev/null
-. /venv/bin/activate
-cd /pms || exit 1
-
-if timeout 1 ls "${DATASHARE_MOUNT_PATH}/conf/" >/dev/null
+if ! timeout 1 ls "${DATASHARE_MOUNT_PATH}/conf/" >/dev/null
 then
-    timeout 1 celery -b "${BROKER_URL}" inspect ping -d "celery@$(hostname)" > /dev/null
-else
     echo "File system disconnected"
     exit 1
 fi
+
+check_celery_worker "${BROKER_URL}"

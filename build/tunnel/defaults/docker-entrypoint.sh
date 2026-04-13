@@ -1,57 +1,23 @@
 #!/bin/sh
 set -e
 
-wait_for_service() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
+. /usr/bin/common.sh
 
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
+if [ "$(id -u)" = '0' ]
+then
+    set_tz
+    start_message
+    exec gosu migasfree "$0" "$@"
+fi
 
 send_message "waiting datastore"
 wait_for_service "datastore" "6379"
 
-send_message "Starting Tunnelnode"
-
-MIGASFREE_SECRET_DIR='/var/run/secrets'
-REDIS_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
+load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+REDIS_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 export REDIS_URL
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(python3 --version)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(python3 --version)"
 
 send_message ""
 

@@ -1,18 +1,13 @@
 #!/bin/sh
 
-set_TZ() {
-    : "${TZ:=Europe/Madrid}"
-    # Link only if the target differs (reduces noisy “File exists” errors)
-    [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ] && \
-        ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
-}
+. /usr/bin/common.sh
+set_tz
 
 get_swarm_role() {
     _info=$(docker info 2>/dev/null) || { echo ""; return; }
     echo "$_info" | grep -q "Swarm: active" || { echo ""; return; }
     echo "$_info" | grep -q "Is Manager: true" && echo "MANAGER" || echo "WORKER"
 }
-
 
 run_manager() {
     _COMMAND="$1"
@@ -54,8 +49,6 @@ Available commands:
   leave                  Leave the Swarm cluster
 EOF
 }
-
-set_TZ
 
 COMMAND="$1"
 ROLE="$(get_swarm_role)"
@@ -128,12 +121,7 @@ case "$COMMAND" in
     ;;
 
     *)
-        echo "
-            $SERVICE ($TAG)
-            Container: $(hostname)
-            Time zone: $TZ $(date)
-            Processes: $(nproc)"
-        echo
+        show_banner
         show_help
 
     ;;

@@ -1,50 +1,20 @@
 #!/bin/sh
 set -e
 
+. /usr/bin/common.sh
 export MIGASFREE_FQDN=core:8080
 export MIGASFREE_SECRET_DIR=/var/run/secrets
 
 QUEUES="pms-yum,pms-zypper,pms-dnf"
-BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
+load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 export CELERY_BROKER_URL="${BROKER_URL}"
-
-wait() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
-
-set_TZ() {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
-}
 
 # shellcheck source=/dev/null
 . /venv/bin/activate
 
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
-
-set_TZ
+start_message
+set_tz
 
 export MIGASFREE_KEYS_DIR=/var/lib/migasfree-backend/keys
 mkdir -p "$(dirname "${MIGASFREE_KEYS_DIR}")"
@@ -72,29 +42,9 @@ export MIGASFREE_EXTERNAL_TRAILING_PATH=external
 export MIGASFREE_TMP_TRAILING_PATH=tmp
 
 send_message "waiting ${MIGASFREE_FQDN%:*}"
-wait "${MIGASFREE_FQDN%:*}" "${MIGASFREE_FQDN#*:}"
+wait_for_service "${MIGASFREE_FQDN%:*}" "${MIGASFREE_FQDN#*:}"
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        celery $(celery --version)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "celery $(celery --version)"
 
 cd /pms || exit 1
 

@@ -1,3 +1,3 @@
 #!/bin/sh
-
-curl -f "http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping"
+. /usr/bin/common.sh
+check_http "http://localhost:${PGADMIN_LISTEN_PORT}/misc/ping"

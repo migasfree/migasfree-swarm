@@ -1,32 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 
-# Set Timezone
-if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-    echo "$TZ" > /etc/timezone
-fi
+. /usr/bin/common.sh
+set_tz
 
-function wait {
-    local _SERVER=$1
-    local _PORT=$2
-    local _COUNTER=0
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
-
-# Configure ngnix
+# Configure nginx (default template)
 cat << EOF > /etc/nginx/conf.d/default.conf
 server {
     listen       80;
@@ -60,37 +37,17 @@ server {
 }
 EOF
 
-send_message "starting ${SERVICE:(${#STACK})+1}"
+start_message
 
-# Hacking enviroment variable MIGASFREE_SERVER for production
+# Hacking environment variable MIGASFREE_SERVER for production
 grep -l __FQDN__ /usr/share/nginx/html/js/* | while read -r _FILE; do
     sed -i "s/__FQDN__/$FQDN/g" "$_FILE"
 done
 
 send_message "waiting core"
-wait core 8080
+wait_for_service core 8080
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(nginx -v 2>&1)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(nginx -v 2>&1)"
 
 echo "daemon off;" >> /etc/nginx/nginx.conf
 

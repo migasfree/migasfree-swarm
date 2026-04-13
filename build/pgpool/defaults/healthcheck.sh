@@ -1,10 +1,8 @@
-#!/bin/bash
+#!/bin/sh
+. /usr/bin/common.sh
 
 # Load password from secret if available
-if [ -f "$POSTGRES_PASSWORD_FILE" ]; then
-    DB_PASSWORD=$(cat "$POSTGRES_PASSWORD_FILE")
-    export DB_PASSWORD
-fi
+load_secret "$(basename "$POSTGRES_PASSWORD_FILE")" "DB_PASSWORD"
 
 PCP_PORT="${PCP_PORT:-9898}"
 PCP_USER="${POSTGRES_USER:-postgres}"
@@ -28,5 +26,3 @@ if ! echo "$status_output" | awk '{print $3}' | grep -E "1|2" > /dev/null; then
     echo "No backend nodes available"
     exit 1
 fi
-
-exit 0

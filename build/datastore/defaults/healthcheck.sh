@@ -1,3 +1,3 @@
 #!/bin/sh
-
-timeout 1 redis-cli ping > /dev/null
+. /usr/bin/common.sh
+check_tcp 127.0.0.1 6379

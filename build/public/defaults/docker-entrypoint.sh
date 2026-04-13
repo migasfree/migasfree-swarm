@@ -1,41 +1,10 @@
 #!/bin/sh
 set -e
 
-set_TZ() {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime || :
-}
+. /usr/bin/common.sh
 
-wait_for_service() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
-
-    until [ "$_COUNTER" -gt 60 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
-
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
-
-set_TZ
+start_message
+set_tz
 
 export MIGASFREE_CONF_DIR=/var/lib/migasfree-backend/conf
 mkdir -p "$(dirname "${MIGASFREE_CONF_DIR}")"
@@ -60,27 +29,7 @@ ln -snf /var/migasfree/public /var/migasfree/repo
 send_message "waiting core"
 wait_for_service core 8080
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(nginx -v 2>&1)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(nginx -v 2>&1)"
 
 # Reload extensions for haproxy.cfg (even if named haproxy, it seems to be used here)
 # ======================================

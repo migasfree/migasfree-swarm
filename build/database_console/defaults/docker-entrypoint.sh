@@ -1,65 +1,27 @@
 #!/bin/sh
 set -e
 
-MIGASFREE_SECRET_DIR=/var/run/secrets
+. /usr/bin/common.sh
+export MIGASFREE_SECRET_DIR=/var/run/secrets
 
-PGADMIN_DEFAULT_EMAIL="$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")@${FQDN}"
+load_secret "${STACK}_superadmin_name" "SUPERADMIN_NAME"
+PGADMIN_DEFAULT_EMAIL="${SUPERADMIN_NAME}@${FQDN}"
 export PGADMIN_DEFAULT_EMAIL
-
-set_TZ() {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
-}
-
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
-
-set_TZ
-
-
-chown pgadmin:root /run/pgadmin
-chown pgadmin:root /pgadmin4/config_distro.py
-
-mkdir -p /var/lib/pgadmin ||  :
-chown pgadmin:root /var/lib/pgadmin
-
-
-send_message "init database_console"
-
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        pgadmin4 $(/venv/bin/python3 -c 'import version;print(version.APP_VERSION)')
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
-
-send_message ""
 
 # Changes to USER pgadmin
 if [ "$(id -u)" = '0' ]
 then
+    set_tz
+    chown pgadmin:root /run/pgadmin
+    chown pgadmin:root /pgadmin4/config_distro.py
+    mkdir -p /var/lib/pgadmin ||  :
+    chown pgadmin:root /var/lib/pgadmin
     exec su-exec pgadmin "$0" "$@"
 fi
+
+show_banner "pgadmin4 $(/venv/bin/python3 -c 'import version;print(version.APP_VERSION)')"
+
+send_message ""
 
 /usr/bin/add_connection &
 /entrypoint.sh

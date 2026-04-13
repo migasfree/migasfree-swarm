@@ -1,18 +1,8 @@
 #!/bin/sh
 set -e
 
+. /usr/bin/common.sh
 export MIGASFREE_SECRET_DIR=/var/run/secrets
-
-set_TZ() {
-    # send_message "setting the time zone"
-    if [ -z "$TZ" ]
-    then
-        TZ="Europe/Madrid"
-    fi
-    # /etc/timezone for TZ setting
-    ln -fs "/usr/share/zoneinfo/$TZ" /etc/localtime || :
-}
-
 
 cron_init() {
     if [ -z "$BACKUP_CRON" ]
@@ -27,10 +17,9 @@ cron_init() {
     crond -l 2 -f > /dev/stdout 2> /dev/stderr &
 }
 
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
+start_message
 
-set_TZ
+set_tz
 cron_init
 
 # first arg is `-f` or `--some-option`
@@ -47,26 +36,7 @@ then
     exec su-exec redis "$0" "$@"
 fi
 
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(redis-server -v)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-"
+show_banner "$(redis-server -v)"
 
 send_message ""
 

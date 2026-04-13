@@ -1,63 +1,16 @@
 #!/bin/sh
 set -e
 
+. /usr/bin/common.sh
 export MIGASFREE_SECRET_DIR=/var/run/secrets
-BROKER_URL="redis://default:$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")@datastore:6379/0"
 
-set_TZ() {
-    TZ="${TZ:-Europe/Madrid}"
-    # Link only if the target differs (reduces noisy “File exists” errors)
-    if [ "$(readlink /etc/localtime)" != "/usr/share/zoneinfo/$TZ" ]
-    then
-        ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
-    fi
-}
+load_secret "${STACK}_superadmin_pass" "SUPERADMIN_PASS"
+BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 
-wait() {
-    _SERVER=$1
-    _PORT=$2
-    _COUNTER=0
-    until [ "$_COUNTER" -gt 30 ]
-    do
-        if nc -z "$_SERVER" "$_PORT" 2> /dev/null
-        then
-            echo "$_SERVER:$_PORT is running."
-            return
-        else
-            echo "$_SERVER:$_PORT is not running after $_COUNTER seconds."
-            sleep 1
-        fi
-        _COUNTER=$((_COUNTER + 1))
-    done
-    echo "Rebooting container"
-    exit 1
-}
+set_tz
+start_message
 
-set_TZ
-_SERVICE_NAME=${SERVICE#${STACK}_}
-send_message "starting $_SERVICE_NAME"
-
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        celery $(celery --version)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "celery $(celery --version)"
 
 # CELERY CONFIG
 # =============

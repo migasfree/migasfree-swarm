@@ -1,31 +1,19 @@
-#!/bin/bash
+#!/bin/sh
+set -e
 
-send_message "init mcp-server"
+. /usr/bin/common.sh
 
-sudo update-ca-certificates
+if [ "$(id -u)" = '0' ]
+then
+    set_tz
+    start_message
+    update-ca-certificates
+    exec gosu mcpuser "$0" "$@"
+fi
 
 cd /app || exit 1
 
-echo "
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        $(pip freeze|grep mcp)
-        Container: $HOSTNAME
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner "$(pip freeze|grep mcp)"
 
 send_message ""
 

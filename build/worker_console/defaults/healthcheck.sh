@@ -1,3 +1,3 @@
 #!/bin/sh
-
-curl -f http://localhost:5555 > /dev/null 2>&1
+. /usr/bin/common.sh
+check_http http://localhost:5555
