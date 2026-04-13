@@ -22,9 +22,9 @@
                 window: 180s
         healthcheck:
             test: ["CMD", "/usr/bin/healthcheck.sh"]
-            interval: 30s
+            interval: 10s
             timeout: 10s
-            retries: 3
+            retries: 10
             start_period: 30s
         depends_on:
             - core
