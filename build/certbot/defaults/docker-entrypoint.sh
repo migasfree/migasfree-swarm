@@ -1,30 +1,13 @@
 #!/bin/sh
 trap exit TERM
 
+. /usr/bin/common.sh
+set_tz
+start_message
+
 update-ca-certificates
 
-send_message "init certbot"
-
-echo "
-
-
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
-
-
-        $SERVICE ($TAG)
-        Container: $(hostname)
-        Time zone: $TZ $(date)
-        Processes: $(nproc)
-
-"
+show_banner
 
 send_message ""
 
