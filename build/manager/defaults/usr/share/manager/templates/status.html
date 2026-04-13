@@ -48,50 +48,140 @@
       text-align: left;
     }
 
-    .svg-section {
+    .services-section {
       margin-bottom: 20px;
       display: flex;
-      justify-content: center;
+      gap: 2rem;
       align-items: center;
+      justify-content: center;
     }
 
-    .svg-section svg {
-      max-width: 100%;
-      height: auto;
-      display: block;
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.75rem;
+      flex: 1;
     }
 
-    .node {
-      fill: lightgray;
-      transition: fill 0.3s ease;
+    .service-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0.75rem;
+      border-radius: 12px;
+      background: rgba(var(--brand-primary-rgb), 0.03);
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+      text-align: center;
+      position: relative;
     }
 
-    .link {
-      fill: green;
-      fill-opacity: 0.07;
-      cursor: pointer;
-      transition: fill-opacity 0.2s ease;
+    .service-card:hover {
+      background: rgba(var(--brand-primary-rgb), 0.06);
+      border-color: var(--glass-border);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(var(--brand-primary-rgb), 0.06);
     }
 
-    .link:hover {
-      fill-opacity: 0.15;
+    .service-icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(var(--brand-primary-rgb), 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
     }
 
-    .icon {
-      width: 10px;
-      height: 10px;
+    .service-card:hover .service-icon-wrap {
+      background: rgba(var(--brand-primary-rgb), 0.1);
     }
 
-    .circle-text {
-      text-anchor: middle;
-      font-size: 3px;
-      fill: #333;
+    .service-icon-wrap img {
+      width: 32px;
+      height: 32px;
+      opacity: 0.7;
     }
 
-    text {
-      font-size: 3px;
+    .service-footer {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .service-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: lightgray;
+      display: none;
+      transition: background-color 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .service-count {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--brand-tertiary);
+      min-width: 0;
+    }
+
+    .service-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--brand-secondary);
       font-style: italic;
-      fill: #868e96;
+    }
+
+    .service-link {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      display: none;
+      z-index: 1;
+      cursor: pointer;
+    }
+
+    .mascot-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      width: 120px;
+      flex-shrink: 0;
+      padding: 1rem;
+      align-self: flex-end;
+    }
+
+    .mascot-area img {
+      width: 72px;
+      height: 72px;
+      transition: opacity 0.3s ease;
+    }
+
+    .mascot-status-text {
+      font-size: 0.85rem;
+      font-style: italic;
+      color: var(--brand-secondary);
+      text-align: center;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mascot-service-text {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--brand-primary);
+      text-align: center;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .logs-section {
@@ -259,182 +349,194 @@
     </div>
   </div>
 
-  <!-- SVG Section -->
-  <div class="svg-section panel">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 60 180 60" id="main-svg">
-      <defs>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="0.3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+  <!-- Services Section -->
+  <div class="services-section panel">
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/portainer.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="portainer"></span>
+          <span class="service-name">portainer</span>
+          <span class="service-count" id="nodes_portainer"></span>
+        </div>
+        <a id="portainer_link_parent" target="_blank" class="service-link" title="Portainer Console"></a>
+      </div>
 
-      <!-- Status message -->
-      <g transform="translate(160, 100)">
-        <a href="/manager/v1/private/logs" target="_blank">
-          <image id="mascot" href="/manager/static/img/mascot-welcome.svg" class="link" x="6" y="8" height="10"
-            width="10" />
-        </a>
-        <text class="status-text" id="message_serv"></text>
-        <text class="status-text" id="message" x="0" y="3">one moment, please</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/console.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="console"></span>
+          <span class="service-name">console</span>
+          <span class="service-count" id="nodes_console"></span>
+        </div>
+        <a id="console_link_parent" target="_blank" class="service-link" title="Migasfree Console"></a>
+      </div>
 
-      <!-- Services nodes -->
-      <g id="portainer-node" transform="translate(40, 74)">
-        <image class="icon" href="/manager/static/img/portainer.svg" x="1" y="-12" />
-        <circle id="portainer" class="node" r="1.5" filter="url(#glow)" />
-        <a id="portainer_link_parent" target="_blank">
-          <circle id="portainer_link" class="link" cx="7" cy="-7" r="7">
-            <title>Portainer Console</title>
-          </circle>
-        </a>
-        <text x="3" y="2">portainer</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/beat.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="beat"></span>
+          <span class="service-name">beat</span>
+          <span class="service-count" id="nodes_beat"></span>
+        </div>
+      </div>
 
-      <g id="proxy-node" transform="translate(40, 94)">
-        <image class="icon" href="/manager/static/img/proxy.svg" x="1" y="-12" />
-        <circle id="proxy" class="node" r="1.5" filter="url(#glow)" />
-        <a id="proxy_link_parent" target="_blank">
-          <circle id="proxy_link" class="link" cx="7" cy="-7" r="7">
-            <title>Proxy Statistics</title>
-          </circle>
-        </a>
-        <text x="4" y="2">proxy</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/database.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="database"></span>
+          <span class="service-name">database</span>
+          <span class="service-count" id="nodes_database"></span>
+        </div>
+        <a id="database_link_parent" target="_blank" class="service-link" title="Database Console"></a>
+      </div>
 
-      <g id="manager-node" transform="translate(40, 114)">
-        <image class="icon" href="/manager/static/img/manager.svg" x="2" y="-12" />
-        <circle id="manager" class="node" r="1.5" filter="url(#glow)" />
-        <a id="manager_link_parent" target="_blank">
-          <circle id="manager_link" class="link" cx="7" cy="-7" r="7">
-            <title>Migasfree Manager API</title>
-          </circle>
-        </a>
-        <text x="3" y="2">manager</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/certbot.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="certbot"></span>
+          <span class="service-name">certbot</span>
+          <span class="service-count" id="nodes_certbot"></span>
+        </div>
+      </div>
 
-      <g id="console-node" transform="translate(70, 74)">
-        <image class="icon" href="/manager/static/img/console.svg" x="2" y="-12" />
-        <circle id="console" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_console" class="circle-text" x="0" y="1"></text>
-        <a id="console_link_parent" target="_blank">
-          <circle id="console_link" class="link" cx="7" cy="-7" r="7">
-            <title>Migasfree Console</title>
-          </circle>
-        </a>
-        <text x="4" y="2">console</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/proxy.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="proxy"></span>
+          <span class="service-name">proxy</span>
+          <span class="service-count" id="nodes_proxy"></span>
+        </div>
+        <a id="proxy_link_parent" target="_blank" class="service-link" title="Proxy Statistics"></a>
+      </div>
 
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/public.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="public"></span>
+          <span class="service-name">public</span>
+          <span class="service-count" id="nodes_public"></span>
+        </div>
+        <a id="public_link" class="service-link" title="Public Files"></a>
+      </div>
 
-      <g id="tunnel-node" transform="translate(130, 94)">
-        <image class="icon" href="/manager/static/img/remote-session.svg" x="2" y="-12" />
-        <circle id="tunnel" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_tunnel" class="circle-text" x="0" y="1"></text>
-        <a id="tunnel_link_parent" target="_blank">
-          <circle id="tunnel_link" class="link" cx="7" cy="-7" r="7">
-            <title>Migasfree Remote Access</title>
-          </circle>
-        </a>
-        <text x="4" y="2">remote access</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/core.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="core"></span>
+          <span class="service-name">core</span>
+          <span class="service-count" id="nodes_core"></span>
+        </div>
+        <a id="core_link_parent" target="_blank" class="service-link" title="Migasfree API"></a>
+      </div>
 
-      <g id="public-node" transform="translate(70, 94)">
-        <image class="icon" href="/manager/static/img/public.svg" x="2" y="-12" />
-        <circle id="public" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_public" class="circle-text" x="0" y="1"></text>
-        <circle id="public_link" class="link" cx="7" cy="-7" r="7">
-          <title>Public Files</title>
-        </circle>
-        <text x="4" y="2">public</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/datastore.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="datastore"></span>
+          <span class="service-name">datastore</span>
+          <span class="service-count" id="nodes_datastore"></span>
+        </div>
+        <a id="datastore_link_parent" target="_blank" class="service-link" title="Datastore Console"></a>
+      </div>
 
-      <g id="pms-node" transform="translate(70, 114)">
-        <image class="icon" href="/manager/static/img/pms.svg" x="2" y="-12" />
-        <circle id="pms" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_pms" class="circle-text" x="0" y="1"></text>
-        <text x="5" y="2">pms</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/remote-session.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="tunnel"></span>
+          <span class="service-name">remote access</span>
+          <span class="service-count" id="nodes_tunnel"></span>
+        </div>
+        <a id="tunnel_link_parent" target="_blank" class="service-link" title="Remote Access"></a>
+      </div>
 
-      <g id="beat-node" transform="translate(90, 74)">
-        <image class="icon" href="/manager/static/img/beat.svg" x="2" y="-12" />
-        <circle id="beat" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_beat" class="circle-text" x="0" y="1"></text>
-        <text x="5" y="2">beat</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/manager.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="manager"></span>
+          <span class="service-name">manager</span>
+          <span class="service-count" id="nodes_manager"></span>
+        </div>
+        <a id="manager_link_parent" target="_blank" class="service-link" title="Manager API"></a>
+      </div>
 
-      <g id="core-node" transform="translate(90, 94)">
-        <image class="icon" href="/manager/static/img/core.svg" x="2" y="-12" />
-        <circle id="core" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_core" class="circle-text" x="0" y="1"></text>
-        <a id="core_link_parent" target="_blank">
-          <circle id="core_link" class="link" cx="7" cy="-7" r="7">
-            <title>Migasfree API</title>
-          </circle>
-        </a>
-        <text x="5" y="2">core</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/pms.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="pms"></span>
+          <span class="service-name">pms</span>
+          <span class="service-count" id="nodes_pms"></span>
+        </div>
+      </div>
 
-      <g id="worker-node" transform="translate(90, 114)">
-        <image class="icon" href="/manager/static/img/worker.svg" x="2" y="-12" />
-        <circle id="worker" class="node" r="1.5" filter="url(#glow)" />
-        <text id="nodes_worker" class="circle-text" x="0" y="1"></text>
-        <a id="worker_link_parent" target="_blank">
-          <circle id="worker_link" class="link" cx="7" cy="-7" r="7">
-            <title>Worker Console</title>
-          </circle>
-        </a>
-        <text x="4" y="2">worker</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/worker.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="worker"></span>
+          <span class="service-name">worker</span>
+          <span class="service-count" id="nodes_worker"></span>
+        </div>
+        <a id="worker_link_parent" target="_blank" class="service-link" title="Worker Console"></a>
+      </div>
 
-      <g id="database-node" transform="translate(110, 74)">
-        <image class="icon" href="/manager/static/img/database.svg" x="2" y="-12" />
-        <circle id="database" class="node" r="1.5" filter="url(#glow)" />
-        <a id="database_link_parent" target="_blank">
-          <circle id="database_link" class="link" cx="7" cy="-7" r="7">
-            <title>Database Console</title>
-          </circle>
-        </a>
-        <text x="3" y="2">database</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/datashare.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="datashare_console"></span>
+          <span class="service-name">datashare</span>
+          <span class="service-count" id="nodes_datashare_console"></span>
+        </div>
+        <a id="datashare_console_link_parent" target="_blank" class="service-link" title="Datashare Console"></a>
+      </div>
 
-      <g id="datastore-node" transform="translate(110, 94)">
-        <image class="icon" href="/manager/static/img/datastore.svg" x="2" y="-12" />
-        <circle id="datastore" class="node" r="1.5" filter="url(#glow)" />
-        <a id="datastore_link_parent" target="_blank">
-          <circle id="datastore_link" class="link" cx="7" cy="-7" r="7">
-            <title>Datastore Console</title>
-          </circle>
-        </a>
-        <text x="3" y="2">datastore</text>
-      </g>
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/mcp-server.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="mcp-server"></span>
+          <span class="service-name">mcp server</span>
+          <span class="service-count" id="nodes_mcp-server"></span>
+        </div>
+      </div>
+    </div>
 
-      <g id="datashare-node" transform="translate(110, 114)">
-        <image class="icon" href="/manager/static/img/datashare.svg" x="2" y="-12" />
-        <circle id="datashare_console" class="node" r="1.5" filter="url(#glow)" />
-        <a id="datashare_console_link_parent" target="_blank">
-          <circle id="datashare_console_link" class="link" cx="7" cy="-7" r="7">
-            <title>Datashare Console</title>
-          </circle>
-        </a>
-        <text x="3" y="2">datashare</text>
-      </g>
-
-      <g id="certbot-node" transform="translate(130, 74)">
-        <image class="icon" href="/manager/static/img/certbot.svg" x="2" y="-12" />
-        <circle id="certbot" class="node" r="1.5" />
-        <text x="4" y="2">certbot</text>
-      </g>
-
-
-      <g id="mcp-server-node" transform="translate(130, 114)">
-        <image class="icon" href="/manager/static/img/mcp-server.svg" x="2" y="-12" />
-        <circle id="mcp-server" class="node" r="1.5" filter="url(#glow)" />
-        <text x="3" y="2">mcp server</text>
-      </g>
-    </svg>
+    <!-- Mascot Status -->
+    <div class="mascot-area">
+      <a href="/manager/v1/private/logs" target="_blank">
+        <img id="mascot" src="/manager/static/img/mascot-welcome.svg" alt="mascot" />
+      </a>
+      <span class="mascot-service-text" id="message_serv"></span>
+      <span class="mascot-status-text" id="message">one moment, please</span>
+    </div>
   </div>
 
   <!-- Logs Section (Collapsible) -->
@@ -553,6 +655,10 @@
           dom.nodeTexts[elementId] = document.getElementById(`nodes_${elementId}`);
         });
 
+        if (dom.nodes.pms) {
+          dom.pmsCard = dom.nodes.pms.closest('.service-card');
+        }
+
         // Cache console links
         CONFIG.consoleServices.forEach(service => {
           const linkParent = document.getElementById(`${service}_link_parent`);
@@ -657,7 +763,7 @@
         }
         console.debug(`${serviceName} color: ${color}`)
 
-        node.style.fill = color;
+        node.style.backgroundColor = color;
         node.style.display = 'block';
 
         // Updates nodes if > 1
@@ -689,11 +795,9 @@
 
       function updatePMSNode() {
         const node = dom.nodes.pms;
-        console.debug('updatePMSNode node:', node);
         if (!node) return;
 
         const pmsServiceNames = Object.keys(state.pmsServices);
-        console.debug('pmsServiceNames', pmsServiceNames, pmsServiceNames.length);
         if (pmsServiceNames.length === 0) {
           node.style.display = 'none';
           return;
@@ -703,26 +807,47 @@
         let totalDesired = 0;
         let anyDown = false;
         let anyDegraded = false;
+        let healthyList = [];
+        let issueList = [];
 
         pmsServiceNames.forEach(name => {
           const status = state.pmsServices[name];
-          totalRunning += status.running || 0;
-          totalDesired += status.desired || 0;
-          if (status.status === 'down') anyDown = true;
-          if (status.status === 'degraded' || status.status === 'starting') anyDegraded = true;
+          const running = status.running || 0;
+          const desired = status.desired || 0;
+          totalRunning += running;
+          totalDesired += desired;
+
+          const summary = `${name} (${running}/${desired})`;
+          if (status.status === 'healthy') {
+            healthyList.push(summary);
+          } else {
+            issueList.push(`${summary} - ${status.status}`);
+            if (status.status === 'down') anyDown = true;
+            if (status.status === 'degraded') anyDegraded = true; // 'starting' is handled by count
+          }
         });
 
-        let color = '#a9dfbf';  // green
-        if (anyDown) color = '#e74c3c';
-        else if (anyDegraded) color = '#f39c12';
-        else if (totalRunning < totalDesired) color = '#f39c12';
-        console.debug(`updatePMSNode color: ${color}`)
+        // Tooltip construction
+        let tooltip = '';
+        if (issueList.length > 0) {
+          tooltip += 'ISSUES:\n' + issueList.join('\n') + '\n\n';
+        }
+        if (healthyList.length > 0) {
+          tooltip += 'HEALTHY:\n' + healthyList.join('\n');
+        }
+        if (dom.pmsCard) dom.pmsCard.title = tooltip.trim();
 
-        node.style.fill = color;
+        let color = getColorFromStatus('healthy');
+        if (anyDown) color = getColorFromStatus('down');
+        else if (anyDegraded) color = getColorFromStatus('degraded');
+        else if (totalRunning < totalDesired) color = getColorFromStatus('starting');
+
+        node.style.backgroundColor = color;
         node.style.display = 'block';
 
         if (dom.nodeTexts.pms) {
           dom.nodeTexts.pms.textContent = totalRunning > 0 ? totalRunning : '';
+          dom.nodeTexts.pms.style.color = color;
         }
       }
 
@@ -775,10 +900,10 @@
           : `${prefix}-${sprite}`;
         if (mascotImages[key]) {
           // Use preloaded image src to avoid new fetch
-          dom.mascot.setAttribute('href', mascotImages[key].src);
+          dom.mascot.src = mascotImages[key].src;
         } else {
           // Fallback to default image if not preloaded
-          dom.mascot.setAttribute('href', `/manager/static/img/${key}.svg`);
+          dom.mascot.src = `/manager/static/img/${key}.svg`;
         }
       }
 
@@ -943,13 +1068,13 @@
       function showWaiting() {
         dom.message.textContent = 'waiting...';
         dom.messageServ.textContent = '';
-        dom.mascot.setAttribute('href', mascotImages['mascot-welcome'].src);
+        dom.mascot.src = mascotImages['mascot-welcome'].src;
       }
 
       function showDisconnected() {
         dom.message.textContent = 'disconnected';
         dom.messageServ.textContent = '';
-        dom.mascot.setAttribute('href', mascotImages['mascot-disconnect'].src);
+        dom.mascot.src = mascotImages['mascot-disconnect'].src;
 
         Object.values(dom.nodes).forEach(node => {
           if (node) node.style.display = 'none';
@@ -980,7 +1105,7 @@
         dom.message.textContent = randomMsg;
         dom.messageServ.textContent = '';
         dom.mascot.style.display = 'none';
-        dom.mascot.setAttribute('href', mascotImages['mascot-welcome'].src);
+        dom.mascot.src = mascotImages['mascot-welcome'].src;
 
         setTimeout(() => {
           dom.mascot.style.display = 'block';
@@ -988,7 +1113,7 @@
 
         Object.values(dom.nodes).forEach(node => {
           if (node) {
-            node.style.fill = 'lightgray';
+            node.style.backgroundColor = 'lightgray';
             node.style.display = 'none';
           }
         });
