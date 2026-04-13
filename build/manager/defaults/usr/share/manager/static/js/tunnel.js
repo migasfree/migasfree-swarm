@@ -327,8 +327,8 @@ class TunnelClient {
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) {
             modalTitle.textContent = serviceType
-                ? `${serviceType.toUpperCase()} to ${agent.id}`
-                : `${agent.id}`;
+                ? `${serviceType.toUpperCase()} to ${agent.name}`
+                : `${agent.name}`;
         }
 
         infoContainer.innerHTML = `

@@ -115,38 +115,20 @@
     </div>
 
     <!-- Modals -->
-    <div id="service-modal" class="modal hidden">
+    <div id="agent-modal" class="modal hidden">
         <div class="modal-content panel">
             <div class="modal-header">
-                <h3>Select Service</h3>
-                <button class="modal-close" id="btn-close-modal">&times;</button>
+                <h3 id="modal-title">Select Service</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="agent-info">
-                    <div class="hostname-text" id="modal-agent-name">Agent Name</div>
-                </div>
-                <div class="service-options">
-                    <button class="service-btn" data-service="SSH">
-                        <span class="mdi mdi-console service-icon"></span>
-                        SSH
-                    </button>
-                    <button class="service-btn" data-service="VNC">
-                        <span class="mdi mdi-monitor service-icon"></span>
-                        VNC
-                    </button>
-                    <button class="service-btn" data-service="RDP">
-                        <span class="mdi mdi-microsoft-windows service-icon"></span>
-                        RDP
-                    </button>
-                </div>
-                
-                <div id="ssh-options" class="username-input hidden">
-                    <label for="ssh-user">Login Username (optional)</label>
+                <div id="username-input" class="username-input">
+                    <label for="ssh-username">Login Credentials</label>
                     <div class="flex-row">
-                        <input type="text" id="ssh-user" class="input-text" placeholder="e.g. root" />
-                        <button class="btn-action" id="btn-connect-ssh">Connect</button>
+                        <input type="text" id="ssh-username" class="input-text" placeholder="e.g. root" />
+                        <button class="btn btn-primary" id="modal-connect">Connect</button>
                     </div>
-                    <span class="hint-text">Leave blank to use agent defaults.</span>
+                    <span class="hint-text">Enter the username for the remote session.</span>
                 </div>
             </div>
         </div>
@@ -154,5 +136,4 @@
 
     <script src="/manager/static/js/tunnel.js"></script>
 </body>
-
 </html>
