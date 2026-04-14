@@ -51,3 +51,7 @@ done
 wait
 
 echo "All images are up to date."
+
+echo
+echo "Cleaning up dangling images..."
+docker image prune -f

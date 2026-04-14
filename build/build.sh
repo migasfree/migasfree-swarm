@@ -109,6 +109,10 @@ then
     exit 1
 fi
 
-echo
 echo "All images built successfully!"
+
+echo
+echo "Cleaning up dangling images..."
+docker image prune -f
+
 exit 0

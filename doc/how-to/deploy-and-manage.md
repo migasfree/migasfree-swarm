@@ -6,6 +6,7 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 
 * **Update Configuration**: Edit `env.py` and run `./migasfree-swarm deploy`.
 * **Update Code/Images**: Run `./migasfree-swarm pull` followed by `./migasfree-swarm deploy`.
+* **Clean Up Images**: Run `./migasfree-swarm prune` to remove dangling `<none>` images.
 * **Stop Infrastructure**: Run `./migasfree-swarm undeploy`.
 
 ## Console Management
@@ -79,6 +80,17 @@ To build specific images:
 ```bash
 bash build.sh core database manager
 ```
+
+### Cleaning Up Images
+
+Docker builds and pulls can leave "dangling" images (tagged as `<none>`) that consume disk space. To safely remove them:
+
+```bash
+./migasfree-swarm prune
+```
+
+> [!NOTE]
+> This command only removes images that are not tagged and not used by any container.
 
 To list available images:
 

@@ -47,6 +47,7 @@ Available commands:
   url-admin-certificate  Generate a one-time URL to create a client certificate for administration console access
   join-worker            Add a worker node to the cluster
   leave                  Leave the Swarm cluster
+  prune                  Remove dangling images from the node
 EOF
 }
 
@@ -118,6 +119,11 @@ case "$COMMAND" in
 
     join-worker|join_worker)
         run_manager "/tools/join-worker.sh"
+    ;;
+
+    prune)
+        echo "Pruning dangling images..."
+        docker image prune -f
     ;;
 
     *)

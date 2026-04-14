@@ -1,50 +1,58 @@
-# TODO List
+# Status & TODO List
 
-* TODO: tag `<none>` al hacer docker-compose
+## 🚀 Pendiente (To-Do)
 
-* TODO: Actualizar contraseña por defecto a `core`
+### 🛠️ Infraestructura y Despliegue
 
-* TODO abrir postgres al exterior del cluster
+* [ ] **Configuración Postgres**: Publicar el puerto de la base de datos (`database`) al exterior del cluster en `stack.template` (actualmente cerrado).
+* [ ] **Puertos dinámicos**: Corregir `haproxy.template` para que las instrucciones `bind` no estén harcodeadas a 80/443 y usen las variables `PORT_HTTP` y `PORT_HTTPS`.
 
-* TODO: Cambiar HTTP_PORT y HTTPS_PORT funciona a medias -> Repasar configuración en haproxy.
+### 🛡️ Seguridad y Estandarización
 
-* TODO: Crear comando info
+* [ ] **Patrón "Root-Init, User-Run"**: Refactorizar los servicios legados (especialmente `manager` y `database`) para que sigan el patrón de inicialización como root y ejecución como usuario sin privilegios.
+* [ ] **Credenciales**: Actualizar la generación de contraseñas por defecto para usar `core` (actualmente se generan aleatoriamente en `deploy.py`).
 
-* TODO: Crear comando help
+### ⌨️ Herramientas CLI (`migasfree-swarm`)
 
-* TODO: Documentar Personalizacion del stack (env.py)
+* [ ] **Comando `info`**: Implementar un comando que muestre el estado general del swarm, nodos, stacks desplegados y URLs de acceso.
 
-* TODO: Documentar labels del swarm y la relación con los volumenes
+### 📚 Documentación y Pruebas
 
-* DONE: `datastore_console` and other consoles now correctly initialize configuration via entrypoint refactoring.
-* TODO: Standardize remaining legacy services to the 'Root-Init, User-Run' pattern for consistent security across the entire stack.
+* [ ] **Referencia `env.py`**: Crear un documento que detalle todas las variables de personalización disponibles en `env.py` (basado en la lógica de `context.py`).
+* [ ] **QA Clientes**: Revisar y actualizar los entornos de prueba de los clientes (`test/client*`) para asegurar compatibilidad total.
 
-* Repasar los test de los clientes
+---
 
-## Para información
+## ✅ Hecho (Done)
+
+### 📚 Documentación
+
+* [x] **Labels y Volúmenes**: Relación entre etiquetas de nodo (`database=true`, `datastore=true`) y persistencia. Documentado en `doc/explanation/data-persistence.md`.
+* [x] **Comando `help`**: Implementado en el entrypoint de la imagen `swarm`. Se muestra por defecto si el comando no existe.
+
+### 🛡️ Seguridad
+
+* [x] **Refactorización Consolas**: `datastore_console` y otras consolas ya inicializan configuración mediante entrypoint refactorizado (patrón Root-Init).
+* [x] **Limpieza de imágenes**: Implementado prune automático de imágenes `<none>` en `build.sh` y `pull.sh`. Añadido comando `migasfree-swarm prune`.
+
+---
+
+## 💡 Notas e Información Útil
+
+### Visualización rápida de nodos del cluster
 
 ```bash
 #!/bin/bash
-
 for node in $(docker node ls -q); do
-
-# Obtener la información del nodo
-
   id=$(docker node inspect $node --format='{{.ID}}')
   hostname=$(docker node inspect $node --format='{{.Description.Hostname}}')
   role=$(docker node inspect $node --format='{{.Spec.Role}}')
   addr=$(docker node inspect $node --format='{{.Status.Addr}}')
-
-# Determinar si el nodo es un manager y si es el líder
-
   if [ "$role" = "manager" ]; then
     leader=$(docker node inspect $node --format='{{if .ManagerStatus.Leader}}leader{{else}}     {{end}}')
   else
     leader="     "
   fi
-
-# Imprimir la información en formato tabulado
-
   printf "%-36s %-20s %-10s %-15s %-10s\n" "$id" "$hostname" "$role" "$addr" "$leader"
 done
 ```
