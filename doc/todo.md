@@ -13,7 +13,6 @@
 
 ### ⌨️ Herramientas CLI (`migasfree-swarm`)
 
-* [ ] **Comando `info`**: Implementar un comando que muestre el estado general del swarm, nodos, stacks desplegados y URLs de acceso.
 
 ### 📚 Documentación y Pruebas
 
@@ -27,6 +26,7 @@
 ### 📚 Documentación
 
 * [x] **Labels y Volúmenes**: Relación entre etiquetas de nodo (`database=true`, `datastore=true`) y persistencia. Documentado en `doc/explanation/data-persistence.md`.
+* [x] **Comando `info`**: Implementado comando `migasfree-swarm info` para auditoría rápida del cluster y los stacks.
 * [x] **Comando `help`**: Implementado en el entrypoint de la imagen `swarm`. Se muestra por defecto si el comando no existe.
 
 ### 🛡️ Seguridad

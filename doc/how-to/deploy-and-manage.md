@@ -7,6 +7,7 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 * **Update Configuration**: Edit `env.py` and run `./migasfree-swarm deploy`.
 * **Update Code/Images**: Run `./migasfree-swarm pull` followed by `./migasfree-swarm deploy`.
 * **Clean Up Images**: Run `./migasfree-swarm prune` to remove dangling `<none>` images.
+* **Check Status**: Run `./migasfree-swarm info` to see the cluster and stacks overview.
 * **Stop Infrastructure**: Run `./migasfree-swarm undeploy`.
 
 ## Console Management
@@ -63,6 +64,19 @@ To gracefully remove a node from the cluster without deleting local volumes:
 ```bash
 ./migasfree-swarm leave
 ```
+
+## Monitoring the Cluster
+
+To get a comprehensive overview of your Swarm cluster status, including nodes and deployed stacks:
+
+```bash
+./migasfree-swarm info
+```
+
+This command provides:
+*   **Swarm Status**: Role of the local node, total nodes, and manager count.
+*   **Node details**: Hostname, status (Ready/Down), and availability.
+*   **Stacks overview**: List of deployed stacks, their access URLs, and service health (running/total).
 
 ## Image Maintenance
 

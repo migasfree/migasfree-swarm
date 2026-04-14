@@ -48,6 +48,7 @@ Available commands:
   join-worker            Add a worker node to the cluster
   leave                  Leave the Swarm cluster
   prune                  Remove dangling images from the node
+  info                   Show cluster and stack information
 EOF
 }
 
@@ -61,6 +62,10 @@ ROLE="$(get_swarm_role)"
 case "$COMMAND" in
     deploy)
         python3 /tools/deploy.py
+    ;;
+
+    info)
+        python3 /tools/info.py
     ;;
 
     undeploy)
