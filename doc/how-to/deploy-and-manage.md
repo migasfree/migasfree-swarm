@@ -74,9 +74,10 @@ To get a comprehensive overview of your Swarm cluster status, including nodes an
 ```
 
 This command provides:
-*   **Swarm Status**: Role of the local node, total nodes, and manager count.
-*   **Node details**: Hostname, status (Ready/Down), and availability.
-*   **Stacks overview**: List of deployed stacks, their access URLs, and service health (running/total).
+
+* **Swarm Status**: Role of the local node, total nodes, and manager count.
+* **Node details**: Hostname, status (Ready/Down), and availability.
+* **Stacks overview**: List of deployed stacks, their access URLs, and service health (running/total).
 
 ## Image Maintenance
 
