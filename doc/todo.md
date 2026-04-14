@@ -11,12 +11,8 @@
 * [ ] **Patrón "Root-Init, User-Run"**: Refactorizar los servicios legados (especialmente `manager` y `database`) para que sigan el patrón de inicialización como root y ejecución como usuario sin privilegios.
 * [ ] **Credenciales**: Actualizar la generación de contraseñas por defecto para usar `core` (actualmente se generan aleatoriamente en `deploy.py`).
 
-### ⌨️ Herramientas CLI (`migasfree-swarm`)
-
-
 ### 📚 Documentación y Pruebas
 
-* [ ] **Referencia `env.py`**: Crear un documento que detalle todas las variables de personalización disponibles en `env.py` (basado en la lógica de `context.py`).
 * [ ] **QA Clientes**: Revisar y actualizar los entornos de prueba de los clientes (`test/client*`) para asegurar compatibilidad total.
 
 ---
@@ -27,6 +23,7 @@
 
 * [x] **Labels y Volúmenes**: Relación entre etiquetas de nodo (`database=true`, `datastore=true`) y persistencia. Documentado en `doc/explanation/data-persistence.md`.
 * [x] **Comando `info`**: Implementado comando `migasfree-swarm info` para auditoría rápida del cluster y los stacks.
+* [x] **Referencia `env.py`**: Nuevo documento de referencia detallando todas las variables de personalización. Documentado en `doc/reference/env-variables.md`.
 * [x] **Comando `help`**: Implementado en el entrypoint de la imagen `swarm`. Se muestra por defecto si el comando no existe.
 
 ### 🛡️ Seguridad

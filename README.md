@@ -22,6 +22,7 @@ Our documentation is structured following the Diátaxis framework to help you fi
 ### 📖 Reference (Information-Oriented)
 
 * **[System Requirements](doc/reference/requirements.md)**: Hardware, software, and networking specs.
+* **[Configuration Variables](doc/reference/env-variables.md)**: Detailed reference for `env.py` and customization variables.
 * **[Certificate Management](doc/reference/certificates.md)**: Configuring SSL, Let's Encrypt, and mTLS.
 * **[Consoles Guide](doc/consoles.md)**: Overview of the administration interfaces.
 * **[MCP Connection](doc/mcp_connection.md)**: Connect your development tools to the swarm.
