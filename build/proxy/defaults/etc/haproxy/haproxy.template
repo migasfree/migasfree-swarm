@@ -84,12 +84,12 @@ listen stats
 
 
 frontend http
-    bind *:80
+    bind *:{{PORT_HTTP}}
 
 {% if MTLS %}
-    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem ca-file /mnt/cluster/certificates/{{STACK}}/ca/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn http/1.1 crl-file /mnt/cluster/certificates/{{STACK}}/crl.pem
+    bind *:{{PORT_HTTPS}} ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem ca-file /mnt/cluster/certificates/{{STACK}}/ca/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn http/1.1 crl-file /mnt/cluster/certificates/{{STACK}}/crl.pem
 {% else %}
-    bind *:443 ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
+    bind *:{{PORT_HTTPS}} ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
 {% endif %}
 
     # redirects

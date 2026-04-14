@@ -5,7 +5,6 @@
 ### 🛠️ Infraestructura y Despliegue
 
 * [ ] **Configuración Postgres**: Publicar el puerto de la base de datos (`database`) al exterior del cluster en `stack.template` (actualmente cerrado).
-* [ ] **Puertos dinámicos**: Corregir `haproxy.template` para que las instrucciones `bind` no estén harcodeadas a 80/443 y usen las variables `PORT_HTTP` y `PORT_HTTPS`.
 
 ### 🛡️ Seguridad y Estandarización
 
@@ -34,6 +33,7 @@
 
 * [x] **Refactorización Consolas**: `datastore_console` y otras consolas ya inicializan configuración mediante entrypoint refactorizado (patrón Root-Init).
 * [x] **Limpieza de imágenes**: Implementado prune automático de imágenes `<none>` en `build.sh` y `pull.sh`. Añadido comando `migasfree-swarm prune`.
+* [x] **Puertos dinámicos**: Eliminado el harcodeo de puertos 80/443 en `haproxy.template` y `stack.template`. Ahora el cluster puede servir en cualquier puerto configurado en `env.py`.
 
 ---
 

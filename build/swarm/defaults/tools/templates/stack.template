@@ -51,11 +51,11 @@ services:
         image: migasfree/proxy:{{TAG}}
         ports:
             - published: {{PORT_HTTP}}
-              target: 80
+              target: {{PORT_HTTP}}
               protocol: tcp
               mode: host
             - published: {{PORT_HTTPS}}
-              target: 443
+              target: {{PORT_HTTPS}}
               protocol: tcp
               mode: host
         dns: 127.0.0.11
@@ -65,6 +65,7 @@ services:
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
+            - PORT_HTTP={{PORT_HTTP}}
             - PORT_HTTPS={{PORT_HTTPS}}
             - MTLS={{MTLS}}
             - HTTPSMODE={{HTTPSMODE}}
