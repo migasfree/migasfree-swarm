@@ -1,20 +1,8 @@
 #!/bin/bash
 
-source ../../config/env/general
-source ../../config/env/stack
+# shellcheck source=/dev/null
+source ../lib_client.sh
 
-if [ "$HTTPSMODE" = "manual" ]
-then
-    cp /exports/migasfree/certificates/ca.crt defaults/usr/share/ca-certificates/ca.crt
-fi
-
-docker build . -t migasfree/client-arch:5.0-beta
-docker run --rm \
-    -e TZ="Europe/Madrid" \
-    -e MIGASFREE_CLIENT_SERVER=${FQDN} \
-    -e MIGASFREE_CLIENT_PROJECT=ARCH \
-    -e MIGASFREE_CLIENT_PROTOCOL=https \
-    -e MIGASFREE_CLIENT_PORT= \
-    -e MIGASFREE_CLIENT_DEBUG=True \
-    -e USER=root \
-    -ti migasfree/client-arch:5.0-beta bash
+get_swarm_context || exit 1
+prepare_ca
+build_and_run_client "migasfree/client-arch" "ARCH" "True"

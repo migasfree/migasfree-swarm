@@ -11,10 +11,6 @@
 * [ ] **Patrón "Root-Init, User-Run"**: Refactorizar los servicios legados (especialmente `manager` y `database`) para que sigan el patrón de inicialización como root y ejecución como usuario sin privilegios.
 * [ ] **Credenciales**: Actualizar la generación de contraseñas por defecto para usar `core` (actualmente se generan aleatoriamente en `deploy.py`).
 
-### 📚 Documentación y Pruebas
-
-* [ ] **QA Clientes**: Revisar y actualizar los entornos de prueba de los clientes (`test/client*`) para asegurar compatibilidad total.
-
 ---
 
 ## ✅ Hecho (Done)
@@ -25,6 +21,7 @@
 * [x] **Comando `info`**: Implementado comando `migasfree-swarm info` para auditoría rápida del cluster y los stacks.
 * [x] **Referencia `env.py`**: Nuevo documento de referencia detallando todas las variables de personalización. Documentado en `doc/reference/env-variables.md`.
 * [x] **Comando `help`**: Implementado en el entrypoint de la imagen `swarm`. Se muestra por defecto si el comando no existe.
+* [x] **QA Clientes**: Entornos de prueba (`test/client*`) modernizados. Los scripts `run.sh` ahora detectan automáticamente la configuración del stack y recuperan el certificado CA del volumen compartido. Se han eliminado hacks obsoletos en los Dockerfiles.
 
 ### 🛡️ Seguridad
 
