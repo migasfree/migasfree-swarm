@@ -17,6 +17,7 @@ RUN apk upgrade --no-cache && \
     python3 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --no-cache-dir $RUNTIME_PIP && \
+    find /venv -name "__pycache__" -type d -exec rm -rf {} + && \
     apk del $BUILD_DEPENDS && \
     rm -rf /var/cache/apk/*
 

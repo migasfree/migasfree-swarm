@@ -17,15 +17,13 @@ RUN apk upgrade --no-cache && \
     groupmod -g 890 nginx && \
     apk del shadow
 
-COPY defaults/var/migasfree /var/migasfree
+COPY --chown=890:890 defaults/var/migasfree /var/migasfree
 
 # STATIC FILES
-COPY --from=core /static/admin  /var/migasfree/static/admin
-COPY --from=core /static/drf_spectacular_sidecar /var/migasfree/static/drf_spectacular_sidecar
-COPY --from=core /static/rest_framework /var/migasfree/static/rest_framework
-COPY defaults/var/migasfree/static /var/migasfree/static
-
-RUN chown -R 890:890 /var/migasfree/
+COPY --from=core --chown=890:890 /static/admin  /var/migasfree/static/admin
+COPY --from=core --chown=890:890 /static/drf_spectacular_sidecar /var/migasfree/static/drf_spectacular_sidecar
+COPY --from=core --chown=890:890 /static/rest_framework /var/migasfree/static/rest_framework
+COPY --chown=890:890 defaults/var/migasfree/static /var/migasfree/static
 
 COPY defaults/usr/bin /usr/bin
 COPY defaults/etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf

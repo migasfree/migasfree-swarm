@@ -11,10 +11,10 @@ ENV TERM=xterm \
     USER=root \
     LANG=en_US.UTF-8 \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production \
-    PYTHONPATH=/venv/lib/python3.11/site-packages \
+    PYTHONPATH=/venv/lib/python3.13/site-packages \
     _UID=890 \
     _GID=890 \
-    _BUILD_DEPENDS='git python3-dev python3-all python3-all-dev unzip g++ gcc-12 libcairo2-dev libjpeg62-turbo-dev libxml2-dev libxslt1-dev libpq-dev' \
+    _BUILD_DEPENDS='git swig python3-dev python3-all python3-all-dev unzip g++ gcc-12 libcairo2-dev libjpeg62-turbo-dev libxml2-dev libxslt1-dev libpq-dev' \
     _DEPENDS='procps libzmq5 gnupg rng-tools curl apt-utils bzip2 xz-utils python3 python3-venv python3-minimal python3-pip p7zip-full vim wget postgresql-client netcat-traditional libmagic1' \
     _PIP_DEPENDS='uvicorn[standard]==0.18.3'
 
@@ -33,9 +33,8 @@ RUN apt update && \
     . /venv/bin/activate  && \
     pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir --upgrade pip && \
-    python3 -m pip install --no-cache-dir --upgrade setuptools wheel
-
-RUN apt-get install -y swig
+    python3 -m pip install --no-cache-dir --upgrade setuptools wheel && \
+    find /venv -name "__pycache__" -type d -exec rm -rf {} +
 
 RUN git clone --depth 1 --branch $(cat /VERSION) https://github.com/migasfree/migasfree-backend /migasfree-backend
 
@@ -75,13 +74,22 @@ ENV TERM=xterm \
     DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     DJANGO_SETTINGS_MODULE=migasfree.settings.production \
-    PYTHONPATH=/venv/lib/python3.11/site-packages \
+    PYTHONPATH=/venv/lib/python3.13/site-packages \
     _UID=890 \
     _GID=890
 
 # Runtime dependencies
 RUN apt update && \
-    apt install -y --no-install-recommends procps libzmq5 gnupg rng-tools curl bzip2 xz-utils python3 python3-venv python3-minimal p7zip-full vim wget postgresql-client netcat-traditional libmagic1 locales && \
+    apt install -y --no-install-recommends \
+    procps \
+    libzmq5 \
+    ca-certificates \
+    curl \
+    python3 \
+    postgresql-client \
+    netcat-traditional \
+    libmagic1 \
+    locales && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
     echo "es_ES.UTF-8 UTF-8" >> /etc/locale.gen && \
     dpkg-reconfigure locales && \
@@ -93,22 +101,19 @@ RUN usermod -u $_UID www-data && \
     groupmod -g $_GID www-data && \
     chsh -s /bin/bash www-data
 
-# Atomic copies from builder
-COPY --from=builder /venv /venv
-COPY --from=builder /migasfree /migasfree
-COPY --from=builder /static /static
+# Atomic copies from builder with ownership set (prevents layer duplication)
+COPY --from=builder --chown=$_UID:$_GID /venv /venv
+COPY --from=builder --chown=$_UID:$_GID /static /static
 
-COPY defaults/usr /usr
-COPY defaults/default_settings.py /default_settings.py
-COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+# Recreate symlinks (avoid copying content if they were followed in previous steps)
+RUN ln -s /venv/lib/python3.13/site-packages/migasfree /migasfree && \
+    chown -h www-data:www-data /migasfree
 
-COPY defaults/usr/bin /usr/bin
+COPY --chown=$_UID:$_GID defaults/usr /usr
+COPY --chown=$_UID:$_GID defaults/default_settings.py /default_settings.py
+COPY --chown=$_UID:$_GID defaults/docker-entrypoint.sh /docker-entrypoint.sh
+
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
-
-# Change ownership of application directories
-RUN chown -R www-data:www-data /venv /migasfree /static
-
-# USER www-data # Reverted: let entrypoint handle user switch after root-only tasks (certs, chown)
 
 ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]
 EXPOSE 80

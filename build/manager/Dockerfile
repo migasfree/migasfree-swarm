@@ -14,6 +14,7 @@ COPY ./requirements.txt /usr/share/manager/requirements.txt
 RUN apk add --no-cache openssl curl cronie socat openssh-client libpq tzdata musl-locales && \
     apk add --no-cache --virtual .build-deps postgresql-dev gcc musl-dev && \
     pip install --no-cache-dir --upgrade -r /usr/share/manager/requirements.txt && \
+    find /usr/local/lib/python*/site-packages -name "__pycache__" -type d -exec rm -rf {} + && \
     apk del .build-deps
 
 COPY ./defaults/ /

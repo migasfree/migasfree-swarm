@@ -17,7 +17,7 @@ function build
         echo
         echo "BUILD: ${_CONTEXT}:${_TAG}"
         echo "============================================================================"
-        docker --debug build ${_NO_CACHE} . --build-arg "TAG=${_TAG}" -t "migasfree/${_CONTEXT}:${_TAG}"
+        docker --debug build ${_NO_CACHE} --progress=plain . --build-arg "TAG=${_TAG}" -t "migasfree/${_CONTEXT}:${_TAG}"
         _RET=$?
         popd > /dev/null || return 1
         return $_RET

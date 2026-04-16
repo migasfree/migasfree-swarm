@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /venv && \
     /venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /venv/bin/pip install --no-cache-dir requests celery[redis]
+    /venv/bin/pip install --no-cache-dir requests celery[redis] && \
+    find /venv -name "__pycache__" -type d -exec rm -rf {} +
 
 # Stage 2: Final
 FROM debian:13-slim
@@ -35,15 +36,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     groupmod -g $_GID www-data
 
 # Atomic copies
-COPY --from=builder /venv /venv
-COPY --from=core --chown=www-data:www-data /migasfree /pms/migasfree
-COPY defaults/usr/bin /usr/bin
-COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
+COPY --from=builder --chown=$_UID:$_GID /venv /venv
+COPY --from=core --chown=$_UID:$_GID /migasfree /pms/migasfree
+COPY --chown=$_UID:$_GID defaults/usr/bin /usr/bin
+COPY --chown=$_UID:$_GID defaults/docker-entrypoint.sh /docker-entrypoint.sh
 
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
-
-RUN chown -R www-data:www-data /venv /pms
-# Reverted: let entrypoint handle initialization as root
-# USER www-data
 
 ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]

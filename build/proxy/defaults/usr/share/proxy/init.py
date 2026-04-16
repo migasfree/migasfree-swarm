@@ -12,6 +12,7 @@ with open(FILECONFIG_TEMPLATE, encoding="utf-8") as f:
 
 FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
+PORT_HTTP = os.environ.get("PORT_HTTP", "80")
 PORT_HTTPS = os.environ["PORT_HTTPS"]
 HTTPSMODE = os.environ["HTTPSMODE"]
 MTLS = os.environ["MTLS"]
@@ -40,6 +41,7 @@ def config_haproxy():
         "FQDN": FQDN,
         "STACK": STACK,
         "certbot": HTTPSMODE == "auto",
+        "PORT_HTTP": PORT_HTTP,
         "PORT_HTTPS": PORT_HTTPS,
         "USERLIST_STACK": userlist_stack(),
         "NETWORK_MNG": NETWORK_MNG,
