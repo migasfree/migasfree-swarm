@@ -47,8 +47,8 @@ Example:
 
 ```bash
 # The public certificate from the certification authority is required.
-wget --no-check-certificate -O /usr/local/share/ca-certificates/ca-inv.org.crt https://inv.org/pool/install/ca-inv.org.crt
-update-ca-certificates --fresh
+sudo wget --no-check-certificate -O /usr/local/share/ca-certificates/ca-<YOUR_FQDN>.crt https://<YOUR_FQDN>/pool/install/ca-<YOUR_FQDN>.crt
+sudo update-ca-certificates --fresh
 ```
 
 ### Configuration in Antigravity
