@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple
@@ -20,7 +21,8 @@ from urllib3.util.retry import Retry
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-SERVER_URL = f"http://{get_setting('MIGASFREE_FQDN')}"
+_fqdn = os.environ.get("MIGASFREE_FQDN") or get_setting("MIGASFREE_FQDN")
+SERVER_URL = f"http://{_fqdn}"
 API_URL = f"{SERVER_URL}/api/v1/token"
 UPLOAD_PKG_URL = f"{SERVER_URL}/api/v1/safe/packages/"
 
