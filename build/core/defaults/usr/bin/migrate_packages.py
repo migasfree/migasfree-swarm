@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple
 
@@ -292,8 +293,8 @@ class Migrator:
             sys.exit(1)
 
     def update_projects(self, projects: List[Dict[str, Any]]) -> None:
-        """Normalizes PMS naming conventions."""
-        for prj in projects:
+        """Normalizes PMS naming conventions concurrently."""
+        def _update(prj):
             if prj["pms"].startswith("apt"):
                 prj["pms"] = "apt"
 
@@ -305,8 +306,11 @@ class Migrator:
             except requests.RequestException as e:
                 logger.error(f"Failed to update project {prj['name']}: {e}")
 
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            executor.map(_update, projects)
+
     def regenerate_metadata(self) -> None:
-        """Trigger metadata regeneration for all internal-source deployments."""
+        """Trigger metadata regeneration for all internal-source deployments concurrently."""
         try:
             resp = self.session.get(f"{API_URL}/deployments/internal-sources/")
             data = resp.json()
@@ -316,16 +320,27 @@ class Migrator:
                 params={"page_size": data["count"]},
             )
 
-            for deploy in resp.json()["results"]:
-                m_resp = self.session.get(
-                    f"{API_URL}/deployments/internal-sources/{deploy['id']}/metadata/"
-                )
-                if m_resp.status_code == requests.codes.ok:
-                    logger.info(f"Metadata for {deploy['name']} regenerated.")
-                else:
-                    logger.error(f"Metadata regeneration failed for {deploy['name']}.")
+            results = resp.json()["results"]
+            logger.info(f"Regenerating metadata for {len(results)} deployments...")
+
+            def _regenerate(deploy):
+                try:
+                    m_resp = self.session.get(
+                        f"{API_URL}/deployments/internal-sources/{deploy['id']}/metadata/",
+                        timeout=300 # High timeout for metadata
+                    )
+                    if m_resp.status_code == requests.codes.ok:
+                        logger.info(f"Metadata for {deploy['name']} regenerated.")
+                    else:
+                        logger.error(f"Metadata regeneration failed for {deploy['name']}.")
+                except requests.RequestException as e:
+                    logger.error(f"Metadata task failed for {deploy['name']}: {e}")
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(_regenerate, results)
+
         except requests.RequestException as e:
-            logger.error(f"Metadata task failed: {e}")
+            logger.error(f"Metadata fetch failed: {e}")
 
 
 if __name__ == "__main__":
