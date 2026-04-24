@@ -102,5 +102,5 @@ Once both commands satisfactorily complete their processes, it is advisable to e
 1. Exit your shell session inside the Backend container.
 2. Graphically verify the administration consoles (`https://<FQDN>/services/status` and login to the base portal).
 3. Log in as an Administrator and ensure your computers and repositories are listed without anomalies, including all their packages.
-4. **User and Group Permissions Regeneration (Now Automated):** Although this step is now performed automatically by `migrate-db.sh`, we still recommend visiting the *Authentication and Authorization* menu in the Django Admin panel to verify that groups have their expected permissions.
+4. **User and Group Permissions Regeneration (Now Automated):** Although this step is now performed automatically by `migrate-db.sh`, we still recommend visiting the **Groups and User Profiles** section in the **console (migasfree-frontend)** to verify that the permissions and visibility are correctly applied to the migrated administrators.
 5. Finally, it is a great time to ensure a client in the migasfree ecosystem can pair correctly (running a `migasfree --update`). If the client fails consulting the repository index, validate it by manually entering the *Worker* container to the *datashare* directory, where Linux indexes are built.
