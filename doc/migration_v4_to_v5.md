@@ -58,7 +58,7 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
 * Inside the `database` container, it executes the migration script using PostgreSQL `dblink` to import everything from v4.
 * The services (`core`, `console`) are scaled back up, and the script waits for the `core` container to be fully operational.
 * **Automatic System Initialization:** The script executes `django-admin initialize_db` inside the `core` container to restore essential system users (like `pms`) and permissions that may have been lost during the database override.
-* **Redis Metrics Repopulation:** It triggers `refresh_redis_syncs` year by year from 2010 to present, rebuilding all historical caches for the v5 stats engine.
+* **Redis Metrics Repopulation:** It triggers the optimized `refresh_redis_syncs` command. Thanks to SQL-level grouping and Redis pipelining, the entire historical cache (even for millions of records) is typically rebuilt in **less than 20 minutes**, ensuring the dashboard is ready almost immediately.
 * **Intelligent Token Generation:** The script dynamically generates a temporary migration token by identifying an existing superuser, ensuring the next steps have API access.
 * Finally, it will prompt: `Do you want to migrate packages and projects now? [yes/N]`. If you answer `yes`, the system will execute **Step 2** fully automatically using a secure internal connection.
 
@@ -76,11 +76,13 @@ Once the native metadata has been successfully stored in the database, we need t
 
 2. Once you have *root* access inside `core`, run the pre-installed global migration command:
 
-   ```bash
-   migrate-packages
-   ```
+    ```bash
+    # Ensure connectivity to the internal server (port 8080)
+    export MIGASFREE_FQDN="localhost:8080"
+    migrate-packages
+    ```
 
-   *(Technically, this binary activates Django's production environment variables and executes the file `/usr/bin/migrate_packages.py`).*
+    *(Technically, this binary activates Django's production environment variables and executes the file `/usr/bin/migrate_packages.py`).*
 
 **What happens during the execution of this script?**
 
