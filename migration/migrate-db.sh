@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Try to load stack config from common locations
+_STACK_BACKUP=$STACK
 if [ -f "../config/env/stack" ]; then
     . ../config/env/stack
 elif [ -f "../../migasfree-stack/config/env/stack" ]; then
     . ../../migasfree-stack/config/env/stack
 fi
 
-# Fallback if STACK is still empty
-export STACK=${STACK:-devel}
+# Restore STACK if it was provided via environment
+export STACK=${_STACK_BACKUP:-${STACK:-devel}}
 
 # Helpers
 function get_be_container {
