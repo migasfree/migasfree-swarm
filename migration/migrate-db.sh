@@ -1,7 +1,14 @@
 #!/bin/bash
 
-# shellcheck source=/dev/null
-. ../config/env/stack
+# Try to load stack config from common locations
+if [ -f "../config/env/stack" ]; then
+    . ../config/env/stack
+elif [ -f "../../migasfree-stack/config/env/stack" ]; then
+    . ../../migasfree-stack/config/env/stack
+fi
+
+# Fallback if STACK is still empty
+export STACK=${STACK:-devel}
 
 # Helpers
 function get_be_container {
@@ -10,7 +17,7 @@ function get_be_container {
 
 function wait_for_be {
     echo "Waiting for core container to be ready..."
-    _TIMEOUT=30
+    _TIMEOUT=60
     _COUNT=0
     while [ -z "$(get_be_container)" ] && [ $_COUNT -lt $_TIMEOUT ]; do
         sleep 2
@@ -35,7 +42,7 @@ if [ -z "$OLD_HOST" ] || [ -z "$OLD_PORT" ]; then
 fi
 
 echo
-echo "WARNING: This process will replace the current v5 database with data from v4."
+echo "WARNING: This process will replace the current v5 database ($STACK) with data from v4."
 read -r -p "Target: $OLD_HOST:$OLD_PORT. Are you sure [yes/N]? "
 echo
 
@@ -45,22 +52,26 @@ fi
 
 # 1. SCALE DOWN
 echo "Scaling down services..."
-_REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_core")
-_REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_console")
+_REPLICAS_BE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_core" 2>/dev/null || echo 1)
+_REPLICAS_FE=$(docker service inspect --format='{{.Spec.Mode.Replicated.Replicas}}' "${STACK}_console" 2>/dev/null || echo 1)
 docker service scale "${STACK}_core=0" "${STACK}_console=0"
 echo "***** CORE & CONSOLE: DISABLED *****"
 
 # 2. DATA MIGRATION
 echo "Migrating relational data from v4..."
 DB_V5=$(docker ps | grep "${STACK}_database" | awk '{print $1}')
-/usr/bin/time -f "Time DATA MIGRATION: %E" docker exec "${DB_V5}" bash -c "echo yes | bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
+if [ -z "$DB_V5" ]; then
+    echo "Error: Database container for stack $STACK not found."
+    exit 1
+fi
+time docker exec "${DB_V5}" bash -c "echo yes | bash /usr/share/migration/migrate_from_v4 $OLD_HOST $OLD_PORT $OLD_DB $OLD_USER $OLD_PWD"
 
 # 3. SCALE UP
 echo "Scaling up services..."
 docker service scale "${STACK}_core=$_REPLICAS_BE" "${STACK}_console=$_REPLICAS_FE"
 wait_for_be
 BE_V5=$(get_be_container)
-echo "***** CORE & CONSOLE: ENABLED *****"
+echo "***** CORE & CONSOLE: ENABLED (Container: $BE_V5) *****"
 
 # 4. INITIALIZE V5 SYSTEM USERS
 echo "Initializing v5 system users and permissions..."
@@ -68,25 +79,29 @@ docker exec "${BE_V5}" bash -c "rm -f /tmp/migasfree.log && export DJANGO_SETTIN
 
 # 5. GENERATE TEMPORARY MIGRATION TOKEN
 echo "Generating migration token..."
-# We use a shell command to find the first superuser and get/create a token
 MIG_TOKEN=$(docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin shell -c \"from django.contrib.auth.models import User; from rest_framework.authtoken.models import Token; user=User.objects.filter(is_superuser=True).first(); token, _ = Token.objects.get_or_create(user=user); print(token.key)\" | tail -n 1")
+
+if [ -z "$MIG_TOKEN" ]; then
+    echo "Error: Could not generate migration token."
+else
+    echo "Token generated: ${MIG_TOKEN:0:5}..."
+fi
 
 # 6. POPULATE REDIS CACHE (2010 to Present)
 echo "Populating Redis metrics..."
 _YEAR=$(date +"%Y")
 while [ "$_YEAR" -ge 2010 ]; do
     echo "Processing year ${_YEAR} ..."
-    /usr/bin/time -f "Time ${_YEAR}: %E" docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null"
+    time docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null"
     _YEAR=$((_YEAR - 1))
 done
 
 # 7. PACKAGE MIGRATION
 echo
-read -r -p "Do you want to migrate packages and projects now? (Make sure the v4 'STORES' directory is copied/mounted into the new volume) [yes/N]? "
+read -r -p "Do you want to migrate packages and projects now? [yes/N]? "
 if [[ $REPLY = "yes" ]]; then
     echo "Migrating packages and normalizing projects..."
-    # We use localhost:8080 to avoid proxy issues during migration
-    /usr/bin/time -f "Time PACKAGE MIGRATION: %E" docker exec -e MIGASFREE_TOKEN="$MIG_TOKEN" -e MIGASFREE_FQDN="localhost:8080" "${BE_V5}" bash -c "migrate-packages"
+    time docker exec -e MIGASFREE_TOKEN="$MIG_TOKEN" -e MIGASFREE_FQDN="localhost:8080" "${BE_V5}" bash -c "migrate-packages"
 fi
 
 echo "Migration finished successfully."
