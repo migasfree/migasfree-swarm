@@ -46,7 +46,33 @@ class Migrator:
         self.session.mount("https://", HTTPAdapter(max_retries=retries))
 
     def _get_auth_token(self) -> str:
-        return f"Token {get_secret('token_pms')}"
+        import os
+
+        # 1. Try environment variable
+        token = os.environ.get("MIGASFREE_TOKEN")
+        if token:
+            return f"Token {token}"
+
+        # 2. Fallback: Login with superadmin credentials
+        try:
+            username = get_secret("superadmin_name")
+            password = get_secret("superadmin_pass")
+            if username and password:
+                logger.info(f"Attempting login as {username}...")
+                # Use localhost:8080 to reach Gunicorn directly inside the container
+                login_url = "http://localhost:8080/api/v1/token/login/"
+                resp = requests.post(
+                    login_url,
+                    json={"username": username, "password": password},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    return f"Token {resp.json()['token']}"
+        except Exception as e:
+            logger.warning(f"Fallback login failed: {e}")
+
+        logger.error("No valid authentication mechanism found.")
+        return ""
 
     def get_locations(self) -> Generator[Path, None, None]:
         """Memory-efficient exploration of media directory using generators."""
