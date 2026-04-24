@@ -74,9 +74,9 @@ wait_for_be
 BE_V5=$(get_be_container)
 echo "***** CORE & CONSOLE: ENABLED (Container: $BE_V5) *****"
 
-# 4. INITIALIZE V5 SYSTEM USERS
+# 4. INITIALIZE V5 SYSTEM USERS & PERMISSIONS
 echo "Initializing v5 system users and permissions..."
-docker exec "${BE_V5}" bash -c "rm -f /tmp/migasfree.log && export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin initialize_db"
+docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin initialize_db && django-admin shell -c 'from django.contrib.auth.models import Group; [g.save() for g in Group.objects.all()]; print(\"Permissions regenerated for all groups.\")'"
 
 # 5. GENERATE TEMPORARY MIGRATION TOKEN
 echo "Generating migration token..."
