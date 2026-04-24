@@ -59,7 +59,7 @@ echo "***** CORE & CONSOLE: DISABLED *****"
 
 # 2. DATA MIGRATION
 echo "Migrating relational data from v4..."
-DB_V5=$(docker ps | grep "${STACK}_database" | awk '{print $1}')
+DB_V5=$(docker ps --format "{{.ID}} {{.Names}}" | grep "${STACK}_database" | grep -v "console" | awk '{print $1}' | head -n 1)
 if [ -z "$DB_V5" ]; then
     echo "Error: Database container for stack $STACK not found."
     exit 1
