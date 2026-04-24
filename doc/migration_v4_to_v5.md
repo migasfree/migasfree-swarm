@@ -38,9 +38,11 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
    cd migasfree-swarm/migration
    ```
 
-3. Execute the `migrate-db.sh` script, passing the connection parameters for the v4 server's PostgreSQL database:
+3. Execute the `migrate-db.sh` script, passing the connection parameters for the v4 server's PostgreSQL database. If you are using a custom stack name other than `devel`, you can set the `STACK` environment variable before running the script:
 
    ```bash
+   # Optional: set custom stack name
+   export STACK=mf
    bash migrate-db.sh <OLD_HOST> <OLD_PORT> [OLD_DB] [OLD_USER] [OLD_PWD]
    ```
 
@@ -57,8 +59,8 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
 * It will automatically scale the `core` and `console` services of your current cluster down to zero (0) replicas using native Swarm commands.
 * Inside the `database` container, it executes the migration script using PostgreSQL `dblink` to import everything from v4.
 * The services (`core`, `console`) are scaled back up, and the script waits for the `core` container to be fully operational.
-* **Automatic System Initialization:** The script executes `django-admin initialize_db` inside the `core` container to restore essential system users (like `pms`) and permissions that may have been lost during the database override.
-* **Redis Metrics Repopulation:** It triggers the optimized `refresh_redis_syncs` command. Thanks to SQL-level grouping and Redis pipelining, the entire historical cache (even for millions of records) is typically rebuilt in **less than 20 minutes**, ensuring the dashboard is ready almost immediately.
+* **Automatic System Initialization & Permissions:** The script executes `django-admin initialize_db` to restore essential system users and, critically, it now **automatically re-saves all user groups**. This forces Django to regenerate the internal v5 permission mapping, which differs from v4.
+* **Parallel Redis Metrics Repopulation:** It triggers the optimized `refresh_redis_syncs` command in parallel for all years (since 2010). Thanks to SQL-level grouping and Redis pipelining, the entire historical cache is rebuilt very quickly, even for millions of records.
 * **Intelligent Token Generation:** The script dynamically generates a temporary migration token by identifying an existing superuser, ensuring the next steps have API access.
 * Finally, it will prompt: `Do you want to migrate packages and projects now? [yes/N]`. If you answer `yes`, the system will execute **Step 2** fully automatically using a secure internal connection.
 
@@ -100,5 +102,5 @@ Once both commands satisfactorily complete their processes, it is advisable to e
 1. Exit your shell session inside the Backend container.
 2. Graphically verify the administration consoles (`https://<FQDN>/services/status` and login to the base portal).
 3. Log in as an Administrator and ensure your computers and repositories are listed without anomalies, including all their packages.
-4. **User and Group Permissions Regeneration:** Even though user names and physical administrator groups have migrated perfectly in the database, **you must** visit the *Authentication and Authorization* menu (in the v5 Django central admin panel) and "re-save" (reassign/regenerate) the permissions granted to each group. This is imperative because the internal semantic structure of permissions used by Django has completely changed since the old v4 scheme, invalidating previous assignments.
+4. **User and Group Permissions Regeneration (Now Automated):** Although this step is now performed automatically by `migrate-db.sh`, we still recommend visiting the *Authentication and Authorization* menu in the Django Admin panel to verify that groups have their expected permissions.
 5. Finally, it is a great time to ensure a client in the migasfree ecosystem can pair correctly (running a `migasfree --update`). If the client fails consulting the repository index, validate it by manually entering the *Worker* container to the *datashare* directory, where Linux indexes are built.
