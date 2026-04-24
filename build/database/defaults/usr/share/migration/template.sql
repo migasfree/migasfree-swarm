@@ -719,7 +719,7 @@ SELECT setval(
 \echo 'core_deployment'
 DELETE FROM core_deployment;
 INSERT INTO core_deployment
-    SELECT T.*
+    SELECT T.*, FALSE
     FROM dblink(
         'REMOTE',
         'SELECT id, enabled, name, name, comment,
