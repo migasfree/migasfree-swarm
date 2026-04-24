@@ -87,14 +87,27 @@ else
     echo "Token generated: ${MIG_TOKEN:0:5}..."
 fi
 
-# 6. POPULATE REDIS CACHE (2010 to Present)
-echo "Populating Redis metrics..."
+# 6. POPULATE REDIS CACHE (2010 to Present - Parallelized)
+echo "Populating Redis metrics (Parallel Mode)..."
 _YEAR=$(date +"%Y")
+_MAX_PARALLEL=4
+_CURRENT_JOBS=0
+
 while [ "$_YEAR" -ge 2010 ]; do
-    echo "Processing year ${_YEAR} ..."
-    time docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null"
+    echo "Processing year ${_YEAR} in background..."
+    docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin refresh_redis_syncs --since $_YEAR --until $_YEAR > /dev/null" &
+    
+    _CURRENT_JOBS=$((_CURRENT_JOBS + 1))
     _YEAR=$((_YEAR - 1))
+
+    if [ $_CURRENT_JOBS -ge $_MAX_PARALLEL ]; then
+        wait
+        _CURRENT_JOBS=0
+        echo "Batch finished. Next batch..."
+    fi
 done
+wait
+echo "Redis population finished."
 
 # 7. PACKAGE MIGRATION
 echo
