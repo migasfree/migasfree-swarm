@@ -90,7 +90,8 @@ fi
 # 6. POPULATE REDIS CACHE (2010 to Present - Parallelized)
 echo "Populating Redis metrics (Parallel Mode)..."
 _YEAR=$(date +"%Y")
-_MAX_PARALLEL=4
+_MAX_PARALLEL=$(nproc)
+if [ "$_MAX_PARALLEL" -lt 1 ]; then _MAX_PARALLEL=1; fi
 _CURRENT_JOBS=0
 
 while [ "$_YEAR" -ge 2010 ]; do

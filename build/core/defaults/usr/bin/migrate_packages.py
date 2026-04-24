@@ -306,7 +306,8 @@ class Migrator:
             except requests.RequestException as e:
                 logger.error(f"Failed to update project {prj['name']}: {e}")
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        num_workers = (os.cpu_count() or 1) * 5
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor.map(_update, projects)
 
     def regenerate_metadata(self) -> None:
@@ -336,7 +337,8 @@ class Migrator:
                 except requests.RequestException as e:
                     logger.error(f"Metadata task failed for {deploy['name']}: {e}")
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            num_workers = (os.cpu_count() or 1) * 2
+            with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 executor.map(_regenerate, results)
 
         except requests.RequestException as e:
