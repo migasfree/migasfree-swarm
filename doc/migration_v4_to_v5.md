@@ -54,11 +54,13 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
 
 **What happens internally during this flow?**
 
-* It will scale the `core` and `console` containers of your current cluster down to zero (0) replicas, temporarily disabling them to protect data import.
-* Inside the `database` container (PostgreSQL) it will call the automated restore script from v4, creating and dumping everything natively.
-* The stopped services (`core`, `console`) will scale back up to their original amount.
-* As the final step in this block, the script accesses the new `core` container and uses the Django management-command `refresh_redis_syncs`. It will extract all historical dates from 2010 to present to internally repopulate crucial metrics and caches into the Redis ecosystem (prominently used for client stats in v5).
-* Finally, as an automated extra step, the script will prompt: `Do you want to migrate packages and projects now? [yes/N]`. If the STORES directory was configured beforehand and you answer `yes`, the system will perform the entirety of **Step 2** fully automatically.
+* It will automatically scale the `core` and `console` services of your current cluster down to zero (0) replicas using native Swarm commands.
+* Inside the `database` container, it executes the migration script using PostgreSQL `dblink` to import everything from v4.
+* The services (`core`, `console`) are scaled back up, and the script waits for the `core` container to be fully operational.
+* **Automatic System Initialization:** The script executes `django-admin initialize_db` inside the `core` container to restore essential system users (like `pms`) and permissions that may have been lost during the database override.
+* **Redis Metrics Repopulation:** It triggers `refresh_redis_syncs` year by year from 2010 to present, rebuilding all historical caches for the v5 stats engine.
+* **Intelligent Token Generation:** The script dynamically generates a temporary migration token by identifying an existing superuser, ensuring the next steps have API access.
+* Finally, it will prompt: `Do you want to migrate packages and projects now? [yes/N]`. If you answer `yes`, the system will execute **Step 2** fully automatically using a secure internal connection.
 
 ## Step 2: Repositories, Packages, and Package Sets Migration
 
@@ -83,10 +85,11 @@ Once the native metadata has been successfully stored in the database, we need t
 **What happens during the execution of this script?**
 
 * **`update_projects()`:** Adjusts compatibilities for deprecated *PMS (Package Management System)* conventions favoring the current v5 core (e.g., standardizing `apt` subversions).
+* **Automatic Authentication:** The script is now robust; if the standard `token_pms` secret is missing, it will automatically attempt to log in using the `superadmin` credentials found in `/run/secrets/` to obtain a valid session.
 * **`migrate_structure()`:** Recursively finds the original directories formerly categorized under the hardcoded `STORES` directory and physically adapts them by modifying and moving their paths to match the strict v5 layout (`MIGASFREE_STORE_TRAILING_PATH`).
-* **`migrate_packages()`:** This is the heaviest task in the loop. The explorer will identify each orphaned legacy deb/rpm, internally generate secure packaged signatures (JWE and JWS cipher using the current system packager key), and transparently simulate POST uploads towards the API itself (`/api/v1/safe/packages/`), thus restoring the package object.
-* **`migrate_package_sets()`:** Rebuilds any packages of a project that were hermetically organized and encapsulated as part of fixed repositories (*Package Sets*). It will dispatch the REST API validation call updating these constraints.
-* **`regenerate_metadata()`:** Asynchronously obligates the updated repositories (`Internal Sources`) to export their updated indexes and metadata in plain format, consistent with Linux standards. These indexes will subsequently allow client computers to discover these repositories over the network.
+* **`migrate_packages()`:** The explorer identifies each legacy deb/rpm, generates secure signatures (JWE and JWS using the current packager key), and uploads them to the API, restoring the package objects.
+* **`migrate_package_sets()`:** Rebuilds any project repositories (*Package Sets*) by validating their encapsulated file structure through the REST API.
+* **`regenerate_metadata()`:** Triggers the internal metadata tasks to rebuild Linux repository indexes (apt, dnf, etc.) so client computers can discover the migrated packages.
 
 ## Step 3: Cryptographic Refinement and Validation
 
