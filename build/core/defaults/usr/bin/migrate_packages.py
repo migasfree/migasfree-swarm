@@ -337,7 +337,7 @@ class Migrator:
                 except requests.RequestException as e:
                     logger.error(f"Metadata task failed for {deploy['name']}: {e}")
 
-            num_workers = (os.cpu_count() or 1) * 2
+            num_workers = (os.cpu_count() or 1) * 4
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 executor.map(_regenerate, results)
 
