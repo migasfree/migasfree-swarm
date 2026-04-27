@@ -70,12 +70,13 @@ case "$COMMAND" in
     ;;
 
     undeploy)
-        run_manager "python3 /tools/undeploy.py"
+        shift
+        run_manager "python3 /tools/undeploy.py $@"
     ;;
 
     redeploy)
         shift
-        run_manager "python3 /tools/undeploy.py"
+        run_manager "python3 /tools/undeploy.py $@"
         python3 /tools/deploy.py "$@"
     ;;
 

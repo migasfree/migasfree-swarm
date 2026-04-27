@@ -6,16 +6,17 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 
 * **Update Configuration**: Edit `env.py` and run `./migasfree-swarm deploy`.
 * **Update Code/Images**: Run `./migasfree-swarm pull` followed by `./migasfree-swarm deploy`.
-* **Targeted Deployment**: To force an update on specific services (useful after a local image build), specify the service names:
+* **Targeted Deployment/Redeployment**: To force an update on specific services (useful after a local image build), specify the service names. This works with `deploy`, `redeploy`, and `undeploy`:
 
     ```bash
-    ./migasfree-swarm deploy console
-    ./migasfree-swarm deploy console core public
+    ./migasfree-swarm deploy console         # Updates console without downtime
+    ./migasfree-swarm redeploy console core  # Recreates console and core
+    ./migasfree-swarm undeploy pms-apk       # Only stops the pms-apk service
     ```
 
 * **Clean Up Images**: Run `./migasfree-swarm prune` to remove dangling `<none>` images.
 * **Check Status**: Run `./migasfree-swarm info` to see the cluster and stacks overview.
-* **Stop Infrastructure**: Run `./migasfree-swarm undeploy`.
+* **Stop Infrastructure**: Run `./migasfree-swarm undeploy` (removes the entire stack).
 
 ## Console Management
 
