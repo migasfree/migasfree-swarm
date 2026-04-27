@@ -87,6 +87,7 @@ These variables customize the behavior of a specific Migasfree stack.
 | `PMS_ENABLED` | Comma-separated list of enabled Package Management Systems (apt, yum, pacman, apk, wpt). | `pms-apt,...` |
 | `TUNNEL_CONNECTIONS` | Max concurrent connections for the Tunnel Relay (adjust ulimits accordingly). | `50000` |
 | `BACKUP_CRON` | Crontab syntax for scheduling database backups. | `00 00 * * *` |
+| `DEBUG` | Enable verbose (DEBUG level) logging for the manager and status services. | `false` |
 
 ### 📉 Sync Optimization (Saturation Strategy)
 

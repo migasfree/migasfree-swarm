@@ -9,16 +9,23 @@ from core.utils import get_timestamp
 
 
 # Logging configuration
+DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
 logger = logging.getLogger("services")
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+if DEBUG_MODE:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 service_states_cache = {}
+node_names_cache = {}  # Cache for node names
 
 STACK = os.environ["STACK"]
 
@@ -34,6 +41,7 @@ class DockerSwarmMonitor:
         # Use asyncio.Queue for SSE clients to avoid blocking and support concurrency
         self.sse_clients: dict[int, asyncio.Queue] = {}
         self.messages_log = []
+        self.pending_updates = {}  # For event debouncing
 
         try:
             self.client = docker.from_env()
@@ -75,14 +83,18 @@ class DockerSwarmMonitor:
             logger.warning(f"Error counting nodes: {e}")
             return 0
 
-    async def get_service_status(self, service_name):
+    async def get_service_status(self, service_name, service_obj=None):
         if not self.client:
             return None
 
         logger.debug("service_name: %s", service_name)
         try:
-            service = self.client.services.get(service_name)
-            tasks = service.tasks()
+            if service_obj:
+                service = service_obj
+            else:
+                service = await asyncio.to_thread(self.client.services.get, service_name)
+
+            tasks = await asyncio.to_thread(service.tasks)
 
             running_tasks = [t for t in tasks if t["Status"]["State"] == "running"]
             running = len(running_tasks)
@@ -109,12 +121,16 @@ class DockerSwarmMonitor:
             for task in running_tasks:
                 node_id = task.get("NodeID", "")
                 if node_id:
-                    try:
-                        node = self.client.nodes.get(node_id)
-                        node_name = node.attrs["Description"]["Hostname"]
-                        nodes_info.append(node_name)
-                    except Exception:
-                        nodes_info.append(node_id[:12])
+                    if node_id in node_names_cache:
+                        nodes_info.append(node_names_cache[node_id])
+                    else:
+                        try:
+                            node = await asyncio.to_thread(self.client.nodes.get, node_id)
+                            node_name = node.attrs["Description"]["Hostname"]
+                            node_names_cache[node_id] = node_name
+                            nodes_info.append(node_name)
+                        except Exception:
+                            nodes_info.append(node_id[:12])
 
                 container_id = (
                     task["Status"].get("ContainerStatus", {}).get("ContainerID", "")
@@ -151,6 +167,7 @@ class DockerSwarmMonitor:
                 "nodes": nodes_info,
                 "containers": containers_info,
             }
+            # Detailed log only in debug mode
             logger.debug(ret)
 
             return ret
@@ -244,14 +261,14 @@ class DockerSwarmMonitor:
     async def check_all_services(self):
         while self.running and self.client:
             try:
-                services = self.client.services.list()
+                services = await asyncio.to_thread(self.client.services.list)
                 for service in services:
                     service_name = service.name
                     if not service_name.startswith(
                         f"{STACK}_"
                     ) and not service_name.startswith("infra_"):
                         continue
-                    current_status = await self.get_service_status(service_name)
+                    current_status = await self.get_service_status(service_name, service_obj=service)
                     logger.debug(
                         "current_status service %s: %s", service_name, current_status
                     )
@@ -306,11 +323,36 @@ class DockerSwarmMonitor:
                                 {"event": "log", "data": msg}
                             )
 
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
             except Exception as e:
                 if self.running:
                     logger.error(f"Error in check_all_services: {e}")
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
+
+    async def _debounced_update(self, service_name):
+        """Wait for more events and perform a single status update"""
+        try:
+            await asyncio.sleep(2)  # Wait for event burst to settle
+            status_info = await self.get_service_status(service_name)
+            async with self.lock:
+                if status_info:
+                    self.service_states[service_name] = status_info
+                elif service_name in self.service_states:
+                    del self.service_states[service_name]
+
+            event_data = {
+                "service": service_name,
+                "status": status_info,
+                "timestamp": get_timestamp(),
+            }
+            await self.update_service_cache(service_name, status_info)
+            await self.broadcast_to_sse_clients(
+                {"event": "status", "data": event_data}
+            )
+        except Exception as e:
+            logger.error(f"Error in debounced_update for {service_name}: {e}")
+        finally:
+            self.pending_updates.pop(service_name, None)
 
     async def monitor_events(self):
         if not self.client:
@@ -319,7 +361,9 @@ class DockerSwarmMonitor:
         filters = {"type": "service"}
 
         try:
-            event_stream = self.client.events(decode=True, filters=filters)
+            event_stream = await asyncio.to_thread(
+                self.client.events, decode=True, filters=filters
+            )
             loop = asyncio.get_event_loop()
             while self.running:
                 event = await loop.run_in_executor(
@@ -331,26 +375,19 @@ class DockerSwarmMonitor:
                 action = event.get("Action", "unknown")
                 attrs = event.get("Actor", {}).get("Attributes", {})
                 service_name = attrs.get("name", "unknown")
+
                 if not service_name.startswith(
                     f"{STACK}_"
                 ) and not service_name.startswith("infra_"):
                     continue
-                status_info = await self.get_service_status(service_name)
-                async with self.lock:
-                    if status_info:
-                        self.service_states[service_name] = status_info
-                    elif service_name in self.service_states:
-                        del self.service_states[service_name]
-                event_data = {
-                    "service": service_name,
-                    "status": status_info,
-                    "timestamp": get_timestamp(),
-                }
-                await self.update_service_cache(service_name, status_info)
-                await self.broadcast_to_sse_clients(
-                    {"event": "status", "data": event_data}
-                )
+
                 logger.info(f"Service event: {action} - {service_name}")
+
+                # Debounce: avoid redundant updates if multiple events arrive for the same service
+                if service_name not in self.pending_updates:
+                    self.pending_updates[service_name] = asyncio.create_task(
+                        self._debounced_update(service_name)
+                    )
         except Exception as e:
             if self.running:
                 logger.error(f"Error in monitor_events: {e}")

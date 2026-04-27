@@ -70,8 +70,13 @@ async def register_agent(
     # Determine Relay URL
     relay_public = None
     try:
+        # Optimization: Use a SET for tunnels instead of SCAN
+        # For now, if we can't change the whole architecture, let's at least
+        # use a more efficient way or cache the relays.
+        # Given we have 1M keys, SCAN tunnel:* is still better than SCAN agent:*
+        # but a SET is the right way.
         keys = []
-        async for key in r.scan_iter("tunnel:*"):
+        async for key in r.scan_iter("tunnel:*", count=100):
             keys.append(key)
 
         if keys:
@@ -128,17 +133,19 @@ async def _list_agents(
 ) -> dict:
     """Lists connected agents from Redis with pagination"""
     try:
-        # Get all keys first (keys are small, efficient enough for 100k)
-        # For production with >1M agents, a secondary index (Redis Search) is recommended.
+        # CRITICAL: With 1M keys, we CANNOT scan all of them just to count.
+        # We will limit the scan or use a cached total if available.
         all_keys = []
-        async for key in r.scan_iter("agent:*"):
+        # We only scan up to a reasonable limit for the "list" view
+        # or use a pre-calculated total.
+        count = 0
+        async for key in r.scan_iter("agent:*", count=1000):
             all_keys.append(key)
+            count += 1
+            if count > 5000: # Safety cap for listing
+                break
 
-        # Filter keys based on search (Not ideal without index, but functional for now)
-        # Note: We can't filter by hostname easily without fetching values.
-        # Strategy: Fetch paginated keys, then load values.
-
-        total_count = len(all_keys)
+        total_count = count # This is now an estimate or capped count
 
         # Calculate slices
         start = (page - 1) * limit
@@ -214,13 +221,12 @@ async def get_agent(agent_id: int, r: redis.Redis = Depends(get_redis)):
 @router.get("/health")
 async def health_check(r: redis.Redis = Depends(get_redis)):
     try:
-        result = await _list_agents(r)
-        redis_ok = "error" not in result
+        # Optimization: Simple PING instead of listing 1M agents
+        await r.ping()
         return {
-            "status": "healthy" if redis_ok else "degraded",
+            "status": "healthy",
             "api": "ok",
-            "redis": "ok" if redis_ok else "error",
-            "connected_agents": len(result.get("agents", [])),
+            "redis": "ok",
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")

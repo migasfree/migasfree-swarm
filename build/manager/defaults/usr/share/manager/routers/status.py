@@ -23,27 +23,30 @@ from core.availability import (
     get_swarm_topology,
 )
 
-
 FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
 TAG = os.environ["TAG"]
 
 MESSAGES_LOG = deque(maxlen=500)
 
-
 client_id_counter = 0
 docker_monitor = None
 
-
 # Logging configuration
+DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
 logger = logging.getLogger("services")
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+if DEBUG_MODE:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 
 router = APIRouter(prefix="", tags=["status"])

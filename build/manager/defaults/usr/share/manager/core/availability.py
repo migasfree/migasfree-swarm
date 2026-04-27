@@ -5,6 +5,7 @@ import time
 import requests
 import urllib3
 import os
+import sys
 
 import asyncio
 import msgpack
@@ -24,15 +25,34 @@ from core.config import (
 from core.database import get_db_connection
 from core.redis import get_redis_connection
 
+# Logging configuration
+DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+if DEBUG_MODE:
+    logger.setLevel(logging.DEBUG)
+    logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    logging.getLogger("requests").setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+
 # Disable warning for self-signed certs just in case, though we use http internal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-logger = logging.getLogger(__name__)
 
 PORTAINER_URL = "http://portainer:9000/api"
 PORTAINER_TOKEN_FILE = "/mnt/cluster/credentials/portainer-token"
 
 _portainer_endpoint_id = None
+_portainer_nodes_cache = {"ts": 0, "map": {}}
 _prev_stats_cache = {}  # {container_id: {'cpu': val, 'system': val}}
 
 
@@ -90,25 +110,31 @@ def get_service_cpu_load_via_portainer(service_suffix):
         return result
 
     try:
-        # 1. Fetch Swarm Nodes to map NodeId -> NodeInfo
-        nodes_map = {}
-        try:
-            nodes_resp = requests.get(
-                f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/nodes",
-                headers=headers,
-                timeout=5,
-            )
-            if nodes_resp.status_code == 200:
-                for n in nodes_resp.json():
-                    nid = n.get("ID")
-                    # 'Addr' is the typically reachable IP of the node in Swarm
-                    ip = n.get("Status", {}).get("Addr")
-                    # 'Hostname' is the node hostname
-                    hostname = n.get("Description", {}).get("Hostname")
-                    if nid and ip:
-                        nodes_map[nid] = {"ip": ip, "hostname": hostname}
-        except Exception as ne:
-            logger.warning(f"Could not fetch Swarm nodes from Portainer: {ne}")
+        # 1. Fetch Swarm Nodes to map NodeId -> NodeInfo (Cache for 5 minutes)
+        global _portainer_nodes_cache
+        now = time.time()
+        if now - _portainer_nodes_cache["ts"] < 300:
+            nodes_map = _portainer_nodes_cache["map"]
+        else:
+            nodes_map = {}
+            try:
+                nodes_resp = requests.get(
+                    f"{PORTAINER_URL}/endpoints/{endpoint_id}/docker/nodes",
+                    headers=headers,
+                    timeout=5,
+                )
+                if nodes_resp.status_code == 200:
+                    for n in nodes_resp.json():
+                        nid = n.get("ID")
+                        # 'Addr' is the typically reachable IP of the node in Swarm
+                        ip = n.get("Status", {}).get("Addr")
+                        # 'Hostname' is the node hostname
+                        hostname = n.get("Description", {}).get("Hostname")
+                        if nid and ip:
+                            nodes_map[nid] = {"ip": ip, "hostname": hostname}
+                    _portainer_nodes_cache = {"ts": now, "map": nodes_map}
+            except Exception as ne:
+                logger.warning(f"Could not fetch Swarm nodes from Portainer: {ne}")
 
         # 2. Fetch containers
         filters = {"label": ["com.docker.swarm.service.name"]}

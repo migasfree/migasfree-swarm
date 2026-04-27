@@ -415,7 +415,15 @@ class MultiProtocolServer:
         agents = []
         if self.redis:
             try:
-                keys = await self.redis.keys("agent:*")
+                # Optimization: Do NOT use keys() with 1M keys.
+                # Use scan_iter with a limit.
+                keys = []
+                count = 0
+                async for key in self.redis.scan_iter("agent:*", count=1000):
+                    keys.append(key)
+                    count += 1
+                    if count >= 1000: # Cap global list for speed
+                        break
                 if keys:
                     agents_json = await self.redis.mget(keys)
                     agents = [json.loads(a) for a in agents_json if a]

@@ -8,3 +8,4 @@ images/*.log
 .agent/
 premium_audit_report.md
 doc/governance
+test/migration_test
