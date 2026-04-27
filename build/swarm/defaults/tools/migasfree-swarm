@@ -238,7 +238,7 @@ then
       -v "${SCRIPT_DIR}":/stack \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -v $VOLUME:/mnt/cluster \
-      "$_IMAGE" "$_COMMAND"
+      "$_IMAGE" "$@"
 else
     echo "volume $VOLUME not found"
 fi
