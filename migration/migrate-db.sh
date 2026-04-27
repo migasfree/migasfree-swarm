@@ -74,6 +74,10 @@ wait_for_be
 BE_V5=$(get_be_container)
 echo "***** CORE & CONSOLE: ENABLED (Container: $BE_V5) *****"
 
+# 3.1 NORMALIZE BASIC ATTRIBUTES (All Systems Case Sensitivity)
+echo "Normalizing 'All Systems' attribute (v4 ALL SYSTEMS -> v5 All Systems)..."
+docker exec "${DB_V5}" psql -U migasfree -d migasfree -c "UPDATE core_attribute SET value = 'All Systems' WHERE id = 1 AND value = 'ALL SYSTEMS';"
+
 # 4. INITIALIZE V5 SYSTEM USERS & PERMISSIONS
 echo "Initializing v5 system users and permissions..."
 docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin initialize_db && django-admin shell -c 'from django.contrib.auth.models import Group; [g.save() for g in Group.objects.all()]; print(\"Permissions regenerated for all groups.\")'"
