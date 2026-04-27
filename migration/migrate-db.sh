@@ -78,6 +78,10 @@ echo "***** CORE & CONSOLE: ENABLED (Container: $BE_V5) *****"
 echo "Initializing v5 system users and permissions..."
 docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin initialize_db && django-admin shell -c 'from django.contrib.auth.models import Group; [g.save() for g in Group.objects.all()]; print(\"Permissions regenerated for all groups.\")'"
 
+# 4.0 ENSURE BASIC DATA INTEGRITY (All Systems, etc.)
+echo "Ensuring basic data integrity (All Systems, etc.)..."
+docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin loaddata core.property core.attribute"
+
 # 4.1 FUSE LEGACY GROUPS
 echo "Fusing legacy v4 groups into v5 standard groups..."
 docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin shell -c \"
