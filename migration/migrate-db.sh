@@ -78,6 +78,37 @@ echo "***** CORE & CONSOLE: ENABLED (Container: $BE_V5) *****"
 echo "Initializing v5 system users and permissions..."
 docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin initialize_db && django-admin shell -c 'from django.contrib.auth.models import Group; [g.save() for g in Group.objects.all()]; print(\"Permissions regenerated for all groups.\")'"
 
+# 4.1 FUSE LEGACY GROUPS
+echo "Fusing legacy v4 groups into v5 standard groups..."
+docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin shell -c \"
+from django.contrib.auth.models import Group
+MAPPING = {
+    'Read': 'Reader',
+    'Computers': 'Reader',
+    'Query': 'Reader',
+    'device add': 'Device installer',
+    'device management': 'Device installer',
+    'Devices': 'Device installer',
+    'Check': 'Computer Checker',
+    'Change Software Configuration': 'Liberator',
+    'System': 'Domain Admin',
+    'Conjuntos Change': 'Configurator',
+}
+for old_name, new_name in MAPPING.items():
+    try:
+        old_group = Group.objects.get(name=old_name)
+        if old_name == new_name:
+            continue
+        new_group, _ = Group.objects.get_or_create(name=new_name)
+        users = list(old_group.user_set.all())
+        if users:
+            new_group.user_set.add(*users)
+        old_group.delete()
+        print(f'Fused group \\'{old_name}\\' into \\'{new_name}\\'')
+    except Group.DoesNotExist:
+        pass
+\""
+
 # 5. GENERATE TEMPORARY MIGRATION TOKEN
 echo "Generating migration token..."
 MIG_TOKEN=$(docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin shell -c \"from django.contrib.auth.models import User; from rest_framework.authtoken.models import Token; user=User.objects.filter(is_superuser=True).first(); token, _ = Token.objects.get_or_create(user=user); print(token.key)\" | tail -n 1")
