@@ -61,7 +61,8 @@ ROLE="$(get_swarm_role)"
 
 case "$COMMAND" in
     deploy)
-        python3 /tools/deploy.py
+        shift
+        python3 /tools/deploy.py "$@"
     ;;
 
     info)
@@ -73,8 +74,9 @@ case "$COMMAND" in
     ;;
 
     redeploy)
+        shift
         run_manager "python3 /tools/undeploy.py"
-        python3 /tools/deploy.py
+        python3 /tools/deploy.py "$@"
     ;;
 
     deploy-all|deploy_all)

@@ -424,7 +424,7 @@ def config_portainer(client, context):
     api.set_public_ip(context["FQDN"])
 
 
-def deploy_migasfree(client, context):
+def deploy_migasfree(client, context, services=None):
     create_network_internal(f"{context['STACK']}_network")
 
     token_file = os.path.join(_PATH_CREDENTIALS, "portainer-token")
@@ -478,6 +478,26 @@ def deploy_migasfree(client, context):
     }
 
     deploy_stack(str(file_yml), f"{context['STACK']}")
+
+    # Forced update for specific services
+    if services:
+        print()
+        for service in services:
+            service_name = f"{context['STACK']}_{service}"
+            try:
+                # Check if service exists
+                client.services.get(service_name)
+                print(f"  Forcing update of service '{service_name}'...")
+                subprocess.run(
+                    ["docker", "service", "update", "--force", service_name],
+                    check=True,
+                    capture_output=True,
+                )
+            except docker.errors.NotFound:
+                print(f"  Warning: Service '{service_name}' not found in stack. Skipping force update.")
+            except subprocess.CalledProcessError as e:
+                print(f"  Error forcing update of '{service_name}': {e.stderr}")
+
     wait_for_stack_healthy(client, f"{context['STACK']}")
 
     file_yml.unlink(missing_ok=True)
@@ -534,7 +554,7 @@ def main():
 
     deploy_infra(client, context)
     config_portainer(client, context)
-    deploy_migasfree(client, context)
+    deploy_migasfree(client, context, services=sys.argv[1:])
 
     cert_path = _PATH_CERTIFICATE / f"{context['STACK']}.pem"
     if context.get("HTTPSMODE") == "auto" and is_self_signed(cert_path):
