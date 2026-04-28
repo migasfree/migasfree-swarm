@@ -4,6 +4,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 _IMAGE="migasfree/swarm:@@TAG@@"
 _COMMAND="$1"
+ 
+if [ -z "$STACK" ]; then
+    # Auto-discover stack name from core service
+    STACK=$(docker service ls --format '{{.Name}}' | grep '_core$' | sed 's/_core$//' | head -n 1)
+fi
+export STACK=${STACK:-devel}
 
 VOLUME=migasfree-swarm
 VOLUME_TMP=${VOLUME}-temporal

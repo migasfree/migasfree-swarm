@@ -8,7 +8,10 @@ elif [ -f "../../migasfree-stack/config/env/stack" ]; then
     . ../../migasfree-stack/config/env/stack
 fi
 
-# Restore STACK if it was provided via environment
+if [ -z "$STACK" ]; then
+    # Auto-discover stack name from core service
+    STACK=$(docker service ls --format '{{.Name}}' | grep '_core$' | sed 's/_core$//' | head -n 1)
+fi
 export STACK=${_STACK_BACKUP:-${STACK:-devel}}
 
 # Helpers

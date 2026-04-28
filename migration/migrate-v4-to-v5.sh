@@ -3,6 +3,10 @@
 # Migasfree v4 to v5 Deterministic Migration Script
 set -e
 
+if [ -z "$STACK" ]; then
+    # Auto-discover stack name from core service
+    STACK=$(docker service ls --format '{{.Name}}' | grep '_core$' | sed 's/_core$//' | head -n 1)
+fi
 export STACK=${STACK:-devel}
 MIGRATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/tmp/migration_v5_$(date +%Y%m%d_%H%M%S).log"
