@@ -70,6 +70,7 @@ CORE_CONTAINER=$(get_core_container)
 fix_log_perms "$CORE_CONTAINER" "root"
 START_REDIS=$(date +%s)
 docker exec "$CORE_CONTAINER" bash -c ". /venv/bin/activate && export DJANGO_SETTINGS_MODULE=migasfree.settings.production && django-admin refresh_redis_syncs" >> "$LOG_FILE" 2>&1
+docker exec "$CORE_CONTAINER" bash -c ". /venv/bin/activate && export DJANGO_SETTINGS_MODULE=migasfree.settings.production && django-admin refresh_redis_deployments" >> "$LOG_FILE" 2>&1
 END_REDIS=$(date +%s)
 DIFF_REDIS=$((END_REDIS - START_REDIS))
 fix_log_perms "$CORE_CONTAINER" "www-data"

@@ -92,8 +92,12 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
 * The services (`core`, `console`) are scaled back up, and the script waits for the `core` container to be fully operational.
 * **Automatic System Initialization & Permissions:** The script executes `django-admin initialize_db` to restore essential system users and, critically, it now **automatically re-saves all user groups and fuses legacy v4 groups into their v5 standard equivalents**. This forces Django to regenerate the internal v5 permission mapping and cleans up redundant legacy groups while preserving user memberships.
 * **Parallel Redis Metrics Repopulation:** It triggers the optimized `refresh_redis_syncs` command in parallel for all years (since 2010). Thanks to SQL-level grouping and Redis pipelining, the entire historical cache is rebuilt very quickly, even for millions of records.
+* **Deployment Stats Hydration:** It executes `refresh_redis_deployments` to recalculate the set of **assigned** computers for all active deployments. This ensures that the "Pending" counters in the v5 dashboard are accurate immediately after migration.
 * **Intelligent Token Generation:** The script dynamically generates a temporary migration token by identifying an existing superuser, ensuring the next steps have API access.
 * Finally, it will prompt: `Do you want to migrate packages and projects now? [yes/N]`. If you answer `yes`, the system will execute **Step 2** fully automatically using a secure internal connection.
+
+> [!IMPORTANT]
+> **Deployment Status Tracking:** Migasfree v4 did not store a detailed execution history for each deployment. Therefore, after migration to v5, the **"Done"** (OK/Error) counters for existing deployments will be incomplete or start at zero. However, the **"Pending"** counters will be fully accurate as they are recalculated based on current computer assignments.
 
 ## Step 2: Repositories, Packages, and Package Sets Migration
 

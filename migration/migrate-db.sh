@@ -148,6 +148,8 @@ while [ "$_YEAR" -ge 2010 ]; do
     fi
 done
 wait
+echo "Populating Redis deployment stats..."
+docker exec "${BE_V5}" bash -c "export DJANGO_SETTINGS_MODULE=migasfree.settings.production && . /venv/bin/activate && django-admin refresh_redis_deployments > /dev/null"
 echo "Redis population finished."
 
 # 7. PACKAGE MIGRATION
