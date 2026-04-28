@@ -86,9 +86,16 @@ async def get_core_user(token: str):
 async def get_project_info(name: str = None):
     token = get_cached_token()
     headers = {"accept": "application/json", "Authorization": f"Token {token}"}
+    params = {}
+    if name:
+        params["name"] = name
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"{CORE_TOKEN_URL}/projects/", headers=headers, follow_redirects=False
+            f"{CORE_TOKEN_URL}/projects/",
+            headers=headers,
+            params=params,
+            follow_redirects=False,
         )
     if response.status_code != 200:
         raise HTTPException(
@@ -96,14 +103,8 @@ async def get_project_info(name: str = None):
         )
     data = response.json()
     projects = data.get("results", [])
-    project = None
-    if name:
-        for p in projects:
-            if p.get("name") == name:
-                project = p
-                break
-    else:
-        project = projects[0] if projects else None
+    project = projects[0] if projects else None
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
