@@ -1,6 +1,7 @@
 import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from urllib.parse import urlparse
 
 from core.config import (
     ROOT_PATH,
@@ -110,22 +111,37 @@ async def get_project_info(name: str = None):
     return project
 
 
+async def _get_all_results(url: str, headers: dict, params: dict = None):
+    all_results = []
+    current_url = url
+    async with httpx.AsyncClient() as client:
+        while current_url:
+            response = await client.get(
+                current_url, headers=headers, params=params, follow_redirects=False
+            )
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code, detail=f"Error fetching from {current_url}"
+                )
+            data = response.json()
+            results = data.get("results", [])
+            all_results.extend(results)
+
+            current_url = data.get("next")
+            if current_url and current_url.startswith("http"):
+                # Ensure we stay on internal network if the API returns public URLs
+                parsed_next = urlparse(current_url)
+                parsed_base = urlparse(url)
+                current_url = parsed_next._replace(netloc=parsed_base.netloc, scheme=parsed_base.scheme).geturl()
+
+            params = None  # Params are included in the next URL
+    return all_results
+
+
 async def get_groups_info():
     token = get_cached_token()
     headers = {"accept": "application/json", "Authorization": f"Token {token}"}
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{CORE_TOKEN_URL}/accounts/groups/",
-            headers=headers,
-            follow_redirects=False,
-        )
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=response.status_code, detail="Error fetching groups"
-        )
-    data = response.json()
-    groups = data.get("results", [])
-    return groups
+    return await _get_all_results(f"{CORE_TOKEN_URL}/accounts/groups/", headers)
 
 
 def group_has_permission(
