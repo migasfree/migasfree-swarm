@@ -27,7 +27,38 @@ This guide provides precise, step-by-step instructions to safely migrate an exis
 * The v4 repositories (physical files under the v4 storage path, typically `/var/lib/migasfree/data/`) **must** be synchronized or mounted in the version 5 `migasfree-swarm` volume (so they are accessible in the `MEDIA_ROOT` of the `core` container) **before** launching the file migration.
 * The `keys` directory from the v4 installation (typically located at `/var/lib/migasfree/keys/`) **must also be copied exactly as it is** to the corresponding `keys` directory in the version 5 shared volume. This preserves the cryptographic identity necessary for package signatures and client communications.
 
-## Step 1: Database Migration (Relational)
+## Automated Migration (Deterministic Method)
+
+For a reliable, repeatable, and fully automated migration, we recommend using the consolidated script. This script handles schema initialization, environment fixes (log permissions), relational migration, Redis population, and package migration in a single flow.
+
+### 1. Reset Environment (Optional but Recommended)
+
+If you are performing tests or want to start from a clean slate on your v5 cluster, use the reset script. This will drop and recreate the `migasfree` database, flush Redis, and clean up temporary logs.
+
+```bash
+# From the migration directory
+bash reset-v5.sh
+```
+
+### 2. Execute Migration
+
+Run the master migration script providing the connection details to your v4 database. If you provide a path to a SQL dump, the script will automatically spin up a temporary v4 container, restore the dump, and migrate from it.
+
+#### Option A: Migrate from an existing v4 database server
+
+```bash
+bash migrate-v4-to-v5.sh <OLD_HOST> <OLD_PORT> [OLD_DB] [OLD_USER] [OLD_PWD]
+```
+
+#### Option B: Migrate from a SQL dump file
+
+```bash
+bash migrate-v4-to-v5.sh localhost 5433 migasfree migasfree migasfree /path/to/your/dump.sql
+```
+
+*Note: The script will automatically generate the required migration tokens and fix any log permission issues during execution.*
+
+## Step 1: Database Migration (Relational - Manual Method)
 
 The database migration imports PostgreSQL data (schemas, users, projects, devices, history, etc.) to the new version 5.
 
@@ -54,7 +85,7 @@ The database migration imports PostgreSQL data (schemas, users, projects, device
 
 4. The script will request security confirmation showing: `This process import the database from the v4 instance... Are you sure [yes/N]?`. Reply by typing `yes` and press Enter.
 
-**What happens internally during this flow?**
+### What happens internally during this flow?
 
 * It will automatically scale the `core` and `console` services of your current cluster down to zero (0) replicas using native Swarm commands.
 * Inside the `database` container, it executes the migration script using PostgreSQL `dblink` to import everything from v4.
@@ -86,7 +117,7 @@ Once the native metadata has been successfully stored in the database, we need t
 
     *(Technically, this binary activates Django's production environment variables and executes the file `/usr/bin/migrate_packages.py`).*
 
-**What happens during the execution of this script?**
+### What happens during the execution of this script?
 
 * **`update_projects()`:** Adjusts compatibilities for deprecated *PMS (Package Management System)* conventions favoring the current v5 core (e.g., standardizing `apt` subversions).
 * **Automatic Authentication:** The script is now robust; if the standard `token_pms` secret is missing, it will automatically attempt to log in using the `superadmin` credentials found in `/run/secrets/` to obtain a valid session.
