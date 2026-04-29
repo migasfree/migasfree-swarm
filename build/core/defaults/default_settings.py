@@ -28,12 +28,6 @@ LOGGING = {
         'simple': {'format': '%(levelname)s %(message)s'},
     },
     'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': '/tmp/migasfree.log',
-            'formatter': 'verbose',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -42,11 +36,11 @@ LOGGING = {
     },
     'loggers': {
         'migasfree': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'DEBUG',
         }
     },
-    'root': {'level': 'INFO', 'handlers': ['console', 'file']},
+    'root': {'level': 'INFO', 'handlers': ['console']},
 }
 
 # DATASTORE
