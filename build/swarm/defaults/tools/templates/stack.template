@@ -37,6 +37,9 @@ services:
                 delay: 5s
                 max_attempts: 0
                 window: 180s
+            placement:
+                constraints:
+                    - node.role == manager
         volumes:
             - migasfree-swarm:/mnt/cluster
             - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -359,6 +362,8 @@ services:
             - POSTGRES_USER={{POSTGRES_USER}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_superadmin_pass
+            - MCP_RO_USER={{MCP_RO_USER | default('mcp_ro')}}
+            - MCP_RO_PASSWORD_FILE=/run/secrets/{{STACK}}_mcp_ro_pass
         deploy:
             mode: replicated
             replicas: 1
@@ -375,6 +380,7 @@ services:
             start_period: 30s
         secrets:
             - source: {{STACK}}_superadmin_pass
+            - source: {{STACK}}_mcp_ro_pass
         depends_on:
             - database
         networks:
@@ -596,6 +602,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - POSTGRES_USER={{MCP_RO_USER | default('mcp_ro')}}
+            - POSTGRES_PASSWORD_FILE=/run/secrets/{{STACK}}_mcp_ro_pass
             - POSTGRES_HOST={{POSTGRES_HOST}}
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}

@@ -6,6 +6,9 @@ set_tz
 
 load_secret "$(basename "$POSTGRES_PASSWORD_FILE")" "DB_PASSWORD"
 
+if [ -n "$MCP_RO_PASSWORD_FILE" ]; then
+    load_secret "$(basename "$MCP_RO_PASSWORD_FILE")" "MCP_RO_PASSWORD"
+fi
 # ==========================================
 # Constants
 # ==========================================
@@ -254,6 +257,11 @@ if [ -n "$POSTGRES_USER" ] && [ -n "$DB_PASSWORD" ]
 then
     echo "Generating pool_passwd..."
     echo "${POSTGRES_USER}:${DB_PASSWORD}" > /etc/pgpool/pool_passwd
+
+    if [ -n "$MCP_RO_USER" ] && [ -n "$MCP_RO_PASSWORD" ]; then
+        echo "Appending ${MCP_RO_USER} to pool_passwd..."
+        echo "${MCP_RO_USER}:${MCP_RO_PASSWORD}" >> /etc/pgpool/pool_passwd
+    fi
 fi
 
 cat <<EOF > /etc/pgpool/pool_hba.conf
