@@ -37,9 +37,21 @@ function fix_log_perms() {
 # Arguments
 OLD_HOST=$1; OLD_PORT=$2; OLD_DB=${3:-migasfree}; OLD_USER=${4:-migasfree}; OLD_PWD=${5:-migasfree}; DUMP_FILE=$6
 
-if [ -z "$OLD_HOST" ] || [ -z "$OLD_PORT" ]; then
-    echo "Usage: $0 OLD_HOST OLD_PORT [OLD_DB] [OLD_USER] [OLD_PWD] [DUMP_FILE_PATH]"
-    exit 1
+# Auto-discovery
+if [ -z "$OLD_HOST" ] && [ -z "$DUMP_FILE" ]; then
+    log "OLD_HOST not provided. Attempting auto-discovery..."
+    if docker ps --format '{{.Names}}' | grep -q "^db-v4$"; then
+        OLD_HOST=$(hostname -I | awk '{print $1}')
+        OLD_PORT=${OLD_PORT:-5433}
+        log "Found 'db-v4' container. Using host IP: $OLD_HOST and port: $OLD_PORT"
+    else
+        echo "Usage: $0 OLD_HOST OLD_PORT [OLD_DB] [OLD_USER] [OLD_PWD] [DUMP_FILE_PATH]"
+        exit 1
+    fi
+fi
+
+if [ -z "$OLD_PORT" ] && [ -z "$DUMP_FILE" ]; then
+    OLD_PORT=5432
 fi
 
 START_TOTAL=$(date +%s)

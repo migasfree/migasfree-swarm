@@ -56,6 +56,29 @@ bash migrate-v4-to-v5.sh <OLD_HOST> <OLD_PORT> [OLD_DB] [OLD_USER] [OLD_PWD]
 bash migrate-v4-to-v5.sh localhost 5433 migasfree migasfree migasfree /path/to/your/dump.sql
 ```
 
+#### Option C: Automatic discovery (from local 'db-v4' container)
+
+If you have your v4 database running in a container named `db-v4` (exposed on port 5433), the script can auto-discover the connection details:
+
+```bash
+bash migrate-v4-to-v5.sh
+```
+
+### Script Usage & Parameters
+
+The full syntax for the migration script is:
+
+```bash
+bash migrate-v4-to-v5.sh <OLD_HOST> <OLD_PORT> [OLD_DB] [OLD_USER] [OLD_PWD] [DUMP_FILE]
+```
+
+* **OLD_HOST**: IP address or hostname of the v4 database server.
+* **OLD_PORT**: PostgreSQL port (usually 5432 or 5433).
+* **OLD_DB**: Database name (defaults to `migasfree`).
+* **OLD_USER**: Database user (defaults to `migasfree`).
+* **OLD_PWD**: Database password (defaults to `migasfree`).
+* **DUMP_FILE**: (Optional) Path to a SQL dump file. If provided, the script will restore it in a temporary container.
+
 *Note: The script will automatically generate the required migration tokens and fix any log permission issues during execution.*
 
 ## Step 1: Database Migration (Relational - Manual Method)
