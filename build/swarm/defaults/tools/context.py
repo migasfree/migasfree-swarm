@@ -128,7 +128,6 @@ class ContextLoader:
         self.default("POSTGRES_DB", "migasfree")
         self.default("POSTGRES_USER", "migasfree")
         self.default("REPLICATION_USER", "repuser")
-        self.default("MCP_RO_USER", "mcp_ro")
         self.default("POSTGRESQL_CONF", "work_mem=32MB")
 
         db_port_default = (
