@@ -25,7 +25,14 @@ function build
     fi
 }
 
-DEFAULT_IMAGES="swarm manager proxy certbot datashare_console datastore datastore_console  pgpool database database_console mcp-server core console public worker_console tunnel pms-apk pms-apt pms-pacman pms-wpt pms-yum"
+DEFAULT_IMAGES="
+    swarm manager proxy certbot
+    datashare_console datastore datastore_console
+    pgpool database database_console
+    mcp-server core console public
+    worker_console tunnel
+    pms-apk pms-apt pms-pacman pms-wpt pms-yum
+"
 
 function usage
 {
