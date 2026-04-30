@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Global version
+_TAG=$(cat "$(dirname "$0")/../VERSION")
+
 function build
 {
     local _CONTEXT="$1"
@@ -10,8 +13,6 @@ function build
         chmod +x "$_CONTEXT/defaults/usr/bin/"*
 
         pushd "$_CONTEXT" > /dev/null || return 1
-        local _TAG
-        _TAG=$(cat ../../VERSION)
         echo -n "${_TAG}" > ./VERSION
         echo
         echo
@@ -24,7 +25,7 @@ function build
     fi
 }
 
-DEFAULT_IMAGES="swarm manager proxy certbot datashare_console datastore datastore_console  pgpool database database_console mcp-server core console public worker_console tunnel pms-apt pms-yum pms-pacman pms-wpt pms-apk"
+DEFAULT_IMAGES="swarm manager proxy certbot datashare_console datastore datastore_console  pgpool database database_console mcp-server core console public worker_console tunnel pms-apk pms-apt pms-pacman pms-wpt pms-yum"
 
 function usage
 {
