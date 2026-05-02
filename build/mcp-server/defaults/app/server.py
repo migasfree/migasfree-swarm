@@ -60,6 +60,40 @@ async def list_tools() -> list[Tool]:
                 "required": ["sql"],
             },
         ),
+        # -----------------------------------------------------------------
+        # COMPATIBILITY TOOL: read_doc
+        # -----------------------------------------------------------------
+        # This tool duplicates the functionality already available via MCP
+        # resources (e.g. inv://docs/db_schema.md). It exists because some
+        # MCP clients (notably Kilocode/Cline/Roo Code) do not yet implement
+        # the MCP "resources" capability and can only interact via "tools".
+        #
+        # DEPRECATION NOTICE: This tool may be removed in a future version
+        # once MCP client support for resources becomes universal. When that
+        # happens, clients should use list_resources / read_resource instead.
+        # -----------------------------------------------------------------
+        Tool(
+            name="read_doc",
+            description=(
+                "Read a documentation file by name. "
+                "Use this tool to access documentation when MCP resources are not available in your client. "
+                "Call with no arguments (or name='') to list all available documents. "
+                "Example names: 'db_schema.md', 'api_core.md', 'faq.md', 'migasfree_architecture.md'."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": (
+                            "Filename of the document to read (e.g. 'db_schema.md'). "
+                            "Leave empty or omit to list all available documents."
+                        ),
+                    }
+                },
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -73,10 +107,59 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [
                 TextContent(type="text", text=json.dumps(result, indent=2, default=str))
             ]
+
+        if name == "read_doc":
+            return _handle_read_doc(arguments.get("name", ""))
+
         return [TextContent(type="text", text=f"Tool unknown: {name}")]
     except Exception as e:
         logger.error(f"Error in tool {name}: {str(e)}")
         return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+# ==============================================================================
+# read_doc helper  (COMPATIBILITY — see deprecation notice in list_tools)
+# ==============================================================================
+
+_DOC_EXTENSIONS = {".md", ".txt", ".rst", ".pdf"}
+
+
+def _handle_read_doc(name: str) -> list[TextContent]:
+    """Handle the read_doc tool call.
+
+    * name == "" → return a listing of all available documents.
+    * name == "<filename>" → return the document content.
+    """
+    if not os.path.isdir(CORPUS_PATH_DOCS):
+        return [TextContent(type="text", text="Documentation directory not found. The server may still be syncing.")]
+
+    # --- List mode ---
+    if not name:
+        files = sorted(
+            f for f in os.listdir(CORPUS_PATH_DOCS)
+            if not f.startswith(".") and os.path.splitext(f)[1].lower() in _DOC_EXTENSIONS
+        )
+        if not files:
+            return [TextContent(type="text", text="No documentation files available yet.")]
+
+        listing = "# Available documents\n\n"
+        listing += "Use `read_doc` with the filename to read any of these:\n\n"
+        for f in files:
+            listing += f"- {f}\n"
+        return [TextContent(type="text", text=listing)]
+
+    # --- Read mode ---
+    path = os.path.join(CORPUS_PATH_DOCS, os.path.basename(name))  # prevent path traversal
+    if not os.path.isfile(path):
+        return [TextContent(type="text", text=f"Document not found: '{name}'. Call read_doc with no arguments to list available documents.")]
+
+    if name.lower().endswith(".pdf"):
+        from docs import _read_pdf
+        content = _read_pdf(path)
+    else:
+        content = read_file(path)
+
+    return [TextContent(type="text", text=content)]
 
 
 # ==============================================================================
