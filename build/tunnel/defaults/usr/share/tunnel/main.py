@@ -43,8 +43,8 @@ for logger_name in [
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
     logger.addFilter(IgnoreHandshakeErrorFilter())
-    logger.propagate = False
 
+logger = logging.getLogger(__name__)
 
 REDIS_URL = os.environ["REDIS_URL"]
 FQDN = os.environ["FQDN"]
@@ -106,10 +106,9 @@ class MultiProtocolServer:
             try:
                 self.redis = redis.from_url(self.redis_url, decode_responses=True)
                 await self.redis.ping()
-                print("✅ Connected to Redis")
+                logger.info("Connected to Redis")
             except Exception as e:
-                # Only print error once or if verbose
-                print(f"⚠️  Redis not available: {e}")
+                logger.warning("Redis not available: %s", e)
                 self.redis = None
 
     def _configure_limits(self):
@@ -122,17 +121,17 @@ class MultiProtocolServer:
             new_hard = hard
 
             resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, new_hard))
-            print(f"✅ File descriptors: {soft}→{new_soft} (max {new_hard})")
+            logger.info("File descriptors: %s->%s (max %s)", soft, new_soft, new_hard)
 
             # Verify
             current_soft, current_hard = resource.getrlimit(resource.RLIMIT_NOFILE)
             if current_soft >= TUNNEL_CONNECTIONS:
-                print("🚀 High concurrency ready!")
+                logger.info("High concurrency ready!")
             else:
-                print(f"⚠️  Limited to {current_soft}")
+                logger.warning("Limited to %s", current_soft)
 
         except Exception as e:
-            print(f"⚠️  Limits unchanged: {e}")
+            logger.warning("Limits unchanged: %s", e)
 
     async def _report_heartbeat(self):
         """Reports server load and presence to Redis"""
@@ -152,7 +151,7 @@ class MultiProtocolServer:
                         f"tunnel:{self.server_id}", json.dumps(data), ex=10
                     )
                 except Exception as e:
-                    print(f"⚠️  Redis heartbeat error: {e}")
+                    logger.warning("Redis heartbeat error: %s", e)
             await asyncio.sleep(5)
 
     async def register_agent(self, websocket, message):
@@ -193,14 +192,19 @@ class MultiProtocolServer:
                     f"agent:{agent_id}", json.dumps(agent_data), ex=300
                 )  # 5 min TTL
             except Exception as e:
-                print(f"⚠️  Redis error: {e}")
+                logger.warning("Redis error: %s", e)
 
         # Show available services if they exist
         services = agent_data.get("services", [])
         services_str = f" [{', '.join(services)}]" if services else ""
 
-        print(
-            f"✅ Agent {self.active_connections}/{self.max_connections}: {hostname} ({agent_id}){services_str}"
+        logger.info(
+            "Agent %s/%s: %s (%s)%s",
+            self.active_connections,
+            self.max_connections,
+            hostname,
+            agent_id,
+            services_str,
         )
 
         await websocket.send(
@@ -228,12 +232,12 @@ class MultiProtocolServer:
                             break
 
                     if not client_cn:
-                        # Debug info if still not found
-                        print(
-                            f"❌ X-SSL-Client-CN not found (case-insensitive). Available: {list(headers.keys())}"
+                        logger.warning(
+                            "X-SSL-Client-CN not found (case-insensitive). Available: %s",
+                            list(headers.keys()),
                         )
             except Exception as e:
-                print(f"❌ Error extracting headers: {e}")
+                logger.error("Error extracting headers: %s", e)
 
         if agent_id in self.connected_agents:
             # Local agent
@@ -270,7 +274,7 @@ class MultiProtocolServer:
                 )
             )
 
-            print(f"🔗 Local Tunnel {service.upper()} started: {tunnel_id}")
+            logger.info("Local Tunnel %s started: %s", service.upper(), tunnel_id)
 
         else:
             # Agent not found locally
@@ -302,7 +306,7 @@ class MultiProtocolServer:
                 await tunnel["client_ws"].send(json.dumps(message))
 
         except Exception as e:
-            print(f"❌ Error forwarding tunnel data {tunnel_id}: {e}")
+            logger.error("Error forwarding tunnel data %s: %s", tunnel_id, e)
             await self.close_tcp_tunnel(tunnel_id)
 
     async def close_tcp_tunnel(self, tunnel_id):
@@ -328,7 +332,7 @@ class MultiProtocolServer:
                     pass
 
             del self.tcp_tunnels[tunnel_id]
-            print(f"🔌 TCP tunnel closed: {tunnel_id}")
+            logger.info("TCP tunnel closed: %s", tunnel_id)
 
     async def execute_remote_command(self, websocket, message):
         """Executes a command on a remote agent."""
@@ -369,7 +373,7 @@ class MultiProtocolServer:
                 "agent_id": agent_id,
             }
 
-            print(f"🔧 Executing command on agent {agent_id}: {command}")
+            logger.info("Executing command on agent %s: %s", agent_id, command)
 
         else:
             # Agent not found locally
@@ -402,10 +406,10 @@ class MultiProtocolServer:
             # Clean up session if execution is complete or errored
             if msg_type in ["exec_complete", "exec_error"]:
                 del self.exec_sessions[exec_id]
-                print(f"✅ Exec session closed: {exec_id}")
+                logger.info("Exec session closed: %s", exec_id)
 
         except Exception as e:
-            print(f"❌ Error forwarding exec message: {e}")
+            logger.error("Error forwarding exec message: %s", e)
             # Clean up on error
             if exec_id in self.exec_sessions:
                 del self.exec_sessions[exec_id]
@@ -428,7 +432,7 @@ class MultiProtocolServer:
                     agents_json = await self.redis.mget(keys)
                     agents = [json.loads(a) for a in agents_json if a]
             except Exception as e:
-                print(f"⚠️  Error fetching agents from Redis: {e}")
+                logger.warning("Error fetching agents from Redis: %s", e)
                 # Fallback to local agents
                 for agent_id, data in self.connected_agents.items():
                     agents.append(data["data"])
@@ -487,7 +491,7 @@ class MultiProtocolServer:
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
-                    print(f"❌ Error: {e}")
+                    logger.error("Error: %s", e)
 
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -496,7 +500,7 @@ class MultiProtocolServer:
                 if agent_id in self.connected_agents:
                     del self.connected_agents[agent_id]
                     self.active_connections -= 1
-                    print(f"❌ Agent disconnected: {self.active_connections} active")
+                    logger.info("Agent disconnected: %s active", self.active_connections)
 
                     # Remove from Redis
                     if self.redis:
@@ -527,8 +531,10 @@ class MultiProtocolServer:
         """Monitors server statistics and updates Redis TTL"""
         while True:
             await asyncio.sleep(30)
-            print(
-                f"\n📊 Stats: {self.active_connections} agents, {len(self.tcp_tunnels)} active TCP tunnels"
+            logger.info(
+                "Stats: %s agents, %s active TCP tunnels",
+                self.active_connections,
+                len(self.tcp_tunnels),
             )
 
             # Update Redis TTL for all connected agents
@@ -537,7 +543,7 @@ class MultiProtocolServer:
                     for agent_id, data in self.connected_agents.items():
                         await self.redis.expire(f"agent:{agent_id}", 300)
                 except Exception as e:
-                    print(f"⚠️  Error updating Redis TTL: {e}")
+                    logger.warning("Error updating Redis TTL: %s", e)
 
     async def process_request(self, connection, request):
         """
@@ -552,13 +558,13 @@ class MultiProtocolServer:
 
     async def start(self):
         """Starts the server"""
-        print("=" * 70)
-        print("🚀 Multi-Protocol Tunnel Relay Server")
-        print("=" * 70)
-        print(f"🔗 Public URL: {self.server_url}")
-        print(f"📦 websockets: {websockets.__version__}")
-        print(f"📢 Max connections: {self.max_connections}")
-        print("=" * 70 + "\n")
+        logger.info("=" * 70)
+        logger.info("Multi-Protocol Tunnel Relay Server")
+        logger.info("=" * 70)
+        logger.info("Public URL: %s", self.server_url)
+        logger.info("websockets: %s", websockets.__version__)
+        logger.info("Max connections: %s", self.max_connections)
+        logger.info("=" * 70)
 
         await self._init_redis()
         asyncio.create_task(self.monitor_stats())
@@ -582,6 +588,12 @@ class MultiProtocolServer:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     server = MultiProtocolServer(
         max_connections=TUNNEL_CONNECTIONS, redis_url=REDIS_URL
     )
@@ -589,4 +601,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(server.start())
     except KeyboardInterrupt:
-        print("\n✅ Server stopped")
+        logger.info("Server stopped")
