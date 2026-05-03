@@ -7,8 +7,41 @@
         <link rel="stylesheet" href="/static/fancyindex/styles.css" />
         <script type="text/javascript" src="/static/fancyindex/jquery.min.js"></script>
         <title>Migasfree Public Pool</title>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $.ajax({
+                    url: '/manager/v1/private/info',
+                    type: 'GET',
+                    success: function(info) {
+                        $('#organization').text(info.organization || '');
+                        $('#stack').text('stack: ' + (info.stack || ''));
+                        $('#tag').text('migasfree server: ' + (info.tag || ''));
+                    },
+                    error: function(err) {
+                        console.error('Error fetching info:', err);
+                    }
+                });
+            });
+        </script>
     </head>
 <body>
 <div class="main-container">
+    <div class="info-panel">
+        <div class="info-content">
+            <h2 class="hidden">Information</h2>
+            <p class="info-text" id="organization" title="Organization"></p>
+            <p class="info-text" id="stack"></p>
+            <p class="info-text" id="tag" title="Tag"></p>
+        </div>
+        <div class="flex-row">
+            <a id="status_emoji_link" href="/manager/v1/private/status" class="action-link" title="Status">
+                Status
+            </a>
+            <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" class="action-link" title="Metrics Dashboard">
+                Metrics
+            </a>
+        </div>
+    </div>
+
     <div class="panel">
-        <h1>Migasfree Public Pool</h1>
+        <h1 class="hidden">Migasfree Public Pool</h1>

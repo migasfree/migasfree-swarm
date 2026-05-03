@@ -20,6 +20,85 @@
             min-height: 100vh;
         }
 
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .info-content {
+            display: flex;
+            align-items: baseline;
+            gap: 1.5rem;
+        }
+
+        .info-text {
+            margin: 0;
+            white-space: nowrap;
+            font-family: var(--font-ui);
+        }
+
+        #organization {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--brand-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        #stack {
+            font-size: 1.05rem;
+            font-weight: 400;
+            color: var(--brand-secondary);
+        }
+
+        #tag {
+            font-size: 1.05rem;
+            font-weight: 400;
+            color: var(--brand-secondary);
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: #ffffff;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--link-color);
+            text-decoration: none !important;
+            font-weight: 700;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .action-link:hover {
+            background: var(--link-hover-bg);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 20, 7, 0.1);
+            border-color: var(--brand-tertiary);
+        }
+
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -165,9 +244,26 @@
 
 <body>
     <div class="container">
-        <header class="page-header">
-            <h1 class="page-title">Metrics Dashboard</h1>
-        </header>
+        <!-- Info Panel -->
+        <div class="info-panel panel">
+            <div class="info-content">
+                <h2 class="hidden">Information</h2>
+                <p class="info-text" id="organization" title="Organization"></p>
+                <p class="info-text" id="stack"></p>
+                <p class="info-text" id="tag" title="Tag"></p>
+            </div>
+            <div class="flex-row">
+                <a id="status_emoji_link" href="/manager/v1/private/status" class="action-link" title="Status">
+                    <span class="mdi mdi-information-outline"></span>
+                    Status
+                </a>
+                <a id="pool_emoji_link" href="/pool/" class="action-link" title="Open Public Pool">
+                    <span class="mdi mdi-package-variant-closed"></span>
+                    Pool
+                </a>
+            </div>
+        </div>
+
 
         <nav class="tabs-nav">
             <button class="tab-btn active" onclick="switchTab('sync')">
@@ -764,10 +860,26 @@
             }
         }
 
+        async function fetchInfo() {
+            try {
+                const response = await fetch('/manager/v1/private/info');
+                if (response.ok) {
+                    const info = await response.json();
+                    document.getElementById('organization').textContent = info.organization || '';
+                    document.getElementById('stack').textContent = `stack: ${info.stack || ''}`;
+                    document.getElementById('tag').textContent = `migasfree server: ${info.tag || ''}`;
+                }
+            } catch (error) {
+                console.error('Error fetching info:', error);
+            }
+        }
+
         // Initial Load
+        fetchInfo();
         fetchData();
         // Refresh every 10 seconds
         setInterval(fetchData, 10000);
+
 
     </script>
 </body>

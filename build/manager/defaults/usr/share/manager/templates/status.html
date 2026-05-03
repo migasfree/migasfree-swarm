@@ -23,30 +23,53 @@
     }
 
     .info-panel {
-      display: grid;
-      grid-template-columns: auto auto 1fr auto;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 20px;
-      margin-bottom: 10px;
+      gap: 1.5rem;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .info-content {
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
     }
 
     .info-text {
       margin: 0;
       white-space: nowrap;
-      font-size: 1.5em;
+      font-family: var(--font-ui);
     }
 
     #organization {
-      font-weight: bold;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--brand-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     #stack {
-      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--brand-secondary);
     }
 
     #tag {
-      text-align: left;
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--brand-secondary);
     }
+
 
     .services-section {
       margin-bottom: 20px;
@@ -333,10 +356,12 @@
 <body>
   <!-- Info Panel -->
   <div class="info-panel panel">
-    <h2 class="hidden">Information</h2>
-    <p class="info-text" id="organization" title="Organization"></p>
-    <p class="info-text" id="stack"></p>
-    <p class="info-text" id="tag" title="Tag"></p>
+    <div class="info-content">
+      <h2 class="hidden">Information</h2>
+      <p class="info-text" id="organization" title="Organization"></p>
+      <p class="info-text" id="stack"></p>
+      <p class="info-text" id="tag" title="Tag"></p>
+    </div>
     <div class="flex-row">
       <a id="pool_emoji_link" href="/pool/" target="_blank" class="action-link" title="Open Public Pool">
         <span class="mdi mdi-package-variant-closed"></span>
@@ -348,6 +373,7 @@
       </a>
     </div>
   </div>
+
 
   <!-- Services Section -->
   <div class="services-section panel">
