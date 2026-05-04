@@ -264,15 +264,11 @@ frontend http
     acl url_no_mTLS_get   path_beg /token-refresh/
     acl url_no_mTLS_post  path_beg /token-refresh/
     acl url_no_mTLS_get   path     /favicon.ico
-    acl url_no_mTLS_get   path     /  # Checks if it is active
-    
-
 
     # urls allowed for Computers (mTLS)
     acl url_role_computer_post path_beg /api/v1/safe/   # migasfree-client
     acl url_role_computer_get path_beg /tunnel  # WebSocket tunnel relay  (migasfree-agent)
     acl url_role_computer_post path    /manager/v1/private/tunnel/register
-
 
     # migasfree-play 5.0 -> https://github.com/migasfree/migasfree-play/blob/master/src/config/app.conf.js
     acl url_no_mTLS_get   path_reg ^/api/v1/token/catalog/apps/available/$
