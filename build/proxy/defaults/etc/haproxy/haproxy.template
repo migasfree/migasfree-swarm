@@ -149,9 +149,21 @@ frontend http
     # acl certificates_check url_beg /.well-known
     # use_backend certificates if certificates_check
 
+
+    # console
+    # ========
+    acl url_root path /
+    acl url_empty path_len 0
+
+    # public
+    # ======
+    acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
+
     # DDOS
+    # Higher limit for public paths to support network cloning with qemu-img (many Range requests)
     http-request track-sc0 url32+src table per_ip_and_url_rates
-    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+    http-request deny deny_status 429 if !url_public { sc_http_req_rate(0) gt 100 }
+    http-request deny deny_status 429 if url_public  { sc_http_req_rate(0) gt 2000 }
 
     http-request set-var(txn.path) path  # for services_cache
 
@@ -167,14 +179,6 @@ frontend http
     http-request replace-path /admin/server/computer/(.*)/change /computers/results/\1    # migasfree-play 1.x
 
 
-    # console
-    # ========
-    acl url_root path /
-    acl url_empty path_len 0
-
-    # public
-    # ======
-    acl url_public path_beg /public/ /static/ /pool/ /repo/  # (/repo = retrocompatibility)
 
 
     # TUNNEL WebSocket
@@ -245,7 +249,7 @@ frontend http
     acl url_no_mTLS_get   path_beg /mcp/
     acl url_no_mTLS_post  path_beg /mcp/
     acl url_no_mTLS_delete path_beg /mcp/
-    acl url_no_mTLS_head   path_beg /mcp/
+    acl url_no_mTLS_head   path_beg /mcp/ /public/ /static/ /pool/ /repo/ /src/
 
     acl url_no_mTLS_get   path_beg /manager/static/
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
