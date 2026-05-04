@@ -22,6 +22,9 @@ To access the various consoles, navigate to `http://<FQDN>/status`
 
   You can also retrieve extensive hardware and software information for each computer in the fleet.
 
+  > [!TIP]
+  > **Windows Clients**: To access this console from Windows 10/11 client computers, see the [Windows Client Access Guide](how-to/windows-client-access.md).
+
   ![migasfree-console](migasfree-console.png)
 
 ## public pool

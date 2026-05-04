@@ -18,6 +18,7 @@ Our documentation is structured following the Diátaxis framework to help you fi
 * **[Deployment & Management](doc/how-to/deploy-and-manage.md)**: Manage service lifecycles and scale your nodes.
 * **[Backups & Recovery](doc/how-to/backups-and-recovery.md)**: Secure your data and perform disaster recovery.
 * **[NFS Installation](doc/nfs.md)**: Setup shared storage for multi-node production clusters.
+* **[Windows Client Access](doc/how-to/windows-client-access.md)**: Configure Windows 10/11 machines to use the console.
 
 ### 📖 Reference (Information-Oriented)
 

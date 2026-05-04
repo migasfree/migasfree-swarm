@@ -42,6 +42,9 @@ For testing purposes, you can map these domains in your local `/etc/hosts`:
 127.0.0.1 worker-migasfree.acme.com
 ```
 
+> [!TIP]
+> **Windows Clients**: To map these domains on Windows 10/11 client computers, see the [Windows Client Access Guide](../how-to/windows-client-access.md).
+
 ## 4. Storage Backend (NFS)
 
 In multi-node production environments, an NFS server is mandatory.
