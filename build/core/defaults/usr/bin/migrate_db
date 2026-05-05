@@ -5,7 +5,7 @@ export DJANGO_SETTINGS_MODULE=migasfree.settings.production
 . /venv/bin/activate
 
 # Waiting worker
-while ! /healthcheck.sh
+while ! /usr/bin/healthcheck.sh
 do 
     sleep 1
 done
