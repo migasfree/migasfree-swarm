@@ -149,6 +149,16 @@ class TunnelClient {
         const modalConnect = document.getElementById('modal-connect');
         if (modalConnect) modalConnect.addEventListener('click', () => this.connectToAgent());
 
+        const sshUsernameInput = document.getElementById('ssh-username');
+        if (sshUsernameInput) {
+            sshUsernameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.connectToAgent();
+                }
+            });
+        }
+
         // Service select listener REMOVED
 
 
