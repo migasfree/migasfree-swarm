@@ -359,10 +359,19 @@
   <!-- Info Panel -->
   <div class="info-panel panel">
     <div class="info-content">
-      <h2 class="hidden">Information</h2>
-      <p class="info-text" id="organization" title="Organization"></p>
-      <p class="info-text" id="stack"></p>
-      <p class="info-text" id="tag" title="Tag"></p>
+      <h1 class="panel-title">Status</h1>
+      <span class="split-badge">
+        <span class="badge-key">Organization</span>
+        <span class="badge-value" id="organization"></span>
+      </span>
+      <span class="split-badge">
+        <span class="badge-key">Stack</span>
+        <span class="badge-value" id="stack"></span>
+      </span>
+      <span class="split-badge">
+        <span class="badge-key">Tag</span>
+        <span class="badge-value" id="tag"></span>
+      </span>
     </div>
     <div class="flex-row">
       <a id="pool_emoji_link" href="/pool/" class="action-link" title="Open Public Pool">
@@ -704,8 +713,8 @@
           const info = await response.json();
           CONFIG.infoData = info;
           dom.organization.textContent = info.organization || '';
-          dom.stack.textContent = `stack: ${info.stack || ''}`;
-          dom.tag.textContent = `migasfree server: ${info.tag || ''}`;
+          dom.stack.textContent = info.stack || '';
+          dom.tag.textContent = info.tag || '';
           return info;
         } catch (error) {
           console.error('Failed to load info:', error);

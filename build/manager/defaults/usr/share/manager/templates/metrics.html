@@ -247,10 +247,19 @@
         <!-- Info Panel -->
         <div class="info-panel panel">
             <div class="info-content">
-                <h2 class="hidden">Information</h2>
-                <p class="info-text" id="organization" title="Organization"></p>
-                <p class="info-text" id="stack"></p>
-                <p class="info-text" id="tag" title="Tag"></p>
+                <h1 class="panel-title">Metrics</h1>
+                <span class="split-badge">
+                    <span class="badge-key">Organization</span>
+                    <span class="badge-value" id="organization"></span>
+                </span>
+                <span class="split-badge">
+                    <span class="badge-key">Stack</span>
+                    <span class="badge-value" id="stack"></span>
+                </span>
+                <span class="split-badge">
+                    <span class="badge-key">Tag</span>
+                    <span class="badge-value" id="tag"></span>
+                </span>
             </div>
             <div class="flex-row">
                 <a id="status_emoji_link" href="/manager/v1/private/status" class="action-link" title="Status">
@@ -866,8 +875,8 @@
                 if (response.ok) {
                     const info = await response.json();
                     document.getElementById('organization').textContent = info.organization || '';
-                    document.getElementById('stack').textContent = `stack: ${info.stack || ''}`;
-                    document.getElementById('tag').textContent = `migasfree server: ${info.tag || ''}`;
+                    document.getElementById('stack').textContent = info.stack || '';
+                    document.getElementById('tag').textContent = info.tag || '';
                 }
             } catch (error) {
                 console.error('Error fetching info:', error);
