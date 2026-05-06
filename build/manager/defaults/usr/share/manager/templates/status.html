@@ -147,19 +147,18 @@
     }
 
     .service-count {
-      font-size: 0.9rem;
+      font-size: 1.05rem;
       font-weight: 800;
       color: var(--brand-tertiary);
       min-width: 0;
     }
 
     .service-name {
-      font-size: 1.05rem;
+      font-size: 1.25rem;
       font-weight: 700;
       color: var(--brand-secondary);
       letter-spacing: 0.02em;
     }
-
 
     .service-link {
       position: absolute;
@@ -366,17 +365,16 @@
       <p class="info-text" id="tag" title="Tag"></p>
     </div>
     <div class="flex-row">
-      <a id="pool_emoji_link" href="/pool/" target="_blank" class="action-link" title="Open Public Pool">
+      <a id="pool_emoji_link" href="/pool/" class="action-link" title="Open Public Pool">
         <span class="mdi mdi-package-variant-closed"></span>
         Pool
       </a>
-      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" target="_blank" class="action-link" title="Metrics Dashboard">
+      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" class="action-link" title="Metrics Dashboard">
         <span class="mdi mdi-chart-box"></span>
         Metrics
       </a>
     </div>
   </div>
-
 
   <!-- Services Section -->
   <div class="services-section panel">
@@ -675,8 +673,6 @@
         dom.logsContent = document.getElementById('logs-content');
         dom.logsContainer = document.getElementById('logs-container');
         dom.toggleIcon = document.getElementById('toggle-icon');
-        dom.poolEmoji = document.getElementById('pool_emoji_link');
-        dom.metricsEmoji = document.getElementById('metrics_emoji_link');
 
         // Cache all service nodes
         CONFIG.serviceList.forEach(elementId => {
@@ -809,14 +805,6 @@
           console.debug(`${serviceName} shouldShow: ${shouldShow}`)
           link.style.display = shouldShow ? 'block' : 'none';
           console.debug('dom.link:', link);
-        }
-
-        if (serviceName === 'public' && dom.poolEmoji) {
-          // Logic removed
-        }
-
-        if (serviceName === 'manager' && dom.metricsEmoji) {
-          // Logic removed
         }
 
         state.serviceStates[serviceName] = statusInfo;

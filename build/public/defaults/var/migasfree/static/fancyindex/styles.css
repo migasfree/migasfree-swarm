@@ -29,14 +29,19 @@
   --brand-primary: #431407;
   --brand-primary-rgb: 67, 20, 7;
   --brand-on-primary: #ffffff;
-  --brand-secondary: #8d7772;
+  --brand-secondary: #705a56;
   --brand-tertiary: #feda00;
   --brand-tertiary-rgb: 254, 218, 0;
 
-  /* Neutrals */
+  /* Neutrals (Earth Palette) */
   --neutral-50: #fcfaf9;
   --neutral-100: #f7f2f0;
   --neutral-200: #eee4e1;
+  --neutral-300: #d6c1ba;
+  --neutral-400: #b5a4a0;
+  --neutral-500: #755f5a;
+  --neutral-700: #5c4842;
+  --neutral-800: #251b19;
   --neutral-900: #1a1210;
 
   /* Typography */
@@ -48,6 +53,11 @@
   --glass-border: rgba(67, 20, 7, 0.1);
   --glass-blur: blur(12px);
   --radius: 12px;
+  --rounded-glass: 20px;
+  --rounded-input: 8px;
+  
+  /* Transitions */
+  --transition-physics: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 * {
@@ -79,7 +89,7 @@ body {
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
+    border-radius: var(--rounded-glass);
     padding: 2rem;
     box-shadow: 0 8px 32px 0 rgba(67, 20, 7, 0.1);
 }
@@ -155,13 +165,14 @@ tr:hover td {
     padding: 0.8rem 1.2rem;
     background: #ffffff;
     border: 1px solid var(--glass-border);
-    border-radius: 8px;
+    border-radius: var(--rounded-input);
     color: var(--brand-primary);
     font-family: var(--font-ui);
     margin: 0 auto 2rem auto;
     display: block;
     outline: none;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    transition: var(--transition-physics);
 }
 
 #search:focus {
@@ -195,9 +206,9 @@ footer {
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
+    border-radius: var(--rounded-glass);
     box-shadow: 0 8px 32px 0 rgba(67, 20, 7, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: var(--transition-physics);
 }
 
 .info-content {
@@ -245,11 +256,11 @@ footer {
     padding: 0.5rem 1.25rem;
     background: #ffffff;
     border: 1px solid var(--glass-border);
-    border-radius: 8px;
+    border-radius: var(--rounded-input);
     color: var(--brand-primary);
     text-decoration: none !important;
     font-weight: 700;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: var(--transition-physics);
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -257,7 +268,6 @@ footer {
 
 .action-link:hover {
     background: rgba(67, 20, 7, 0.04);
-    transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(67, 20, 7, 0.1);
     border-color: var(--brand-tertiary);
 }
