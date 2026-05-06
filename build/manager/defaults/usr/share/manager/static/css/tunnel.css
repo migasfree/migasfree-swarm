@@ -168,11 +168,21 @@ body {
     transition: var(--transition-physics);
 }
 
+.btn-refresh .mdi {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block;
+}
+
 .btn-refresh:hover {
     background: var(--brand-primary);
-    color: var(--brand-on-primary);
-    transform: rotate(180deg);
-    border-color: transparent;
+    color: var(--brand-tertiary);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 15px rgba(254, 218, 0, 0.35);
+    transform: translateY(-2px);
+}
+
+.btn-refresh:hover .mdi {
+    transform: rotate(360deg);
 }
 
 .agents-list {
