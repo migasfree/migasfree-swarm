@@ -27,6 +27,12 @@
                     <span class="mdi mdi-remote-desktop brand-icon"></span>
                     Migasfree Remote Access Console
                 </h1>
+                <div class="header-info">
+                    <a href="/manager/v1/private/status" class="btn btn-secondary" style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                        <span class="mdi mdi-arrow-left"></span>
+                        Back to Status
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -54,9 +60,12 @@
 
                 <div class="connection-panel hidden" id="connection-panel">
                     <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="agent-name" id="current-agent-name">Agent</span>
-                            <span class="badge" id="current-service">SSH</span>
+                        <div class="panel-title" style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="agent-name" id="current-agent-name" style="font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--brand-tertiary);">Agent</span>
+                            <span class="split-badge" style="box-shadow: none; border-color: rgba(255, 255, 255, 0.15);">
+                                <span class="badge-key" style="background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); border-radius: 4px 0 0 4px; padding: 2px 8px; font-size: 0.75rem; text-transform: uppercase; font-weight: 800;">Service</span>
+                                <span class="badge-value" id="current-service" style="background: var(--brand-tertiary); color: var(--brand-primary); border-radius: 0 4px 4px 0; padding: 2px 8px; font-size: 0.75rem; text-transform: uppercase; font-weight: 800;">SSH</span>
+                            </span>
                         </div>
                         <div class="panel-actions">
                             <button class="btn-action" id="btn-disconnect" title="Disconnect">
