@@ -7,7 +7,7 @@ input.placeholder = 'Type to filter';
 
 form.appendChild(input);
 
-document.querySelector('h1').after(form);
+document.querySelector('.panel h1').after(form);
 
 var listItems = [].slice.call(document.querySelectorAll('#list tbody tr'));
 
