@@ -138,6 +138,23 @@ async def _get_all_results(url: str, headers: dict, params: dict = None):
     return all_results
 
 
+async def get_project_by_id(project_id: int):
+    token = get_cached_token()
+    headers = {"accept": "application/json", "Authorization": f"Token {token}"}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{CORE_TOKEN_URL}/projects/{project_id}/",
+            headers=headers,
+            follow_redirects=False,
+        )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=response.status_code, detail=f"Error fetching project {project_id}"
+        )
+    return response.json()
+
+
 async def get_groups_info():
     token = get_cached_token()
     headers = {"accept": "application/json", "Authorization": f"Token {token}"}

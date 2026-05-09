@@ -19,6 +19,7 @@ from routers import (
     tunnel,
     availability,
     metrics,
+    mcs,
 )
 from routers.status import lifespan
 
@@ -26,6 +27,15 @@ from routers.status import lifespan
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
+
+
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record):
+        return "/manager/v1/internal/health" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 logger = logging.getLogger(__name__)
 
 
@@ -54,6 +64,7 @@ app.include_router(extensions.router_private)
 app.include_router(tunnel.router)
 app.include_router(availability.router)
 app.include_router(metrics.router_private)
+app.include_router(mcs.router)
 
 
 @app.get("/v1/internal/health", tags=["status"])

@@ -40,8 +40,28 @@ class TokenComputerResponse(BaseModel):
     token: str
 
 
+class BuildMCImageRequest(BaseModel):
+    project_id: int
+
+
+class BuildMCImageResponse(BaseModel):
+    task_id: str
+
+
+class BuildTaskStatus(BaseModel):
+    task_id: str
+    status: str  # queued|building|exporting|partitioning|installing|dumping|finalizing|completed|error
+    progress: int = 0  # 0-100
+    message: str = ""
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
 # Force explicit rebuild. Important!
 TokenCreateRequest.model_rebuild()
 TokenComputerRequest.model_rebuild()
 TokenAdminResponse.model_rebuild()
 TokenComputerResponse.model_rebuild()
+BuildMCImageRequest.model_rebuild()
+BuildMCImageResponse.model_rebuild()
+BuildTaskStatus.model_rebuild()

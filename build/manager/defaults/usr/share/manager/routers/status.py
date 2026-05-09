@@ -22,6 +22,7 @@ from core.availability import (
     get_database_backends,
     get_swarm_topology,
 )
+from core.mcs_builder import start_mcs_worker
 
 FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
@@ -45,8 +46,10 @@ if not logger.handlers:
 
 if DEBUG_MODE:
     logger.setLevel(logging.DEBUG)
+    logging.getLogger("sse_starlette.sse").setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.INFO)
+    logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
 
 
 router = APIRouter(prefix="", tags=["status"])
@@ -69,6 +72,7 @@ async def lifespan(app: FastAPI):
     docker_monitor = DockerSwarmMonitor()
     await docker_monitor.start()
     start_recording()
+    start_mcs_worker()
     logger.info("Application started successfully")
     yield
     logger.info("Shutting down application...")

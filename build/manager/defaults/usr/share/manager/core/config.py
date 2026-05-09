@@ -35,3 +35,8 @@ CORE_LOGIN_URL = f"{CORE_URL}/rest-auth/login/"
 CORE_USER_URL = f"{CORE_URL}/rest-auth/user/"
 CORE_TOKEN_URL = f"{CORE_URL}/api/v1/token"
 CORE_AUTH_URL = f"{CORE_URL}/token-auth/"
+
+# MCS (Migasfree Clone System) build config
+MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"
+MCS_TEMP_DIR = PATH_DATASHARES / os.environ["STACK"] / "tmp" / "mcs-build"
+MCS_PREFIX = os.environ.get("MCS_PREFIX", "mcs")
