@@ -41,7 +41,7 @@ class TokenComputerResponse(BaseModel):
 
 
 class BuildMCImageRequest(BaseModel):
-    project_id: int
+    release_id: int
 
 
 class BuildMCImageResponse(BaseModel):

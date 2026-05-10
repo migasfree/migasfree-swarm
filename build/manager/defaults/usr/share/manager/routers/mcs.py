@@ -26,13 +26,13 @@ async def build_mcs_image(
     request: BuildMCImageRequest,
     _: dict = Depends(get_current_superuser),
 ):
-    project_id = request.project_id
+    release_id = request.release_id
     task_id = str(uuid.uuid4())
 
     con = get_redis_connection()
     task_data = {
         "task_id": task_id,
-        "project_id": project_id,
+        "release_id": release_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     con.rpush(MCS_QUEUE_KEY, json.dumps(task_data))
@@ -49,7 +49,7 @@ async def build_mcs_image(
     )
     con.expire(f"{MCS_TASK_PREFIX}{task_id}", 86400)
 
-    logger.info(f"MCS build task {task_id} queued for project {project_id}")
+    logger.info(f"MCS build task {task_id} queued for release {release_id}")
     return BuildMCImageResponse(task_id=task_id)
 
 

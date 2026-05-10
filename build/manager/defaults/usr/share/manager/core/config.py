@@ -38,5 +38,5 @@ CORE_AUTH_URL = f"{CORE_URL}/token-auth/"
 
 # MCS (Migasfree Clone System) build config
 MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"
-MCS_TEMP_DIR = PATH_DATASHARES / os.environ["STACK"] / "tmp" / "mcs-build"
+MCS_TEMP_DIR = Path("/tmp/mcs-build")
 MCS_PREFIX = os.environ.get("MCS_PREFIX", "mcs")
