@@ -19,7 +19,8 @@ from routers import (
     tunnel,
     availability,
     metrics,
-    mcs,
+    mci_build,
+    mci_templates,
 )
 from routers.status import lifespan
 
@@ -64,7 +65,8 @@ app.include_router(extensions.router_private)
 app.include_router(tunnel.router)
 app.include_router(availability.router)
 app.include_router(metrics.router_private)
-app.include_router(mcs.router)
+app.include_router(mci_build.router)
+app.include_router(mci_templates.router)
 
 
 @app.get("/v1/internal/health", tags=["status"])
