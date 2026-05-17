@@ -149,7 +149,7 @@ MIGASFREE_HELP_DESK = 'Help Desk: 555 555 555'
 # MIGASFREE_COMPUTER_SEARCH_FIELDS = ('name', 'id', 'ip_address', 'forwarded_ip_address')
 
 # Important!!!
-SESSION_COOKIE_AGE = 1
+# SESSION_COOKIE_AGE = 1209600  # Default is 2 weeks
 
 CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = ['*']
