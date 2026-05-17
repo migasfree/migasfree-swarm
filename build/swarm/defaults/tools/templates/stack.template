@@ -10,8 +10,9 @@ services:
             retries: 10
             start_period: 30s
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
+            - FQDN_IP={{FQDN_IP}}
             - STACK={{STACK}}
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
@@ -172,7 +173,7 @@ services:
     core:
         image: migasfree/core:{{TAG}}
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -215,7 +216,7 @@ services:
         image: migasfree/core:{{TAG}}
         hostname: '{{TASK}}'
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -260,7 +261,7 @@ services:
             retries: 10
             start_period: 30s
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -294,7 +295,7 @@ services:
     database:
         image: migasfree/database:{{TAG}}
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
@@ -354,7 +355,7 @@ services:
     pgpool:
         image: migasfree/pgpool:{{TAG}}
         environment:
-            - TZ={{TZ}}
+            - TZ=UTC
             - FQDN={{FQDN}}
             - STACK={{STACK}}
             - NODE={{NODE}}
