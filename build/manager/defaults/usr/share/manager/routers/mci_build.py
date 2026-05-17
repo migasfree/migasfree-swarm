@@ -13,16 +13,16 @@ from core.redis import get_redis_connection
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix=f"{API_VERSION}/private/mcs",
-    tags=["mcs"],
+    prefix=f"{API_VERSION}/private/mci",
+    tags=["mci"],
 )
 
-MCS_QUEUE_KEY = "mcs:build_queue"
-MCS_TASK_PREFIX = "mcs:task:"
+MCI_QUEUE_KEY = "mci:build_queue"
+MCI_TASK_PREFIX = "mci:task:"
 
 
 @router.post("/build", response_model=BuildMCImageResponse)
-async def build_mcs_image(
+async def build_mci_image(
     request: BuildMCImageRequest,
     _: dict = Depends(get_current_superuser),
 ):
@@ -35,10 +35,10 @@ async def build_mcs_image(
         "release_id": release_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    con.rpush(MCS_QUEUE_KEY, json.dumps(task_data))
+    con.rpush(MCI_QUEUE_KEY, json.dumps(task_data))
 
     con.hset(
-        f"{MCS_TASK_PREFIX}{task_id}",
+        f"{MCI_TASK_PREFIX}{task_id}",
         mapping={
             "status": "queued",
             "progress": "0",
@@ -47,16 +47,16 @@ async def build_mcs_image(
             "updated_at": task_data["created_at"],
         },
     )
-    con.expire(f"{MCS_TASK_PREFIX}{task_id}", 86400)
+    con.expire(f"{MCI_TASK_PREFIX}{task_id}", 86400)
 
-    logger.info(f"MCS build task {task_id} queued for release {release_id}")
+    logger.info(f"MCI build task {task_id} queued for release {release_id}")
     return BuildMCImageResponse(task_id=task_id)
 
 
 @router.get("/build/{task_id}/status", response_model=BuildTaskStatus)
 async def get_build_status(task_id: str):
     con = get_redis_connection()
-    key = f"{MCS_TASK_PREFIX}{task_id}"
+    key = f"{MCI_TASK_PREFIX}{task_id}"
     data = con.hgetall(key)
 
     if not data:

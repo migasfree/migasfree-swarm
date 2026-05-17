@@ -16,17 +16,20 @@ from jinja2 import Template
 from core.redis import get_redis_connection
 from core.config import (
     FQDN,
+    FQDN_IP,
     STACK,
-    MCS_POOL_DIR,
-    MCS_TEMP_DIR,
-    MCS_PREFIX,
+    MCI_POOL_DIR,
+    MCI_TEMP_DIR,
+    MCI_PREFIX,
     CORE_TOKEN_URL,
 )
 
+SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
+
 logger = logging.getLogger(__name__)
 
-MCS_QUEUE_KEY = "mcs:build_queue"
-MCS_TASK_PREFIX = "mcs:task:"
+MCI_QUEUE_KEY = "mci:build_queue"
+MCI_TASK_PREFIX = "mci:task:"
 
 TEMPLATE_DIR = Path("/usr/share/manager/templates")
 MPI_TEMPLATE = "mpi.Dockerfile.j2"
@@ -60,234 +63,133 @@ def _get_core_token():
     return None
 
 
-def _get_project_from_core(project_id: int):
+def _get_core_resource(endpoint: str):
     token = _get_core_token()
     if not token:
         raise RuntimeError("Could not obtain Core API token")
 
     headers = {"accept": "application/json", "Authorization": f"Token {token}"}
     try:
+        core_api_url = CORE_TOKEN_URL.replace("/token", "")
         response = httpx.get(
-            f"{CORE_TOKEN_URL}/projects/{project_id}/",
+            f"{core_api_url}{endpoint}",
             headers=headers,
             follow_redirects=False,
         )
         if response.status_code != 200:
             raise RuntimeError(
-                f"Core API returned {response.status_code} for project {project_id}"
+                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
             )
         return response.json()
     except httpx.RequestError as e:
         raise RuntimeError(f"Error calling Core API: {e}")
 
 
-def _get_partition_mockup() -> str:
-    return """# MCS Partition Definition
-# Sizes are in MB.
-# Type GUIDs for GPT:
-# - EFI: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-# - BIOS: 21686148-6449-6E6F-744E-656564454649
-# - SWAP: 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F
-# - Linux: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+def _post_core_resource(endpoint: str, data: dict):
+    token = _get_core_token()
+    if not token:
+        raise RuntimeError("Could not obtain Core API token")
 
-partitions:
-  - number: 1
-    name: "EFI"
-    size: 512
-    type: "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
-    filesystem: "vfat"
-    mount: "/boot/efi"
-
-  - number: 2
-    name: "BIOS"
-    size: 1
-    type: "21686148-6449-6E6F-744E-656564454649"
-    filesystem: null
-    mount: "none"
-
-  - number: 3
-    name: "SWAP"
-    size: 2048
-    type: "0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"
-    filesystem: "swap"
-    mount: "none"
-
-  - number: 4
-    name: "SYSTEM"
-    size: 20480
-    type: "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
-    filesystem: "ext4"
-    mount: "/"
-
-  - number: 5
-    name: "HOME"
-    size: 0  # 0 means use the rest of the disk
-    type: "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
-    filesystem: "ext4"
-    mount: "/home"
-"""
-
-
-def _get_release_mockup(release_id: int) -> dict:
-    dockerfile_content = """FROM debian:13.4
-
-ARG CACHEBUST=1
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \\
-    apt-get install -y --no-install-recommends \\
-        ca-certificates \\
-        curl \\
-        wget \\
-        gnupg \\
-        systemd \\
-        systemd-sysv \\
-        systemd-resolved \\
-        udev \\
-        dbus \\
-        procps \\
-        iproute2 \\
-        net-tools \\
-        sudo \\
-        locales \\
-        tzdata \\
-        efibootmgr \\
-        openssh-server \\
-        os-prober \\
-        kmod \\
-        pciutils \\
-        console-setup \\
-        console-data \\
-        kbd \\
-        parted \\
-        nano \\
-        bzip2 \\
-        zstd \\
-        e2fsprogs \\
-        iputils-ping \\
-    && apt-get clean \\
-    && rm -rf /var/lib/apt/lists/*
-
-RUN . /etc/os-release && \\
-    case "$ID" in \\
-        ubuntu) KERNEL_PKG="linux-generic" ;; \\
-        debian) KERNEL_PKG="linux-image-amd64" ;; \\
-        *)      KERNEL_PKG="linux-image-generic" ;; \\
-    esac && \\
-    apt-get update && \\
-    apt-get install -y --no-install-recommends "$KERNEL_PKG"
-
-RUN echo "172.0.0.10 {{ server }}" >> /etc/hosts
-
-# The public certificate from the certification authority.
-RUN wget --no-check-certificate -O /usr/local/share/ca-certificates/{{ server }}.crt http://{{ server }}/pool/install/ca-{{ server }}.crt  && \\
-    update-ca-certificates --fresh
-
-RUN wget http://{{ server }}/public/lnx-1/stores/thirds/migasfree-client_5.0-1_all.deb && \\
-    apt install -y ./migasfree-client_5.0-1_all.deb && \\
-    rm -f migasfree-client_5.0-1_all.deb && \\
-    migasfree conf --server {{ server }} --project LNX-1 && \\
-    PYTHONHTTPSVERIFY=0 migasfree sync
-
-RUN echo "grub-pc grub-pc/install_devices_empty boolean true" | debconf-set-selections && \\
-    echo "grub-pc grub-pc/install_devices string " | debconf-set-selections && \\
-    apt-get install -y --no-install-recommends grub-common grub-pc-bin grub-efi-amd64-bin && \\
-    apt-get clean && \\
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \\
-    echo "es_ES.UTF-8 UTF-8" >> /etc/locale.gen && \\
-    locale-gen
-
-RUN echo "LANG=en_US.UTF-8" > /etc/default/locale
-
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-ENV TZ={{ timezone }}
-
-RUN ln -fs /usr/share/zoneinfo/{{ timezone }} /etc/localtime && \\
-    dpkg-reconfigure -f noninteractive tzdata
-
-RUN install -d -m 0755 /etc/{{ prefix }} && \\
-    echo '{"server":"{{ server }}","project":"{{ project_slug }}","project_name":"{{ project_name }}","prefix":"{{ prefix }}"}' > /etc/{{ prefix }}/project.json
-
-RUN mkdir -p /etc/systemd/network && \\
-    echo "[Match]\\nName=en* eth*\\n\\n[Network]\\nDHCP=yes" > /etc/systemd/network/20-wired.network
-
-RUN mkdir -p /etc/systemd/resolved.conf.d && \\
-    echo "[Resolve]\\nFallbackDNS=8.8.8.8 1.1.1.1" > /etc/systemd/resolved.conf.d/fallback.conf
-
-RUN systemctl enable systemd-networkd.service 2>/dev/null; \\
-    systemctl enable systemd-resolved.service 2>/dev/null; \\
-    exit 0
-
-RUN printf 'XKBMODEL="{{ keyboard_model }}"\\nXKBLAYOUT="{{ keymap }}"\\nXKBVARIANT=""\\nXKBOPTIONS=""\\nBACKSPACE="guess"\\n' > /etc/default/keyboard && \\
-    printf 'ACTIVE_CONSOLES="/dev/tty[1-6]"\\nCHARMAP="{{ charmap }}"\\nCODESET="{{ codeset }}"\\nFONTFACE="Fixed"\\nFONTSIZE="16"\\n' > /etc/default/console-setup && \\
-    setupcon --save-only
-
-RUN adduser --disabled-password --gecos "" {{ user }} && \\
-    echo "{{ user }}:{{ password }}" | chpasswd && \\
-    usermod -aG sudo,users {{ user }} && \\
-    mkdir -p /home/{{ user }} && \\
-    chown {{ user }}:{{ user }} /home/{{ user }} && \\
-    chmod 700 /home/{{ user }}
-
-
-
-
-CMD ["/sbin/init"]
-"""
-    return {
-        "id": release_id,
-        "name": "3",
-        "project_id": 2,
-        "dockerfile": dockerfile_content,
-        "partition": _get_partition_mockup(),
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Token {token}"
     }
+    try:
+        core_api_url = CORE_TOKEN_URL.replace("/token", "")
+        response = httpx.post(
+            f"{core_api_url}{endpoint}",
+            json=data,
+            headers=headers,
+            follow_redirects=False,
+        )
+        if response.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
+            )
+        return response.json()
+    except httpx.RequestError as e:
+        raise RuntimeError(f"Error calling Core API: {e}")
 
 
-def _get_flavours_mockup(project_id: int) -> list[dict]:
-    return [
-        {
-            "id": 1,
-            "name": "std",
-            "project_id": project_id,
-            "tags": "",
-            "description": "Standard",
-            "enabled": True,
-            "user": "alberto",
-            "password": "alberto",
-            "keymap": "es",
-            "keyboard_model": "pc105",
-            "charmap": "UTF-8",
-            "codeset": "Lat15",
-            "timezone": "Europe/Madrid",
-            "hostname": "alberto",
-        },
-        {
-            "id": 2,
-            "name": "senior",
-            "project_id": project_id,
-            "tags": "senior",
-            "description": "Senior",
-            "enabled": False,
-            "user": "senior",
-            "password": "senior",
-            "keymap": "es",
-            "keyboard_model": "pc105",
-            "charmap": "UTF-8",
-            "codeset": "Lat15",
-            "timezone": "Europe/Madrid",
-            "hostname": "senior",
-        },
-    ]
+def _patch_core_resource(endpoint: str, data: dict):
+    token = _get_core_token()
+    if not token:
+        raise RuntimeError("Could not obtain Core API token")
+
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Token {token}"
+    }
+    try:
+        core_api_url = CORE_TOKEN_URL.replace("/token", "")
+        response = httpx.patch(
+            f"{core_api_url}{endpoint}",
+            json=data,
+            headers=headers,
+            follow_redirects=False,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
+            )
+        return response.json()
+    except httpx.RequestError as e:
+        raise RuntimeError(f"Error calling Core API: {e}")
+
+
+def _get_project_from_core(project_id: int):
+    # Endpoint expects something like /token/projects/1/
+    return _get_core_resource(f"/token/projects/{project_id}/")
+
+
+def _get_release_from_core(release_id: int) -> dict:
+    return _get_core_resource(f"/token/mci/release/{release_id}/")
+
+
+def _get_config_from_core(config_id: int) -> dict:
+    return _get_core_resource(f"/token/mci/config/{config_id}/")
+
+
+def _get_flavours_from_core(config_id: int) -> list[dict]:
+    # Use filtering query parameter to get flavours for a specific config
+    return _get_core_resource(f"/token/mci/flavour/?config={config_id}")
+
+
+def _create_build_record(release_id: int, flavour_id: int, task_id: str):
+    data = {
+        "release": release_id,
+        "flavour": flavour_id,
+        "task_id": task_id,
+        "status": "running",
+        "started_at": datetime.now(timezone.utc).isoformat()
+    }
+    logger.debug(f"Creating MCI Build record: {data}")
+    return _post_core_resource("/token/mci/build/", data)
+
+
+def _update_build_record(build_id: int, status: str, uri: str = None, size: int = None, log: str = None):
+    data = {"status": status}
+    if uri is not None:
+        data["uri"] = uri
+    if size is not None:
+        data["size"] = size
+    if log is not None:
+        data["log"] = log
+    
+    if status in ("completed", "failed"):
+        data["finished_at"] = datetime.now(timezone.utc).isoformat()
+        logger.debug(f"Updating MCI Build {build_id} to {status} at {data['finished_at']}")
+
+    return _patch_core_resource(f"/token/mci/build/{build_id}/", data)
 
 
 def _update_task_status(
     task_id: str, status: str, progress: int = 0, message: str = ""
 ):
     con = get_redis_connection()
-    key = f"{MCS_TASK_PREFIX}{task_id}"
+    key = f"{MCI_TASK_PREFIX}{task_id}"
     con.hset(
         key,
         mapping={
@@ -301,27 +203,31 @@ def _update_task_status(
 
 
 def generate_dockerfile(
-    project_data: dict, release_data: dict, flavour_data: dict, build_dir: Path
+    project_data: dict, config_data: dict, flavour_data: dict, build_dir: Path
 ) -> Path:
-    template = Template(release_data["dockerfile"])
-    base_os = project_data.get("base_os", "")
+    template = Template(config_data["dockerfile"])
+    base_os = config_data.get("base_os", "")
     if not base_os:
         raise ValueError("Project has no base_os defined")
 
     dockerfile_content = template.render(
         base_os=base_os,
         server=FQDN,
-        project_slug=project_data.get("slug", str(project_data.get("id"))),
+        project_id=project_data.get("id"),
+        project_slug=project_data.get("slug", ""),
         project_name=project_data.get("name", ""),
-        prefix=MCS_PREFIX,
-        user=flavour_data.get("user", "mcs"),
-        password=flavour_data.get("password", "mcs"),
+        prefix=MCI_PREFIX,
+        user=flavour_data.get("user", "mci"),
+        password=flavour_data.get("password", "mci"),
         keymap=flavour_data.get("keymap", "us"),
         keyboard_model=flavour_data.get("keyboard_model", "pc105"),
         charmap=flavour_data.get("charmap", "UTF-8"),
         codeset=flavour_data.get("codeset", "Lat15"),
         timezone=flavour_data.get("timezone", "UTC"),
-        hostname=flavour_data.get("hostname", "mcs"),
+        hostname=flavour_data.get("hostname", "mci"),
+        fqdn_ip=FQDN_IP,
+        system_uuid=SYSTEM_UUID,
+        tags=flavour_data.get("tags", ""),
     )
 
     dockerfile_path = build_dir / "Dockerfile"
@@ -338,6 +244,11 @@ def build_docker_image(
         "docker",
         "build",
         "--no-cache",
+    ]
+    if FQDN_IP:
+        cmd += ["--add-host", f"{FQDN}:{FQDN_IP}"]
+
+    cmd += [
         "--build-arg",
         f"CACHEBUST={int(time.time())}",
         "-t",
@@ -512,15 +423,15 @@ def _create_ext4_image_from_dir(
     return fs_uuid
 
 
-def generate_partition_yml(output_dir: Path, release_data: dict) -> Path:
+def generate_partition_yml(output_dir: Path, config_data: dict) -> Path:
     yml_path = output_dir / "partition.yml"
-    yml_path.write_text(release_data["partition"])
+    yml_path.write_text(config_data["partition"])
     return yml_path
 
 
-def generate_checksums(output_dir: Path, release_data: dict) -> Path:
+def generate_checksums(output_dir: Path, config_data: dict) -> Path:
     checksum_path = output_dir / "checksums.sha256"
-    partition_def = yaml.safe_load(release_data["partition"])
+    partition_def = yaml.safe_load(config_data["partition"])
     excluded = {"BIOS", "EFI", "SWAP"}
     files = [
         f"{p['name']}.raw"
@@ -540,35 +451,65 @@ def generate_checksums(output_dir: Path, release_data: dict) -> Path:
     return checksum_path
 
 
-def update_projects_json(
-    output_dir: Path, project_slug: str, project_data: dict
-) -> Path:
-    projects_path = output_dir / "projects.json"
-    projects = {}
-    if projects_path.exists():
+def update_catalog_json(mpi_name: str, flavour_data: dict) -> None:
+    catalog_path = MCI_POOL_DIR / "catalog.json"
+    catalog = []
+    if catalog_path.exists():
         try:
-            projects = json.loads(projects_path.read_text())
-        except (json.JSONDecodeError, FileNotFoundError):
-            projects = {}
-    projects[project_slug] = {
-        "name": project_data.get("name", project_slug),
-        "slug": project_slug,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    projects_path.write_text(json.dumps(projects, indent=2))
-    return projects_path
+            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+            if not isinstance(catalog, list):
+                catalog = []
+        except Exception as e:
+            logger.error(f"Error reading catalog.json: {e}")
+            catalog = []
+
+    # Check if entry already exists
+    entry_found = False
+    enabled = flavour_data.get("enabled", True)
+    description = flavour_data.get("description", "")
+
+    for entry in catalog:
+        if isinstance(entry, dict) and entry.get("name") == mpi_name:
+            entry["enabled"] = enabled
+            entry["description"] = description
+            entry_found = True
+            break
+
+    if not entry_found:
+        catalog.append({
+            "name": mpi_name,
+            "enabled": enabled,
+            "description": description
+        })
+
+    try:
+        catalog_path.write_text(json.dumps(catalog, indent=2, ensure_ascii=False), encoding="utf-8")
+        subprocess.run(["chown", "890:890", str(catalog_path)], check=True)
+        logger.info(f"Updated catalog.json successfully for {mpi_name}")
+    except Exception as e:
+        logger.error(f"Failed to update catalog.json: {e}")
 
 
-def build_mcs_image(task_id: str, release_id: int):
+def build_mci_image(task_id: str, release_id: int):
     _update_task_status(task_id, "fetching", 0, "Fetching release and project data")
     try:
-        release_data = _get_release_mockup(release_id)
-        project_id = release_data.get("project_id")
+        # mci_release → mci_config → core_project
+        release_data = _get_release_from_core(release_id)
+        config_id = release_data.get("config")
+        config_data = _get_config_from_core(config_id)
+        project_id = config_data.get("project")
         project_data = _get_project_from_core(project_id)
+        
+        # In DRF, list endpoints usually return a dict with a "results" array if paginated
+        flavours_response = _get_flavours_from_core(config_id)
+        flavours_list = flavours_response.get("results", flavours_response) if isinstance(flavours_response, dict) else flavours_response
+        
         flavours_data = [
-            f for f in _get_flavours_mockup(project_id) if f.get("enabled", True)
+            f for f in flavours_list
+            if f.get("enabled", True)
         ]
     except Exception as e:
+        logger.error(f"Task {task_id}: Build failed: {e}")
         _update_task_status(task_id, "error", 0, str(e))
         return
 
@@ -592,16 +533,35 @@ def build_mcs_image(task_id: str, release_id: int):
                     task_id, "building MPI", actual_pct, f"[{mpi_name}] {msg}"
                 )
 
-            build_dir = MCS_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
-            image_tag = f"mcs/{mpi_name}:{task_id[:8]}"
-            container_name = f"mcs-{mpi_name}-{task_id[:8]}"
+            build_dir = MCI_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
+            image_tag = f"mci/{mpi_name}:{task_id[:8]}"
+            container_name = f"mci-{mpi_name}-{task_id[:8]}"
             root_dir = build_dir / "root"
-            pool_dir = MCS_POOL_DIR / mpi_name
+            pool_dir = MCI_POOL_DIR / mpi_name
 
             build_dir.mkdir(parents=True, exist_ok=True)
 
             _flavour_progress(5, "Generating Dockerfile")
-            generate_dockerfile(project_data, release_data, flavour, build_dir)
+            
+            # Create build record in Core
+            build_record = None
+            try:
+                build_record = _create_build_record(release_id, flavour["id"], task_id)
+            except Exception as e:
+                logger.error(f"Task {task_id}: Could not create build record in Core: {e}")
+
+            generate_dockerfile(project_data, config_data, flavour, build_dir)
+
+            # Copy certificate to build context
+            cert_name = f"ca-{FQDN}.crt"
+            src_cert = MCI_POOL_DIR.parent / "install" / cert_name
+            if src_cert.exists():
+                dest_dir = build_dir / "pool" / "install"
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy(src_cert, dest_dir / cert_name)
+                logger.info(f"Copied {src_cert} to {dest_dir}")
+            else:
+                logger.warning(f"Certificate {src_cert} not found")
 
             _flavour_progress(15, "Building Docker image")
             build_docker_image(build_dir, image_tag, progress_cb=_flavour_progress)
@@ -613,17 +573,18 @@ def build_mcs_image(task_id: str, release_id: int):
 
             _flavour_progress(38, "Configuring network, hosts and keyboard")
             etc_dir = root_dir / "etc"
-            flavour_hostname = flavour.get("hostname", "mcs")
+            flavour_hostname = flavour.get("hostname", "mci")
             (etc_dir / "hostname").write_text(f"{flavour_hostname}\n")
-            (etc_dir / "hosts").write_text(
-                f"127.0.0.1 localhost {flavour_hostname}\n::1 localhost ip6-localhost ip6-loopback {flavour_hostname}\n"
-            )
+            hosts_content = f"127.0.0.1 localhost {flavour_hostname}\n::1 localhost ip6-localhost ip6-loopback {flavour_hostname}\n"
+            if FQDN_IP:
+                hosts_content += f"{FQDN_IP} {FQDN}\n"
+            (etc_dir / "hosts").write_text(hosts_content)
             resolv_conf = etc_dir / "resolv.conf"
             if resolv_conf.exists() or resolv_conf.is_symlink():
                 resolv_conf.unlink()
             resolv_conf.symlink_to("/run/systemd/resolve/stub-resolv.conf")
 
-            partition_def = yaml.safe_load(release_data["partition"])
+            partition_def = yaml.safe_load(config_data["partition"])
             excluded = {"BIOS", "EFI", "SWAP"}
             raw_partitions = [
                 p
@@ -647,9 +608,8 @@ def build_mcs_image(task_id: str, release_id: int):
                 _create_ext4_image_from_dir(source_dir, raw_path, headroom_mb=headroom)
 
             _flavour_progress(80, "Generating metadata")
-            generate_partition_yml(build_dir, release_data)
-            generate_checksums(build_dir, release_data)
-            update_projects_json(build_dir, slug, project_data)
+            generate_partition_yml(build_dir, config_data)
+            generate_checksums(build_dir, config_data)
 
             _flavour_progress(90, "Moving files to pool directory")
             pool_dir.mkdir(parents=True, exist_ok=True)
@@ -658,15 +618,29 @@ def build_mcs_image(task_id: str, release_id: int):
                 fpath = build_dir / f
                 if fpath.exists():
                     shutil.move(str(fpath), str(pool_dir / f))
-            for f in ["partition.yml", "checksums.sha256", "projects.json"]:
+            for f in ["partition.yml", "checksums.sha256"]:
                 fpath = build_dir / f
                 if fpath.exists():
                     shutil.move(str(fpath), str(pool_dir / f))
 
             _flavour_progress(95, "Setting permissions")
-            subprocess.run(["chown", "-R", "890:890", str(pool_dir)], check=True)
+            subprocess.run(["chown", "-R", "890:890", str(MCI_POOL_DIR)], check=True)
+
+            try:
+                update_catalog_json(mpi_name, flavour)
+            except Exception as ce:
+                logger.error(f"Failed to update catalog.json: {ce}")
 
             _cleanup_build(build_dir, image_tag)
+            
+            if build_record:
+                try:
+                    uri = f"https://{FQDN}/pool/mci/{mpi_name}/"
+                    size = (pool_dir / "SYSTEM.raw").stat().st_size if (pool_dir / "SYSTEM.raw").exists() else 0
+                    success_log = f"Build completed successfully for {mpi_name}. All partitions created and metadata generated."
+                    _update_build_record(build_record["id"], "completed", uri=uri, size=size, log=success_log)
+                except Exception as e:
+                    logger.error(f"Task {task_id}: Could not update build record to completed in Core: {e}")
 
         _update_task_status(task_id, "completed", 100, "Build completed successfully")
         logger.info(f"Task {task_id}: Build completed for release {release_id}")
@@ -674,6 +648,11 @@ def build_mcs_image(task_id: str, release_id: int):
     except Exception as e:
         logger.error(f"Task {task_id}: Build failed: {e}")
         _update_task_status(task_id, "error", 0, str(e))
+        if 'build_record' in locals() and build_record:
+            try:
+                _update_build_record(build_record["id"], "failed", log=str(e))
+            except Exception as e2:
+                logger.error(f"Task {task_id}: Could not update build record to failed in Core: {e2}")
         try:
             _cleanup_build(build_dir, image_tag)
         except Exception:
@@ -686,12 +665,12 @@ def _cleanup_build(build_dir: Path, image_tag: str) -> None:
         shutil.rmtree(build_dir, ignore_errors=True)
 
 
-def _mcs_worker():
+def _mci_worker():
     con = get_redis_connection()
-    logger.info("MCS build worker started")
+    logger.info("MCI build worker started")
     while True:
         try:
-            result = con.blpop(MCS_QUEUE_KEY, timeout=5)
+            result = con.blpop(MCI_QUEUE_KEY, timeout=5)
             if result is None:
                 continue
             _, task_data = result
@@ -702,23 +681,25 @@ def _mcs_worker():
             )
             task_id = task.get("task_id", str(uuid.uuid4()))
             release_id = task.get("release_id")
-            logger.info(f"MCS worker processing task {task_id}")
+            logger.info(
+                f"MCI worker processing task {task_id} for release {release_id}"
+            )
             _update_task_status(task_id, "queued", 0, "Task accepted, starting build")
-            build_mcs_image(task_id, release_id)
+            build_mci_image(task_id, release_id)
         except Exception as e:
-            logger.error(f"MCS worker error: {e}")
+            logger.error(f"MCI worker error: {e}")
             time.sleep(1)
 
 
-def start_mcs_worker():
+def start_mci_worker():
     import asyncio
 
     def _run_worker():
         try:
-            _mcs_worker()
+            _mci_worker()
         except Exception as e:
-            logger.error(f"MCS worker crashed: {e}")
+            logger.error(f"MCI worker crashed: {e}")
 
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, _run_worker)
-    logger.info("MCS build worker registered")
+    logger.info("MCI build worker registered")
