@@ -10,6 +10,7 @@ PATH_DATASHARES = Path("/mnt/cluster/datashares")
 MAX_TOKEN_AGE_HOURS = 72
 
 FQDN = os.environ["FQDN"]
+FQDN_IP = os.environ.get("FQDN_IP", "")
 STACK = os.environ["STACK"]
 
 # Database
@@ -36,7 +37,13 @@ CORE_USER_URL = f"{CORE_URL}/rest-auth/user/"
 CORE_TOKEN_URL = f"{CORE_URL}/api/v1/token"
 CORE_AUTH_URL = f"{CORE_URL}/token-auth/"
 
-# MCS (Migasfree Clone System) build config
-MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"
-MCS_TEMP_DIR = Path("/tmp/mcs-build")
-MCS_PREFIX = os.environ.get("MCS_PREFIX", "mcs")
+# MCI (Migasfree Clone Image) build config
+MCI_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mci"
+MCI_TEMP_DIR = Path("/tmp/mci-build")
+MCI_PREFIX = os.environ.get("MCI_PREFIX", "mci")
+local_templates_dir = PATH_DATASHARES / STACK / "pool" / "mci-templates"
+
+if local_templates_dir.exists() and local_templates_dir.is_dir():
+    MCI_TEMPLATES_URL = "http://proxy/pool/mci-templates"
+else:
+    MCI_TEMPLATES_URL = "https://raw.githubusercontent.com/migasfree/mci-templates/main"
