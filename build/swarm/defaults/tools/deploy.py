@@ -506,9 +506,9 @@ def deploy_migasfree(client, context, services=None):
 
 def main():
     cl = ContextLoader()
+    cl.load_stack(" | ".join(get_stacks()))
     cl.save()
 
-    cl.load_stack(" | ".join(get_stacks()))
     context = cl.context
     cl.save_stack()
 
