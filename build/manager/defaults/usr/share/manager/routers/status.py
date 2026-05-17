@@ -22,7 +22,7 @@ from core.availability import (
     get_database_backends,
     get_swarm_topology,
 )
-from core.mcs_builder import start_mcs_worker
+from core.mci_builder import start_mci_worker
 
 FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
     docker_monitor = DockerSwarmMonitor()
     await docker_monitor.start()
     start_recording()
-    start_mcs_worker()
+    start_mci_worker()
     logger.info("Application started successfully")
     yield
     logger.info("Shutting down application...")
