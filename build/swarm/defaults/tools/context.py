@@ -109,6 +109,7 @@ class ContextLoader:
         # Minimal context
         # ===============
         self.prompt("FQDN", "migasfree.acme.com")
+        self.context["FQDN_IP"] = os.getenv("FQDN_IP", "")
         self.default("TZ", "Europe/Madrid")
 
         # Network Management
@@ -152,6 +153,7 @@ class ContextLoader:
         # PMS
         # ===
         self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-apk,pms-wpt")
+
 
         for key in [
             "REPLICAS_console",
@@ -461,6 +463,14 @@ class ContextLoader:
 # METRICS_RECORDING_INTERVAL
 #    Interval (seconds) to record server metrics.
 #    Default: 15
+# {line}
+""",
+            "FQDN_IP": f"""# {line}
+# FQDN_IP
+#     This variable is automatically configured.
+#     If the FQDN is found in the host's /etc/hosts file, its IP will be captured here.
+#     This is useful in environments without DNS.
+#     If this variable is empty, standard network resolution (DNS) will be used.
 # {line}
 """,
             "METRICS_RETENTION_LIMIT": f"""# {line}
