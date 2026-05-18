@@ -48,6 +48,16 @@ class BuildMCImageResponse(BaseModel):
     task_id: str
 
 
+class BuildMCSISORequest(BaseModel):
+    server_url: str | None = None
+    server_ip: str | None = None
+    keymap: str | None = None
+
+
+class BuildMCSISOResponse(BaseModel):
+    task_id: str
+
+
 class BuildTaskStatus(BaseModel):
     task_id: str
     status: str  # queued|building|exporting|partitioning|installing|dumping|finalizing|completed|error
@@ -64,4 +74,7 @@ TokenAdminResponse.model_rebuild()
 TokenComputerResponse.model_rebuild()
 BuildMCImageRequest.model_rebuild()
 BuildMCImageResponse.model_rebuild()
+BuildMCSISORequest.model_rebuild()
+BuildMCSISOResponse.model_rebuild()
 BuildTaskStatus.model_rebuild()
+

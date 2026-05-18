@@ -22,6 +22,7 @@ from core.config import (
     MCI_TEMP_DIR,
     MCI_PREFIX,
     CORE_TOKEN_URL,
+    PATH_DATASHARES,
 )
 
 SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
@@ -239,6 +240,7 @@ def build_docker_image(
     build_dir: Path,
     image_tag: str,
     progress_cb: Callable[[int, str], None] | None = None,
+    task_id: str | None = None,
 ) -> None:
     cmd = [
         "docker",
@@ -270,7 +272,10 @@ def build_docker_image(
         line = line.rstrip()
         if not line:
             continue
-        logger.info(f"  {line}")
+        if task_id:
+            logger.info(f"Task {task_id} log: {line}")
+        else:
+            logger.info(f"  {line}")
         if line.startswith("Step ") and "/" in line:
             step = line.split(" :")[0] if " :" in line else line
             msg = f"Building image: {step}"
@@ -497,6 +502,37 @@ def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None)
 
 def build_mci_image(task_id: str, release_id: int):
     _update_task_status(task_id, "fetching", 0, "Fetching release and project data")
+    
+    # Check if there is no MCS ISO in the pool directory. If so, automatically queue an MCS build task!
+    try:
+        mcs_pool_dir = PATH_DATASHARES / STACK / "pool" / "mcs"
+        iso_files = list(mcs_pool_dir.glob("*.iso")) if mcs_pool_dir.exists() else []
+        if not iso_files:
+            logger.info(f"Task {task_id}: No MCS ISO found in pool. Queueing automatic MCS build task sequentially...")
+            con = get_redis_connection()
+            mcs_task_id = str(uuid.uuid4())
+            con.rpush("mcs:build_queue", json.dumps({
+                "task_id": mcs_task_id,
+                "server_url": None,
+                "server_ip": None,
+                "keymap": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }))
+            con.hset(
+                f"mcs:task:{mcs_task_id}",
+                mapping={
+                    "status": "queued",
+                    "progress": "0",
+                    "message": "Enqueued automatically by MCI build trigger",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+            con.expire(f"mcs:task:{mcs_task_id}", 86400)
+            logger.info(f"Task {task_id}: Automatic MCS build task {mcs_task_id} successfully queued.")
+    except Exception as ex:
+        logger.error(f"Task {task_id}: Failed to queue automatic MCS build task: {ex}")
+
     try:
         # mci_release → mci_config → core_project
         release_data = _get_release_from_core(release_id)
@@ -569,7 +605,7 @@ def build_mci_image(task_id: str, release_id: int):
                 logger.warning(f"Certificate {src_cert} not found")
 
             _flavour_progress(15, "Building Docker image")
-            build_docker_image(build_dir, image_tag, progress_cb=_flavour_progress)
+            build_docker_image(build_dir, image_tag, progress_cb=_flavour_progress, task_id=task_id)
 
             _flavour_progress(35, "Exporting and extracting root filesystem")
             export_and_extract(

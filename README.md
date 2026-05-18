@@ -34,6 +34,7 @@ Our documentation is structured following the Diátaxis framework to help you fi
 * **[Architecture Overview](doc/explanation/architecture.md)**: Deep dive into the Swarm stack design.
 * **[Data Persistence](doc/explanation/data-persistence.md)**: How volumes and shared storage work.
 * **[MCI Image Builder](doc/explanation/mci-builder.md)**: How client OS partition images are compiled, packaged, and distributed.
+* **[MCS ISO Builder](doc/explanation/mcs-builder.md)**: How the custom bootable ISO and rescue cloning environment is generated.
 
 ---
 

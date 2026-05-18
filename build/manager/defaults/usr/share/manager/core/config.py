@@ -47,3 +47,9 @@ if local_templates_dir.exists() and local_templates_dir.is_dir():
     MCI_TEMPLATES_URL = "http://proxy/pool/mci-templates"
 else:
     MCI_TEMPLATES_URL = "https://raw.githubusercontent.com/migasfree/mci-templates/main"
+
+# MCS (Migasfree Clone System) build config
+MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"
+HOST_VOLUME_BASE = Path("/var/lib/docker/volumes/migasfree-swarm/_data")
+HOST_STACK_DIR = HOST_VOLUME_BASE / "datashares" / os.environ["STACK"]
+
