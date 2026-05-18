@@ -451,7 +451,7 @@ def generate_checksums(output_dir: Path, config_data: dict) -> Path:
     return checksum_path
 
 
-def update_catalog_json(mpi_name: str, flavour_data: dict) -> None:
+def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None) -> None:
     catalog_path = MCI_POOL_DIR / "catalog.json"
     catalog = []
     if catalog_path.exists():
@@ -465,22 +465,27 @@ def update_catalog_json(mpi_name: str, flavour_data: dict) -> None:
 
     # Check if entry already exists
     entry_found = False
-    enabled = flavour_data.get("enabled", True)
+    enabled = False
     description = flavour_data.get("description", "")
 
     for entry in catalog:
         if isinstance(entry, dict) and entry.get("name") == mpi_name:
             entry["enabled"] = enabled
             entry["description"] = description
+            if build_id is not None:
+                entry["build_id"] = build_id
             entry_found = True
             break
 
     if not entry_found:
-        catalog.append({
+        new_entry = {
             "name": mpi_name,
             "enabled": enabled,
             "description": description
-        })
+        }
+        if build_id is not None:
+            new_entry["build_id"] = build_id
+        catalog.append(new_entry)
 
     try:
         catalog_path.write_text(json.dumps(catalog, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -627,7 +632,8 @@ def build_mci_image(task_id: str, release_id: int):
             subprocess.run(["chown", "-R", "890:890", str(MCI_POOL_DIR)], check=True)
 
             try:
-                update_catalog_json(mpi_name, flavour)
+                build_id_val = build_record["id"] if build_record else None
+                update_catalog_json(mpi_name, flavour, build_id=build_id_val)
             except Exception as ce:
                 logger.error(f"Failed to update catalog.json: {ce}")
 
