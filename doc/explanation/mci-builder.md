@@ -192,27 +192,27 @@ Audits and stores the compilation results of a compilation run.
 To protect production workstations from deploying untested or buggy image compilations, the Migasfree Swarm implements a **Secure-by-Default / Feature Flag** architecture for newly compiled MCIs:
 
 1. **Automatic Lockout (enabled=false)**:
-   - When the background builder finishes compiling an image (within `build_mci_image`), it registers the new entry in the centralized `/pool/mci/catalog.json` with `"enabled": false`.
-   - Client machines (e.g. laboratory/testing machines vs. production machines running the `migasfree-clone-system` client) read this flag. Under normal mode, production machines will only fetch images having `"enabled": true`.
+   * When the background builder finishes compiling an image (within `build_mci_image`), it registers the new entry in the centralized `/pool/mci/catalog.json` with `"enabled": false`.
+   * Client machines (e.g. laboratory/testing machines vs. production machines running the `migasfree-clone-system` client) read this flag. Under normal mode, production machines will only fetch images having `"enabled": true`.
 
 2. **FastAPI Promotion/Demotion Endpoints**:
-   - To make an image available for general production, an administrator (superuser) must explicitly call the promotion API.
-   - The promotion endpoint maps a database-registered `build_id` to its actual image files, updates `catalog.json` setting `"enabled": true` and `"build_id": build_id`, and applies correct permissions.
-   - A demotion endpoint is also available to immediately block/disable an image from distribution if a critical bug is discovered.
+   * To make an image available for general production, an administrator (superuser) must explicitly call the promotion API.
+   * The promotion endpoint maps a database-registered `build_id` to its actual image files, updates `catalog.json` setting `"enabled": true` and `"build_id": build_id`, and applies correct permissions.
+   * A demotion endpoint is also available to immediately block/disable an image from distribution if a critical bug is discovered.
 
 ### Promotion & Demotion Endpoints
 
 Both endpoints are registered under the private manager router and require **superuser credentials**:
 
 * **Promote Image**: `POST /manager/v1/private/mci/builds/{build_id}/promote`
-  - Reconstructs the exact image name (`mpi_name`) by fetching its `build`, `release`, `flavour`, and `project` metadata from Django Core.
-  - Verifies the build status is `"completed"`.
-  - Parses `catalog.json`, finds the corresponding entry, sets `"enabled": true` and `"build_id": build_id`, writes it to disk, and updates permissions (`chown 890:890`).
-  - Returns `200 OK` on success.
+  * Reconstructs the exact image name (`mpi_name`) by fetching its `build`, `release`, `flavour`, and `project` metadata from Django Core.
+  * Verifies the build status is `"completed"`.
+  * Parses `catalog.json`, finds the corresponding entry, sets `"enabled": true` and `"build_id": build_id`, writes it to disk, and updates permissions (`chown 890:890`).
+  * Returns `200 OK` on success.
 
 * **Demote Image**: `POST /manager/v1/private/mci/builds/{build_id}/demote`
-  - Performs the same sequence but updates the entry to `"enabled": false` and `"build_id": build_id`, immediately cutting off distribution.
-  - Returns `200 OK` on success.
+  * Performs the same sequence but updates the entry to `"enabled": false` and `"build_id": build_id`, immediately cutting off distribution.
+  * Returns `200 OK` on success.
 
 ---
 
