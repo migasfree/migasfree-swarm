@@ -78,7 +78,7 @@ async def list_tools() -> list[Tool]:
                 "Read a documentation file by name. "
                 "Use this tool to access documentation when MCP resources are not available in your client. "
                 "Call with no arguments (or name='') to list all available documents. "
-                "Example names: 'db_schema.md', 'api_core.md', 'faq.md', 'migasfree_architecture.md'."
+                "Example names: 'db_schema.md', 'api_core.md', 'api_manager.md', 'faq.md', 'migasfree_architecture.md'."
             ),
             inputSchema={
                 "type": "object",
