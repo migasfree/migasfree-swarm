@@ -1,0 +1,345 @@
+# MCI Deployment Export & Import (Explanation)
+
+The **MCI Deployment Export/Import** system enables replicating the complete configuration of deployments, stores, and packages between Migasfree projects. It is designed so that a new project can automatically inherit the software repositories configured in a model project, streamlining the setup of new projects.
+
+The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr/share/manager/routers/mci_templates.py) and are registered under the private router (`/v1/private/mci`).
+
+---
+
+## 📋 Core Concepts
+
+| Concept | Description |
+| :--- | :--- |
+| **External Deployment (source=E)** | External APT/YUM repository (e.g. `ftp.debian.org`). Defines base URL, suite, components, and signing options. |
+| **Internal Deployment (source=I)** | Migasfree-managed internal repository. Contains custom `.deb` packages stored in stores. |
+| **Store** | Logical storage unit within a project where packages are grouped (e.g. `thirds`, `org`, `updates`). |
+| **MCI Template** | Base template associated with a project via `mci_config`. Defines the OS family, Dockerfile, and default deployments. |
+| **Catalog (`catalog.yml`)** | Index of available MCI templates, mapping each `template_id` to its path on disk. |
+
+---
+
+## 🏗️ File Structure
+
+The export generates a set of YAML files and binary packages inside the template directory:
+
+```text
+pool/mci-templates/
+├── catalog.yml                          # Template index
+└── <family>/<version>/                  # E.g.: debian/13/
+    ├── dockerfile.j2                    # Dockerfile template (Jinja2)
+    ├── partition.yml                    # Partition schema
+    ├── deployments.yml                  # Exported deployments
+    ├── stores.yml                       # Project stores
+    ├── packages.yml                     # Package metadata
+    └── stores/                          # Binary packages
+        └── <store_slug>/               # E.g.: thirds/
+            ├── migasfree-client_5.0-1_all.deb
+            └── migasfree-agent_1.0.11_all.deb
+```
+
+---
+
+## 📤 Export (`GET /v1/private/mci/projects/{project_id}/export`)
+
+### Export Description
+
+Exports all internal and external deployments of a project in YAML format. Simultaneously persists the files to the corresponding MCI template directory.
+
+### Export Execution Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant M as Manager API
+    participant DB as PostgreSQL
+    participant FS as Filesystem
+    participant PUB as Public (Proxy)
+
+    C->>M: GET /v1/private/mci/projects/{id}/export
+    M->>DB: Query project deployments
+    M->>DB: Query included attributes (prefix-value)
+    M->>DB: Query associated packages and stores
+
+    Note over M: Generate YAML with E/I schemas
+
+    M->>DB: Query template_id from mci_config
+    M->>FS: Read catalog.yml → resolve template path
+
+    M->>FS: Write deployments.yml
+    M->>DB: Query stores → write stores.yml
+    M->>DB: Query packages → write packages.yml
+
+    loop For each package
+        M->>PUB: Download .deb via HTTP
+        M->>FS: Save to stores/<slug>/<filename>
+    end
+
+    M-->>C: YAML response (content-type: text/yaml)
+```
+
+### What Gets Exported
+
+| Data | Exported? | Notes |
+| :--- | :---: | :--- |
+| Deployment name | ✅ | `name` field |
+| State (enabled) | ✅ | `enabled` field |
+| Included attributes | ✅ | As `PREFIX-Value` only (e.g. `SET-All Systems`) |
+| Excluded attributes | ❌ | Not exported |
+| Schedule | ❌ | Not exported |
+| Domain | ❌ | Not exported |
+| Stores | ✅ | In `stores.yml` |
+| Packages (metadata) | ✅ | In `packages.yml` |
+| Packages (binary .deb) | ✅ | Downloaded to `stores/<slug>/` |
+
+### Destination Directory Resolution
+
+1. Queries `mci_config.template_id` for the project
+2. Looks up the corresponding `path` in `catalog.yml` for the `template_id`
+3. **Fallback**: If no template is configured, uses the project's `slug`
+
+---
+
+## 📥 Import (`POST /v1/private/mci/projects/{project_id}/import`)
+
+### Import Description
+
+Imports deployments, stores, and packages into a target project. It is **idempotent**: updates existing deployments (by name matching) and creates new ones.
+
+### Invocation Modes
+
+| Mode | Description |
+| :--- | :--- |
+| **With YAML payload** | Sends the YAML directly in the POST body |
+| **Without payload** | Automatically loads from the associated template's `deployments.yml` |
+
+```bash
+# Mode 1: Without payload (uses project template)
+curl -X POST https://server/manager/v1/private/mci/projects/6/import -d ''
+
+# Mode 2: With explicit payload
+curl -X POST https://server/manager/v1/private/mci/projects/6/import \
+  -H "Content-Type: text/yaml" \
+  --data-binary @deployments.yml
+```
+
+### Import Execution Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant M as Manager API
+    participant DB as PostgreSQL
+    participant CORE as Django Core API
+    participant FS as Filesystem
+
+    C->>M: POST /v1/private/mci/projects/{id}/import
+
+    alt Without payload
+        M->>DB: Query template_id from mci_config
+        M->>FS: Read catalog.yml → resolve path
+        M->>FS: Read deployments.yml from template
+    else With YAML payload
+        Note over M: Parse YAML from body
+    end
+
+    Note over M: Phase 1: Import stores and packages
+
+    M->>FS: Read stores.yml from template
+    loop For each store
+        M->>DB: SELECT existing store
+        alt Does not exist
+            M->>DB: INSERT core_store + COMMIT
+        end
+    end
+
+    M->>FS: Read packages.yml from template
+    loop For each package
+        M->>FS: Copy .deb to public/<slug>/stores/<store>/
+        M->>DB: SELECT existing package
+        alt Does not exist
+            M->>DB: INSERT core_package + COMMIT
+        end
+    end
+
+    Note over M: Phase 2: Import deployments
+
+    loop For each deployment
+        M->>DB: Resolve attributes (prefix → attribute_id)
+        M->>DB: Resolve packages (name → package_id)
+        M->>DB: Deployment with same name exists?
+
+        alt Exists
+            M->>CORE: PATCH /token/deployments/{id}/
+        else Does not exist
+            M->>CORE: POST /token/deployments/
+        end
+    end
+
+    Note over M: Phase 3: Rebuild metadata
+
+    loop For each internal deployment
+        M->>CORE: GET /token/deployments/internal-sources/{id}/metadata/
+    end
+
+    M-->>C: YAML response (status, created, updated, errors)
+```
+
+### Automatic Template Resolution (without payload)
+
+The resolution follows this priority chain:
+
+1. **`mci_config.template_id`** → looks up in `catalog.yml` → reads `deployments.yml` from the path
+2. **Remote registry**: If not found locally, attempts to download from `MCI_TEMPLATES_URL`
+3. **Slug fallback**: Looks in `pool/mci-templates/<project_slug>/deployments.yml`
+4. **Error 400**: If no source has data
+
+---
+
+## 📐 YAML Schemas
+
+### External Deployment (`source: E`)
+
+```yaml
+- name: BASE                              # Deployment name
+  enabled: true                           # Enabled/disabled
+  base_url: http://ftp.debian.org/debian/ # Repository base URL
+  suite: bookworm                         # Suite/distribution
+  components: main contrib non-free       # APT components
+  options: '[ Signed-By=/usr/share/keyrings/debian-archive-keyring.gpg ]'
+  frozen: true                            # Frozen (no updates)
+  included_attributes:                    # Attributes as PREFIX-Value
+    - SET-All Systems
+  source: E                               # Type: External
+```
+
+### Internal Deployment (`source: I`)
+
+```yaml
+- name: migasfree                         # Deployment name
+  enabled: true                           # Enabled/disabled
+  comment: Migasfree packages             # Descriptive comment
+  available_packages:                     # Packages available in the repo
+    - migasfree-client
+    - migasfree-agent
+  packages_to_install:                    # Packages to install automatically
+    - migasfree-client
+  packages_to_remove: []                  # Packages to uninstall
+  included_attributes:                    # Attributes as PREFIX-Value
+    - SET-All Systems
+  store: thirds                           # Associated store slug
+  source: I                               # Type: Internal
+```
+
+### `stores.yml`
+
+```yaml
+stores:
+  - name: thirds
+    slug: thirds
+  - name: org
+    slug: org
+```
+
+### `packages.yml`
+
+```yaml
+packages:
+  - fullname: migasfree-client_5.0-1_all.deb
+    name: migasfree-client
+    version: 5.0-1
+    architecture: all
+    store: thirds                # Store slug where the package resides
+    project_slug: lnx-1         # Source project slug
+  - fullname: migasfree-agent_1.0.11_all.deb
+    name: migasfree-agent
+    version: 1.0.11
+    architecture: all
+    store: thirds
+    project_slug: lnx-1
+```
+
+---
+
+## 🔄 Import Response
+
+The response is returned in YAML format:
+
+```yaml
+# Successful import
+status: success
+created: 4        # New deployments created
+updated: 2        # Existing deployments updated
+errors: []        # Empty list if everything succeeded
+
+# Partial import (HTTP 207)
+status: partial_success
+created: 3
+updated: 1
+errors:
+  - "Failed to create 'CUSTOM': HTTP 400 - Invalid field"
+```
+
+---
+
+## ⚠️ Important Considerations
+
+### Idempotency
+
+The import is fully idempotent:
+
+- **Stores**: Created only if one with the same slug does not already exist (case-insensitive comparison).
+- **Packages**: Registered only if one with the same `fullname` does not already exist in the same store.
+- **Deployments**: If one with the same name exists, it is updated (PATCH); otherwise, it is created (POST).
+
+### Metadata Rebuild
+
+After importing all deployments, a metadata rebuild is automatically triggered for every internal deployment (`source=I`). This generates the APT index files required for clients to install packages from the internal repository.
+
+### Database Transactions
+
+Direct insertions into PostgreSQL (stores and packages) use explicit `conn.commit()` after each write operation. This is necessary because `psycopg2` operates in transactional mode by default, and without a commit the insertions would be discarded when the connection is closed.
+
+### Fields Not Exported
+
+The following deployment fields are **not exported** by design:
+
+- **Schedule (`schedule`)**: Specific to the production environment.
+- **Domain (`domain`)**: Specific to the organization.
+- **Excluded attributes**: Not considered portable between projects.
+- **Numeric IDs**: Resolved dynamically during import.
+
+### Physical Package Copy
+
+During import, `.deb` files are copied from the template directory (`stores/<slug>/`) to the target project's public directory (`public/<project_slug>/stores/<slug>/`), making them accessible to clients through the web server.
+
+---
+
+## 🗺️ Relationship with the MCI Lifecycle
+
+The deployment export/import integrates into the overall MCI workflow:
+
+```mermaid
+flowchart LR
+    A["Model Project"] -->|Export| B["MCI Template"]
+    B -->|catalog.yml| C["Pool mci-templates"]
+    C -->|Import| D["New Project"]
+    D -->|Configure MCI| E["Build MCI Image"]
+    E -->|Pool mci| F["Deploy to clients"]
+
+    subgraph "Template Files"
+        B --- B1[deployments.yml]
+        B --- B2[stores.yml]
+        B --- B3[packages.yml]
+        B --- B4["stores/*.deb"]
+        B --- B5[dockerfile.j2]
+        B --- B6[partition.yml]
+    end
+```
+
+1. Configure a **model project** with the desired deployments, stores, and packages.
+2. **Export** the configuration, which is stored as MCI template files.
+3. When creating a **new project**, associate it with the same template via `mci_config`.
+4. **Import** the configuration, replicating the entire repository infrastructure.
+5. The project is ready to build MCI images with its preconfigured deployments.
