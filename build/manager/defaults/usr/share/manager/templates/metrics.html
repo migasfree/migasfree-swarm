@@ -754,8 +754,8 @@
                     document.getElementById('node-count').innerText = nodes.length;
 
                     if (nodes.length > 0) {
-                        document.getElementById('cluster-section').style.display = 'block';
-                        document.getElementById('clusterChartContainer').style.display = 'block';
+                        document.getElementById('cluster-section').classList.remove('hidden');
+                        document.getElementById('clusterChartContainer').classList.remove('hidden');
 
                         const tbody = document.getElementById('nodes-tbody');
                         tbody.innerHTML = '';
@@ -780,6 +780,9 @@
                                 if (isPrimary) return '-';
 
                                 const val = bytes || 0;
+                                if (val === 0) {
+                                    return '<span title="Sync OK" class="status-label">✅</span> 0 B';
+                                }
                                 const lagInMB = val / (1024 * 1024);
 
                                 if (node.status === 0) {
@@ -829,8 +832,8 @@
                         clusterChart.data.datasets[2].data = errors;
                         clusterChart.update();
                     } else {
-                        document.getElementById('cluster-section').style.display = 'none';
-                        document.getElementById('clusterChartContainer').style.display = 'none';
+                        document.getElementById('cluster-section').classList.add('hidden');
+                        document.getElementById('clusterChartContainer').classList.add('hidden');
                     }
                 }
 
