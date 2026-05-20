@@ -760,6 +760,112 @@ async def import_deployments(
     except Exception as ex:
         logger.error(f"Error during stores, packages, and applications resolution: {ex}")
 
+    # 3b. Update mci_config with template metadata (dockerfile, partition, base_os)
+    try:
+        from core.config import local_templates_dir
+
+        dockerfile_content = None
+        partition_content = None
+        base_os_value = None
+        resolved_template_id = template_id or template_path
+
+        # Try to get from payload first
+        if payload and isinstance(payload, dict):
+            if not dockerfile_content:
+                dockerfile_content = payload.get("dockerfile")
+            if not partition_content:
+                partition_content = payload.get("partition")
+            if not base_os_value:
+                base_os_value = payload.get("base_os")
+            if not resolved_template_id:
+                resolved_template_id = payload.get("template_id")
+
+        # If not in payload, try template directory files
+        if template_path:
+            template_dir_mci = local_templates_dir / template_path
+        else:
+            try:
+                project_obj = await get_project_by_id(project_id)
+                project_slug = project_obj.get("slug")
+                template_dir_mci = local_templates_dir / project_slug
+            except Exception:
+                template_dir_mci = None
+
+        if template_dir_mci and template_dir_mci.exists():
+            if not dockerfile_content:
+                dfile = template_dir_mci / "dockerfile.j2"
+                if dfile.exists() and dfile.is_file():
+                    dockerfile_content = dfile.read_text(encoding="utf-8")
+            if not partition_content:
+                pfile = template_dir_mci / "partition.yml"
+                if pfile.exists() and pfile.is_file():
+                    partition_content = pfile.read_text(encoding="utf-8")
+            if not base_os_value and resolved_template_id:
+                catalog_file = local_templates_dir / "catalog.yml"
+                if catalog_file.exists() and catalog_file.is_file():
+                    try:
+                        catalog_data = yaml.safe_load(catalog_file.read_text(encoding="utf-8"))
+                        if isinstance(catalog_data, dict):
+                            for t in catalog_data.get("templates", []):
+                                if t.get("id") == resolved_template_id:
+                                    base_os_value = t.get("base_os")
+                                    break
+                    except Exception:
+                        pass
+
+            if not base_os_value and resolved_template_id:
+                for catalog_url in [MCI_TEMPLATES_GITHUB_URL, MCI_TEMPLATES_URL]:
+                    if not catalog_url:
+                        continue
+                    try:
+                        base_url = catalog_url.rstrip("/")
+                        catalog_content = await _fetch_text(f"{base_url}/catalog.yml")
+                        catalog_data = yaml.safe_load(catalog_content)
+                        if isinstance(catalog_data, dict):
+                            for t in catalog_data.get("templates", []):
+                                if t.get("id") == resolved_template_id:
+                                    base_os_value = t.get("base_os")
+                                    break
+                        if base_os_value:
+                            break
+                    except Exception:
+                        continue
+
+        # Upsert mci_config
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM mci_config WHERE project_id = %s", (project_id,))
+                existing = cur.fetchone()
+                if existing:
+                    updates = []
+                    params = []
+                    if dockerfile_content is not None:
+                        updates.append("dockerfile = %s")
+                        params.append(dockerfile_content)
+                    if partition_content is not None:
+                        updates.append("partition = %s")
+                        params.append(partition_content)
+                    if base_os_value is not None:
+                        updates.append("base_os = %s")
+                        params.append(base_os_value)
+                    if resolved_template_id is not None:
+                        updates.append("template_id = %s")
+                        params.append(resolved_template_id)
+                    if updates:
+                        params.append(project_id)
+                        cur.execute(f"UPDATE mci_config SET {', '.join(updates)} WHERE project_id = %s", params)
+                        conn.commit()
+                        logger.info(f"Updated mci_config for project {project_id}")
+                else:
+                    cur.execute(
+                        "INSERT INTO mci_config (project_id, template_id, dockerfile, partition, base_os) VALUES (%s, %s, %s, %s, %s)",
+                        (project_id, resolved_template_id, dockerfile_content, partition_content, base_os_value)
+                    )
+                    conn.commit()
+                    logger.info(f"Created mci_config for project {project_id}")
+    except Exception as ex:
+        logger.error(f"Error updating mci_config for project {project_id}: {ex}")
+
     # 4. Process Applications Import
     for idx, app in enumerate(applications):
         if not isinstance(app, dict):
