@@ -98,11 +98,13 @@ Building a golden image is initiated through a secure, proxy-enabled endpoint in
    * **Internal Call**: `POST http://manager:8080/manager/v1/internal/mci/build`
    * **Internal Body**: `{"release_id": <id>}`
 3. The **manager** enqueues the compilation task in Redis and returns a unique `task_id`:
+
    ```json
    {
      "task_id": "4b9148d2-8b43-4330-8c29-4e50d5360f08"
    }
    ```
+
 4. Django Core propagates this response back to the caller with a `202 Accepted` HTTP status.
 5. The client can monitor progress by querying the task status on the manager at `GET /v1/internal/mci/build/{task_id}/status`.
 
