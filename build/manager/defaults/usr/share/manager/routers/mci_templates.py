@@ -1,8 +1,9 @@
 import logging
+import os
 import httpx
 import yaml
 from fastapi import APIRouter, HTTPException, status, Response, Request
-from core.config import MCI_TEMPLATES_URL, API_VERSION, CORE_TOKEN_URL
+from core.config import MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL, API_VERSION, CORE_TOKEN_URL
 from core.database import get_db_connection
 from core.core_client import get_project_by_id, get_cached_token
 
@@ -10,11 +11,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix=f"{API_VERSION}/internal/mci",
-    tags=["mci"],
-)
-
-router_private = APIRouter(
-    prefix=f"{API_VERSION}/private/mci",
     tags=["mci"],
 )
 
@@ -44,60 +40,86 @@ async def get_mci_catalog():
 async def get_mci_template(
     template_id: str,
 ):
-    """Fetch the full content of a specific MCI template."""
-    base_url = MCI_TEMPLATES_URL.rstrip("/")
-    catalog_url = f"{base_url}/catalog.yml"
-    try:
-        catalog_content = await _fetch_text(catalog_url)
-        logger.debug(f"Catalog content received: {catalog_content[:200]}...")
-        catalog = yaml.safe_load(catalog_content)
+    """Fetch the full content of a specific MCI template.
+    Checks local pool first, then falls back to GitHub registry.
+    Returns best-effort response (null content) if not found — Core can proceed
+    and actual data comes from MciConfig when exported.
+    """
+    from core.config import local_templates_dir
 
-        if not isinstance(catalog, dict):
-            logger.error(f"Catalog is not a dictionary: {type(catalog)}")
-            raise HTTPException(status_code=500, detail="Invalid catalog format")
-
-        template_info = next((t for t in catalog.get("templates", []) if t.get("id") == template_id), None)
-        if not template_info:
-            raise HTTPException(status_code=404, detail="Template not found")
-        
-        base_path = f"{base_url}/{template_info['path']}"
-        
-        dockerfile = await _fetch_text(f"{base_path}/dockerfile.j2")
-        partition = await _fetch_text(f"{base_path}/partition.yml")
-        
-        # deployments.yml is optional
+    # 1. Check local filesystem (pool/mci-templates/{template_id}/)
+    local_dir = local_templates_dir / template_id
+    if local_dir.exists() and local_dir.is_dir():
+        dockerfile = None
+        partition = None
         deployments = None
         try:
-            deployments = await _fetch_text(f"{base_path}/deployments.yml")
+            dockerfile = local_dir.joinpath("dockerfile.j2").read_text(encoding="utf-8")
         except Exception:
             pass
-
+        try:
+            partition = local_dir.joinpath("partition.yml").read_text(encoding="utf-8")
+        except Exception:
+            pass
+        try:
+            deployments = local_dir.joinpath("deployments.yml").read_text(encoding="utf-8")
+        except Exception:
+            pass
         return {
             "id": template_id,
-            "base_os": template_info.get("base_os"),
             "dockerfile": dockerfile,
             "partition": partition,
             "deployments": deployments
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching template {template_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not fetch template details: {str(e)}"
-        )
 
-@router_private.get("/projects/{project_id}/export")
+    # 2. Fallback: try GitHub registry (skip proxy — only local filesystem or canonical source)
+    if MCI_TEMPLATES_GITHUB_URL:
+        try:
+            base_url = MCI_TEMPLATES_GITHUB_URL.rstrip("/")
+            catalog_content = await _fetch_text(f"{base_url}/catalog.yml")
+            catalog = yaml.safe_load(catalog_content)
+            if isinstance(catalog, dict):
+                template_info = next((t for t in catalog.get("templates", []) if t.get("id") == template_id), None)
+                if template_info:
+                    base_path = f"{base_url}/{template_id}"
+                    dockerfile = await _fetch_text(f"{base_path}/dockerfile.j2")
+                    partition = await _fetch_text(f"{base_path}/partition.yml")
+                    deployments = None
+                    try:
+                        deployments = await _fetch_text(f"{base_path}/deployments.yml")
+                    except Exception:
+                        pass
+                    return {
+                        "id": template_id,
+                        "base_os": template_info.get("base_os"),
+                        "dockerfile": dockerfile,
+                        "partition": partition,
+                        "deployments": deployments
+                    }
+        except Exception:
+            pass
+
+    # 3. Not found anywhere — return minimal response so Core can continue
+    return {
+        "id": template_id,
+        "base_os": None,
+        "dockerfile": None,
+        "partition": None,
+        "deployments": None
+    }
+
+@router.get("/projects/{project_id}/export")
 async def export_deployments(
     project_id: int,
+    request: Request,
 ):
     """
-    Export all internal and external deployments of a project in YAML format.
+    Export all internal and external deployments of a project in YAML/JSON format.
     - Uses distinct schemas for internal and external deployments.
     - Attributes are exported as prefix-value string lists, e.g. ["SET-All Systems"].
     - Resolves store and available packages for internal deployments.
     - Only exports relevant fields.
+    - Also exports applications associated with the project.
     """
     # 1. Verify project exists
     try:
@@ -238,60 +260,105 @@ async def export_deployments(
         logger.error(f"Error exporting deployments for project {project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error during export: {str(e)}"
+            detail=f"Database error during deployments export: {str(e)}"
         )
 
-    # Wrap the deployments in a standard dict/YAML envelope
-    export_data = {"deployments": deployments}
-    yaml_content = yaml.safe_dump(export_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
-    
-    # Save deployments.yml, stores.yml, and packages.yml to pool/mci-templates
+    # 3. Query all applications of this project
+    applications = []
     try:
-        from core.config import local_templates_dir, MCI_TEMPLATES_URL
-        
-        # 1. Query template_id for project_id from mci_config
-        template_id = None
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT template_id FROM mci_config WHERE project_id = %s", (project_id,))
+                cur.execute("""
+                    SELECT a.id, a.name, a.description, a.score, a.icon, a.level, c.name AS category_name, pbp.packages_to_install
+                    FROM app_catalog_packagesbyproject pbp
+                    JOIN app_catalog_application a ON pbp.application_id = a.id
+                    JOIN app_catalog_category c ON a.category_id = c.id
+                    WHERE pbp.project_id = %s
+                    ORDER BY a.id ASC
+                """, (project_id,))
+                
+                app_rows = cur.fetchall()
+                for app_row in app_rows:
+                    app_id, app_name, app_desc, app_score, app_icon, app_level, category_name, packages_to_install = app_row
+                    
+                    # Fetch attributes linked to this application
+                    cur.execute("""
+                        SELECT p.prefix, att.value
+                        FROM app_catalog_application_available_for_attributes aaa
+                        JOIN core_attribute att ON aaa.attribute_id = att.id
+                        JOIN core_property p ON att.property_att_id = p.id
+                        WHERE aaa.application_id = %s
+                    """, (app_id,))
+                    attrs = cur.fetchall()
+                    available_attrs = [f"{r[0]}-{r[1]}" for r in attrs]
+                    
+                    # Package fields as clean lists of strings
+                    packages_list = [p.strip() for p in packages_to_install.split("\n") if p.strip()] if packages_to_install else []
+
+                    applications.append({
+                        "name": app_name,
+                        "description": app_desc,
+                        "score": app_score,
+                        "icon": app_icon,
+                        "level": app_level,
+                        "category": category_name,
+                        "packages_to_install": packages_list,
+                        "available_for_attributes": available_attrs
+                    })
+    except Exception as e:
+        logger.error(f"Error exporting applications for project {project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error during applications export: {str(e)}"
+        )
+
+    # Wrap deployments and applications in a standard dict/YAML envelope (for HTTP response)
+    export_data = {
+        "deployments": deployments,
+        "applications": applications
+    }
+    yaml_content = yaml.safe_dump(export_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    # Build separate YAML content for the deployments.yml file (without applications)
+    deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    
+    # Save deployments.yml, stores.yml, packages.yml, and applications.yml to pool/mci-templates
+    try:
+        from core.config import local_templates_dir
+        
+        # 1. Query template_id, dockerfile and partition for project_id from mci_config
+        template_id = None
+        dockerfile_content = None
+        partition_content = None
+        base_os = None
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT template_id, dockerfile, partition, base_os FROM mci_config WHERE project_id = %s", (project_id,))
                 row = cur.fetchone()
                 if row:
-                    template_id = row[0]
+                    template_id, dockerfile_content, partition_content, base_os = row
                     
-        template_path = None
-        if template_id:
-            # 2. Load catalog.yml
-            catalog = None
-            catalog_file = local_templates_dir / "catalog.yml"
-            if catalog_file.exists() and catalog_file.is_file():
-                catalog = yaml.safe_load(catalog_file.read_text(encoding="utf-8"))
-            else:
-                try:
-                    base_url = MCI_TEMPLATES_URL.rstrip("/")
-                    url = f"{base_url}/catalog.yml"
-                    content = await _fetch_text(url)
-                    catalog = yaml.safe_load(content)
-                except Exception as e:
-                    logger.error(f"Error fetching catalog from {url}: {e}")
-            
-            # 3. Locate template by template_id in catalog
-            if catalog and isinstance(catalog, dict):
-                template_info = next((t for t in catalog.get("templates", []) if t.get("id") == template_id), None)
-                if template_info:
-                    template_path = template_info.get("path")
-                    
-        # 4. Determine save directory (resolved template path or project slug as fallback)
-        if not template_path:
-            template_path = project.get("slug")
+        # 2. Use template_id as directory name directly (no catalog lookup needed)
+        template_path = template_id or project.get("slug")
             
         if template_path:
             dest_dir = local_templates_dir / template_path
             dest_dir.mkdir(parents=True, exist_ok=True)
             
-            # A. Save deployments.yml
+            # A. Save deployments.yml (deployments only, preserving original structure)
             dest_file = dest_dir / "deployments.yml"
-            dest_file.write_text(yaml_content, encoding="utf-8")
+            dest_file.write_text(deployments_yaml, encoding="utf-8")
             logger.info(f"Exported deployments saved to {dest_file}")
+
+            if dockerfile_content:
+                dockerfile_file = dest_dir / "dockerfile.j2"
+                dockerfile_file.write_text(dockerfile_content, encoding="utf-8")
+                logger.info(f"Exported dockerfile.j2 saved to {dockerfile_file}")
+
+            if partition_content:
+                partition_file = dest_dir / "partition.yml"
+                partition_file.write_text(partition_content, encoding="utf-8")
+                logger.info(f"Exported partition.yml saved to {partition_file}")
             
             # B. Export Stores to stores.yml
             stores = []
@@ -334,7 +401,15 @@ async def export_deployments(
             )
             logger.info(f"Exported packages metadata saved to {packages_file}")
             
-            # D. Download and save physical package files via API
+            # D. Export Applications to applications.yml
+            apps_file = dest_dir / "applications.yml"
+            apps_file.write_text(
+                yaml.safe_dump({"applications": applications}, default_flow_style=False, sort_keys=False, allow_unicode=True),
+                encoding="utf-8"
+            )
+            logger.info(f"Exported applications metadata saved to {apps_file}")
+
+            # E. Download and save physical package files via API
             for pkg in packages:
                 # Construct backend API download URL
                 pkg_url = f"http://public/public/{pkg['project_slug']}/stores/{pkg['store']}/{pkg['fullname']}"
@@ -352,20 +427,92 @@ async def export_deployments(
                             logger.error(f"Failed to download package {pkg['fullname']}: HTTP {response.status_code}")
                 except Exception as ex:
                     logger.error(f"Error downloading package {pkg['fullname']}: {ex}")
-                    
-    except Exception as e:
-        logger.error(f"Failed to save deployments, stores, and packages to template directory: {e}")
-        
-    return Response(content=yaml_content, media_type="text/yaml")
 
-@router_private.post("/projects/{project_id}/import")
+            # F. Download and save application icon files
+            for app in applications:
+                icon_path = app.get("icon")
+                if not icon_path:
+                    continue
+                # icon_path is like "catalog_icons/app_2.png"
+                icon_url = f"http://public/public/{icon_path}"
+                icon_dest = dest_dir / "icons" / os.path.basename(icon_path)
+                icon_dest.parent.mkdir(parents=True, exist_ok=True)
+                
+                try:
+                    logger.info(f"Downloading icon from {icon_url} to {icon_dest}")
+                    async with httpx.AsyncClient(verify=False) as client:
+                        response = await client.get(icon_url, timeout=30.0)
+                        if response.status_code == 200:
+                            icon_dest.write_bytes(response.content)
+                            logger.info(f"Successfully downloaded icon {icon_path}")
+                        else:
+                            logger.error(f"Failed to download icon {icon_path}: HTTP {response.status_code}")
+                except Exception as ex:
+                    logger.error(f"Error downloading icon {icon_path}: {ex}")
+                    
+            # G. Set ownership for the entire mci-templates tree
+            try:
+                import subprocess
+                subprocess.run(
+                    ["chown", "-R", "890:890", str(local_templates_dir)],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                logger.info(f"Ownership set to 890:890 on {local_templates_dir}")
+            except Exception as own_err:
+                logger.error(f"Failed to set ownership on {local_templates_dir}: {own_err}")
+
+            # H. Update local catalog.yml with this template entry
+            try:
+                catalog_file = local_templates_dir / "catalog.yml"
+                if catalog_file.exists() and catalog_file.is_file():
+                    local_catalog = yaml.safe_load(catalog_file.read_text(encoding="utf-8")) or {}
+                else:
+                    local_catalog = {}
+                if not isinstance(local_catalog, dict):
+                    local_catalog = {}
+                templates = local_catalog.get("templates", [])
+                # Upsert: add or update entry for this template_id
+                existing = next((t for t in templates if t.get("id") == template_id), None)
+                entry = {"id": template_id}
+                if base_os:
+                    entry["base_os"] = base_os
+                if existing:
+                    templates[templates.index(existing)] = entry
+                else:
+                    templates.append(entry)
+                local_catalog["templates"] = templates
+                local_templates_dir.mkdir(parents=True, exist_ok=True)
+                catalog_file.write_text(
+                    yaml.safe_dump(local_catalog, default_flow_style=False, sort_keys=False, allow_unicode=True),
+                    encoding="utf-8"
+                )
+                logger.info(f"Updated local catalog.yml with template '{template_id}'")
+            except Exception as catalog_err:
+                logger.error(f"Failed to update local catalog.yml: {catalog_err}")
+
+    except Exception as e:
+        logger.error(f"Failed to save deployments, stores, packages, and applications to template directory: {e}")
+
+    accept = request.headers.get("accept", "")
+    if "text/yaml" in accept or "application/x-yaml" in accept:
+        return Response(content=yaml_content, media_type="text/yaml")
+    import json
+    return Response(
+        content=json.dumps(export_data, ensure_ascii=False),
+        media_type="application/json"
+    )
+
+@router.post("/projects/{project_id}/import")
 async def import_deployments(
     project_id: int,
     request: Request,
+    template_id: str = None,
 ):
     """
-    Import deployments from a YAML request body into the specified project.
-    - Idempotent: Updates existing deployments (by name matching) and creates new ones.
+    Import deployments and applications from a YAML request body into the specified project.
+    - Idempotent: Updates existing deployments/applications and creates new ones.
     - Resolves prefix-value attributes dynamically.
     - Resolves store and available packages for internal deployments.
     """
@@ -394,58 +541,45 @@ async def import_deployments(
     # 2. If no payload was provided, try to load deployments.yml from the template directory
     if not payload:
         try:
-            from core.config import local_templates_dir, MCI_TEMPLATES_URL
+            from core.config import local_templates_dir, MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL
             
-            # A. Query template_id for project_id from mci_config
-            template_id = None
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT template_id FROM mci_config WHERE project_id = %s", (project_id,))
-                    row = cur.fetchone()
-                    if row:
-                        template_id = row[0]
+            # A. Query template_id for project_id from mci_config if not provided
+            if not template_id:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT template_id FROM mci_config WHERE project_id = %s", (project_id,))
+                        row = cur.fetchone()
+                        if row:
+                            template_id = row[0]
                         
-            template_path = None
-            if template_id:
-                # B. Load catalog.yml
-                catalog = None
-                catalog_file = local_templates_dir / "catalog.yml"
-                if catalog_file.exists() and catalog_file.is_file():
-                    catalog = yaml.safe_load(catalog_file.read_text(encoding="utf-8"))
-                else:
-                    try:
-                        base_url = MCI_TEMPLATES_URL.rstrip("/")
-                        url = f"{base_url}/catalog.yml"
-                        content = await _fetch_text(url)
-                        catalog = yaml.safe_load(content)
-                    except Exception as e:
-                        logger.error(f"Error fetching catalog from {url}: {e}")
-                
-                # C. Locate template by template_id in catalog
-                if catalog and isinstance(catalog, dict):
-                    template_info = next((t for t in catalog.get("templates", []) if t.get("id") == template_id), None)
-                    if template_info:
-                        template_path = template_info.get("path")
+            # B. Use template_id as directory name directly (no catalog lookup needed)
+            template_path = template_id
             
-            # D. If template path is found, try to read deployments.yml from it
+            # C. If template path is found, try to read deployments.yml from it
             yaml_content = None
             if template_path:
                 local_file = local_templates_dir / template_path / "deployments.yml"
                 if local_file.exists() and local_file.is_file():
                     yaml_content = local_file.read_text(encoding="utf-8")
                 else:
-                    try:
-                        base_url = MCI_TEMPLATES_URL.rstrip("/")
-                        url = f"{base_url}/{template_path}/deployments.yml"
-                        yaml_content = await _fetch_text(url)
-                    except Exception as e:
-                        logger.error(f"Error fetching deployments.yml from template registry: {e}")
+                    for fallback_url in [MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL]:
+                        if not fallback_url:
+                            continue
+                        try:
+                            base_url = fallback_url.rstrip("/")
+                            url = f"{base_url}/{template_path}/deployments.yml"
+                            yaml_content = await _fetch_text(url)
+                            if yaml_content:
+                                logger.info(f"Loaded deployments.yml from {url}")
+                                break
+                        except Exception:
+                            continue
             
             if yaml_content:
                 payload = yaml.safe_load(yaml_content)
                 logger.info(f"Successfully loaded deployments template for project {project_id} from {template_path or 'registry'}")
             else:
-                # E. If no template resolved, check fallback using project's slug
+                # D. If no template resolved, check fallback using project's slug
                 project = await get_project_by_id(project_id)
                 project_slug = project.get("slug")
                 local_file = local_templates_dir / project_slug / "deployments.yml"
@@ -453,6 +587,27 @@ async def import_deployments(
                     yaml_content = local_file.read_text(encoding="utf-8")
                     payload = yaml.safe_load(yaml_content)
                     logger.info(f"Successfully loaded deployments from project slug fallback for project {project_id}")
+
+            # E. Load applications.yml from the same template directory and merge into payload
+            apps_file = None
+            if template_path:
+                apps_file = local_templates_dir / template_path / "applications.yml"
+            if not apps_file or not apps_file.exists():
+                try:
+                    proj = await get_project_by_id(project_id)
+                    apps_file = local_templates_dir / proj.get("slug", "") / "applications.yml"
+                except Exception:
+                    pass
+            if apps_file and apps_file.exists() and apps_file.is_file():
+                try:
+                    apps_data = yaml.safe_load(apps_file.read_text(encoding="utf-8"))
+                    if isinstance(apps_data, dict) and "applications" in apps_data:
+                        if payload is None:
+                            payload = {}
+                        payload.setdefault("applications", apps_data["applications"])
+                        logger.info(f"Loaded applications from {apps_file}")
+                except Exception as e:
+                    logger.error(f"Error loading applications from {apps_file}: {e}")
                     
         except Exception as e:
             logger.error(f"Error resolving template deployments for project {project_id}: {e}")
@@ -464,8 +619,13 @@ async def import_deployments(
         )
 
     # Support both wrapped dict and flat list formats
-    if isinstance(payload, dict) and "deployments" in payload:
-        deployments = payload["deployments"]
+    deployments = []
+    applications = []
+    if isinstance(payload, dict):
+        if "deployments" in payload:
+            deployments = payload["deployments"]
+        if "applications" in payload:
+            applications = payload["applications"]
     elif isinstance(payload, list):
         deployments = payload
     else:
@@ -474,7 +634,7 @@ async def import_deployments(
             detail="Invalid structure: expected a list of deployments or a dictionary with a 'deployments' key."
         )
 
-    # 2. Verify project exists
+    # 2b. Verify project exists
     try:
         await get_project_by_id(project_id)
     except Exception as e:
@@ -492,9 +652,13 @@ async def import_deployments(
 
     created_count = 0
     updated_count = 0
+    app_created_count = 0
+    app_updated_count = 0
+    stores_created = 0
+    packages_created = 0
     errors = []
 
-    # 3. Resolve template directory and import Stores and Packages before importing deployments
+    # 3. Resolve template directory and import Stores, Packages and Applications before importing deployments
     try:
         from core.config import local_templates_dir, PATH_DATASHARES, STACK
         import shutil
@@ -528,6 +692,7 @@ async def import_deployments(
                                             logger.info(f"Creating missing store '{s_name}' for project {project_id}")
                                             cur.execute("INSERT INTO core_store (name, slug, project_id) VALUES (%s, %s, %s)", (s_name, s_slug, project_id))
                                             conn.commit()
+                                            stores_created += 1
                 except Exception as ex:
                     logger.error(f"Error importing stores from {stores_file}: {ex}")
                     
@@ -577,11 +742,188 @@ async def import_deployments(
                                                 (fullname, name, version, arch, project_id, t_store_id)
                                             )
                                             conn.commit()
+                                            packages_created += 1
                 except Exception as ex:
                     logger.error(f"Error importing packages from {packages_file}: {ex}")
-    except Exception as ex:
-        logger.error(f"Error during stores and packages resolution: {ex}")
 
+            # D. Import Applications from applications.yml if not already provided in the payload
+            if not applications:
+                apps_file = template_dir / "applications.yml"
+                if apps_file.exists() and apps_file.is_file():
+                    try:
+                        apps_data = yaml.safe_load(apps_file.read_text(encoding="utf-8"))
+                        if isinstance(apps_data, dict) and "applications" in apps_data:
+                            applications = apps_data["applications"]
+                            logger.info(f"Loaded applications from template {apps_file}")
+                    except Exception as ex:
+                        logger.error(f"Error importing applications from {apps_file}: {ex}")
+    except Exception as ex:
+        logger.error(f"Error during stores, packages, and applications resolution: {ex}")
+
+    # 4. Process Applications Import
+    for idx, app in enumerate(applications):
+        if not isinstance(app, dict):
+            errors.append(f"Application at index {idx} is not a valid dictionary.")
+            continue
+
+        name = app.get("name")
+        if not name:
+            errors.append(f"Application at index {idx} is missing the required 'name' field.")
+            continue
+
+        try:
+            # A. Resolve Category
+            category_name = app.get("category", "Accessories")
+            category_id = None
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM app_catalog_category WHERE LOWER(name) = LOWER(%s)", (category_name,))
+                    row = cur.fetchone()
+                    if row:
+                        category_id = row[0]
+                    else:
+                        logger.info(f"Creating missing application category '{category_name}'")
+                        cur.execute("INSERT INTO app_catalog_category (name) VALUES (%s) RETURNING id", (category_name,))
+                        category_id = cur.fetchone()[0]
+                        conn.commit()
+
+            # B. Resolve Attributes
+            attr_ids = []
+            available_attrs = app.get("available_for_attributes", [])
+            if isinstance(available_attrs, list):
+                for attr in available_attrs:
+                    if isinstance(attr, str) and "-" in attr:
+                        prefix, val = attr.split("-", 1)
+                        try:
+                            with get_db_connection() as conn:
+                                with conn.cursor() as cur:
+                                    cur.execute("""
+                                        SELECT a.id FROM core_attribute a
+                                        JOIN core_property p ON a.property_att_id = p.id
+                                        WHERE LOWER(p.prefix) = LOWER(%s) AND LOWER(a.value) = LOWER(%s)
+                                    """, (prefix.strip(), val.strip()))
+                                    row = cur.fetchone()
+                                    if row:
+                                        attr_ids.append(row[0])
+                        except Exception as e:
+                            logger.error(f"Error resolving attribute {attr} for application: {e}")
+
+            # C. Create or Update Application
+            description = app.get("description", "")
+            score = app.get("score", 3)
+            icon = app.get("icon", None)
+            level = app.get("level", "U")
+
+            app_id = None
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM app_catalog_application WHERE LOWER(name) = LOWER(%s)", (name,))
+                    row = cur.fetchone()
+                    if row:
+                        app_id = row[0]
+                        logger.info(f"Updating application '{name}' (ID: {app_id})")
+                        cur.execute("""
+                            UPDATE app_catalog_application
+                            SET description = %s, score = %s, icon = %s, level = %s, category_id = %s
+                            WHERE id = %s
+                        """, (description, score, icon, level, category_id, app_id))
+                        app_updated_count += 1
+                    else:
+                        logger.info(f"Creating application '{name}'")
+                        cur.execute("""
+                            INSERT INTO app_catalog_application (name, description, score, icon, level, category_id, created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                            RETURNING id
+                        """, (name, description, score, icon, level, category_id))
+                        app_id = cur.fetchone()[0]
+                        app_created_count += 1
+                    conn.commit()
+
+            # C2. Restore icon file from template and update DB
+            original_icon = app.get("icon")
+            if original_icon and app_id:
+                try:
+                    import os as _os
+                    from core.config import local_templates_dir, PATH_DATASHARES, STACK
+                    
+                    # Look for the icon in the template's icons/ directory
+                    icon_filename = _os.path.basename(original_icon)
+                    icon_src = None
+                    if template_path:
+                        icon_src = local_templates_dir / template_path / "icons" / icon_filename
+                    if not icon_src or not icon_src.exists():
+                        # Try project slug fallback
+                        try:
+                            proj = await get_project_by_id(project_id)
+                            icon_src = local_templates_dir / proj.get("slug", "") / "icons" / icon_filename
+                        except Exception:
+                            pass
+                    
+                    if icon_src and icon_src.exists():
+                        # Determine new icon path: catalog_icons/app_{app_id}{ext}
+                        _, ext = _os.path.splitext(icon_filename)
+                        new_icon_relpath = f"catalog_icons/app_{app_id}{ext}"
+                        
+                        # Copy to public directory
+                        icon_dest_dir = PATH_DATASHARES / STACK / "public" / "catalog_icons"
+                        icon_dest_dir.mkdir(parents=True, exist_ok=True)
+                        icon_dest = icon_dest_dir / f"app_{app_id}{ext}"
+                        
+                        import shutil as _shutil
+                        _shutil.copy2(icon_src, icon_dest)
+                        logger.info(f"Restored icon for application '{name}' to {icon_dest}")
+                        
+                        # Update icon field in DB
+                        with get_db_connection() as conn:
+                            with conn.cursor() as cur:
+                                cur.execute("UPDATE app_catalog_application SET icon = %s WHERE id = %s", (new_icon_relpath, app_id))
+                                conn.commit()
+                    else:
+                        logger.warning(f"Icon file not found in template for application '{name}': {icon_src}")
+                except Exception as icon_ex:
+                    logger.error(f"Error restoring icon for application '{name}': {icon_ex}")
+
+            # D. Associate Application with Project (Packages by Project)
+            packages_to_install = app.get("packages_to_install", "")
+            if isinstance(packages_to_install, list):
+                packages_to_install = "\n".join(packages_to_install)
+
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id FROM app_catalog_packagesbyproject
+                        WHERE application_id = %s AND project_id = %s
+                    """, (app_id, project_id))
+                    row = cur.fetchone()
+                    if row:
+                        pbp_id = row[0]
+                        cur.execute("""
+                            UPDATE app_catalog_packagesbyproject
+                            SET packages_to_install = %s
+                            WHERE id = %s
+                        """, (packages_to_install, pbp_id))
+                    else:
+                        cur.execute("""
+                            INSERT INTO app_catalog_packagesbyproject (packages_to_install, application_id, project_id)
+                            VALUES (%s, %s, %s)
+                        """, (packages_to_install, app_id, project_id))
+                    conn.commit()
+
+            # E. Save/Associate available attributes
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM app_catalog_application_available_for_attributes WHERE application_id = %s", (app_id,))
+                    for attr_id in attr_ids:
+                        cur.execute("""
+                            INSERT INTO app_catalog_application_available_for_attributes (application_id, attribute_id)
+                            VALUES (%s, %s)
+                        """, (app_id, attr_id))
+                    conn.commit()
+
+        except Exception as e:
+            errors.append(f"Failed to import application '{name}': {str(e)}")
+
+    # 5. Process Deployments Import
     async with httpx.AsyncClient(verify=False) as client:
         for idx, dep in enumerate(deployments):
             if not isinstance(dep, dict):
@@ -637,7 +979,7 @@ async def import_deployments(
                                 cur.execute("""
                                     SELECT id FROM core_packageset
                                     WHERE project_id = %s AND (LOWER(slug) = LOWER(%s) OR LOWER(name) = LOWER(%s))
-                                """, (project_id, av_pkgs, av_pkgs))
+                                    """, (project_id, av_pkgs, av_pkgs))
                                 row = cur.fetchone()
                                 if row:
                                     available_packagesets_ids.append(row[0])
@@ -739,7 +1081,7 @@ async def import_deployments(
                 logger.error(f"HTTP communication error for '{name}': {e}")
                 errors.append(f"Communication error for '{name}': {str(e)}")
 
-        # 4. Trigger rebuilding metadata for all internal-source deployments of the target project
+        # 6. Trigger rebuilding metadata for all internal-source deployments of the target project
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -760,14 +1102,28 @@ async def import_deployments(
         except Exception as ex:
             logger.error(f"Failed to trigger metadata regeneration for project deployments: {ex}")
 
-    status_code = status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS
+    import json
+    response_data = {
+        "status": "success" if not errors else "partial_success",
+        "deployments_created": created_count,
+        "deployments_updated": updated_count,
+        "stores_created": stores_created,
+        "packages_created": packages_created,
+        "applications_created": app_created_count,
+        "applications_updated": app_updated_count,
+        "errors": errors
+    }
+    http_status = status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS
+
+    accept = request.headers.get("accept", "")
+    if "text/yaml" in accept or "application/x-yaml" in accept:
+        return Response(
+            content=yaml.safe_dump(response_data, default_flow_style=False, sort_keys=False, allow_unicode=True),
+            status_code=http_status,
+            media_type="text/yaml"
+        )
     return Response(
-        content=yaml.safe_dump({
-            "status": "success" if not errors else "partial_success",
-            "created": created_count,
-            "updated": updated_count,
-            "errors": errors
-        }, default_flow_style=False, sort_keys=False, allow_unicode=True),
-        status_code=status_code,
-        media_type="text/yaml"
+        content=json.dumps(response_data, ensure_ascii=False),
+        status_code=http_status,
+        media_type="application/json"
     )

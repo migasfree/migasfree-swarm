@@ -15,7 +15,7 @@ from core.redis import get_redis_connection
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix=f"{API_VERSION}/private/mci",
+    prefix=f"{API_VERSION}/internal/mci",
     tags=["mci"],
 )
 

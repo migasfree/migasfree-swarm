@@ -43,10 +43,12 @@ MCI_TEMP_DIR = Path("/tmp/mci-build")
 MCI_PREFIX = os.environ.get("MCI_PREFIX", "mci")
 local_templates_dir = PATH_DATASHARES / STACK / "pool" / "mci-templates"
 
+MCI_TEMPLATES_GITHUB_URL = "https://raw.githubusercontent.com/migasfree/mci-templates/main"
+
 if local_templates_dir.exists() and local_templates_dir.is_dir():
     MCI_TEMPLATES_URL = "http://proxy/pool/mci-templates"
 else:
-    MCI_TEMPLATES_URL = "https://raw.githubusercontent.com/migasfree/mci-templates/main"
+    MCI_TEMPLATES_URL = MCI_TEMPLATES_GITHUB_URL
 
 # MCS (Migasfree Clone System) build config
 MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"

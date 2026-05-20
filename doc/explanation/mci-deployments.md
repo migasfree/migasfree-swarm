@@ -2,7 +2,7 @@
 
 The **MCI Deployment Export/Import** system enables replicating the complete configuration of deployments, stores, and packages between Migasfree projects. It is designed so that a new project can automatically inherit the software repositories configured in a model project, streamlining the setup of new projects.
 
-The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr/share/manager/routers/mci_templates.py) and are registered under the private router (`/v1/private/mci`).
+The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr/share/manager/routers/mci_templates.py) and are registered under the internal router (`/v1/internal/mci`).
 
 ---
 
@@ -31,19 +31,22 @@ pool/mci-templates/
     ├── deployments.yml                  # Exported deployments
     ├── stores.yml                       # Project stores
     ├── packages.yml                     # Package metadata
-    └── stores/                          # Binary packages
-        └── <store_slug>/               # E.g.: thirds/
-            ├── migasfree-client_5.0-1_all.deb
-            └── migasfree-agent_1.0.11_all.deb
+    ├── applications.yml                 # Application catalog (optional)
+    ├── stores/                          # Binary packages
+    │   └── <store_slug>/               # E.g.: thirds/
+    │       ├── migasfree-client_5.0-1_all.deb
+    │       └── migasfree-agent_1.0.11_all.deb
+    └── icons/                           # Application icons (optional)
+        └── app_<id>.png
 ```
 
 ---
 
-## 📤 Export (`GET /v1/private/mci/projects/{project_id}/export`)
+## 📤 Export (`GET /v1/internal/mci/projects/{project_id}/export`)
 
 ### Export Description
 
-Exports all internal and external deployments of a project in YAML format. Simultaneously persists the files to the corresponding MCI template directory.
+Exports all internal and external deployments and applications of a project in YAML format. Simultaneously persists the files to the corresponding MCI template directory.
 
 ### Export Execution Flow
 
@@ -56,7 +59,7 @@ sequenceDiagram
     participant FS as Filesystem
     participant PUB as Public (Proxy)
 
-    C->>M: GET /v1/private/mci/projects/{id}/export
+    C->>M: GET /v1/internal/mci/projects/{id}/export
     M->>DB: Query project deployments
     M->>DB: Query included attributes (prefix-value)
     M->>DB: Query associated packages and stores
@@ -69,13 +72,19 @@ sequenceDiagram
     M->>FS: Write deployments.yml
     M->>DB: Query stores → write stores.yml
     M->>DB: Query packages → write packages.yml
+    M->>DB: Query applications → write applications.yml
 
     loop For each package
         M->>PUB: Download .deb via HTTP
         M->>FS: Save to stores/<slug>/<filename>
     end
 
-    M-->>C: YAML response (content-type: text/yaml)
+    loop For each application icon
+        M->>PUB: Download icon via HTTP
+        M->>FS: Save to icons/<filename>
+    end
+
+    M-->>C: YAML response (content-type: text/yaml, includes deployments & applications)
 ```
 
 ### What Gets Exported
@@ -91,16 +100,18 @@ sequenceDiagram
 | Stores | ✅ | In `stores.yml` |
 | Packages (metadata) | ✅ | In `packages.yml` |
 | Packages (binary .deb) | ✅ | Downloaded to `stores/<slug>/` |
+| Applications (metadata) | ✅ | In `applications.yml` |
+| Application icons | ✅ | Downloaded to `icons/` |
 
 ### Destination Directory Resolution
 
 1. Queries `mci_config.template_id` for the project
-2. Looks up the corresponding `path` in `catalog.yml` for the `template_id`
+2. Uses `template_id` directly as the directory name (no catalog lookup needed)
 3. **Fallback**: If no template is configured, uses the project's `slug`
 
 ---
 
-## 📥 Import (`POST /v1/private/mci/projects/{project_id}/import`)
+## 📥 Import (`POST /v1/internal/mci/projects/{project_id}/import`)
 
 ### Import Description
 
@@ -115,10 +126,10 @@ Imports deployments, stores, and packages into a target project. It is **idempot
 
 ```bash
 # Mode 1: Without payload (uses project template)
-curl -X POST https://server/manager/v1/private/mci/projects/6/import -d ''
+curl -X POST https://server/manager/v1/internal/mci/projects/6/import -d ''
 
 # Mode 2: With explicit payload
-curl -X POST https://server/manager/v1/private/mci/projects/6/import \
+curl -X POST https://server/manager/v1/internal/mci/projects/6/import \
   -H "Content-Type: text/yaml" \
   --data-binary @deployments.yml
 ```
@@ -134,17 +145,18 @@ sequenceDiagram
     participant CORE as Django Core API
     participant FS as Filesystem
 
-    C->>M: POST /v1/private/mci/projects/{id}/import
+    C->>M: POST /v1/internal/mci/projects/{id}/import
 
     alt Without payload
         M->>DB: Query template_id from mci_config
         M->>FS: Read catalog.yml → resolve path
         M->>FS: Read deployments.yml from template
+        M->>FS: Read applications.yml from template
     else With YAML payload
         Note over M: Parse YAML from body
     end
 
-    Note over M: Phase 1: Import stores and packages
+    Note over M: Phase 1: Import stores, packages and applications
 
     M->>FS: Read stores.yml from template
     loop For each store
@@ -161,6 +173,13 @@ sequenceDiagram
         alt Does not exist
             M->>DB: INSERT core_package + COMMIT
         end
+    end
+
+    M->>FS: Read applications.yml from template
+    loop For each application
+        M->>DB: Resolve/create category and attributes
+        M->>DB: INSERT or UPDATE application
+        M->>FS: Copy icon to public/catalog_icons/
     end
 
     Note over M: Phase 2: Import deployments
@@ -190,7 +209,7 @@ sequenceDiagram
 
 The resolution follows this priority chain:
 
-1. **`mci_config.template_id`** → looks up in `catalog.yml` → reads `deployments.yml` from the path
+1. **`mci_config.template_id`** → uses the `template_id` as directory name → reads `deployments.yml` from that subdirectory
 2. **Remote registry**: If not found locally, attempts to download from `MCI_TEMPLATES_URL`
 3. **Slug fallback**: Looks in `pool/mci-templates/<project_slug>/deployments.yml`
 4. **Error 400**: If no source has data
@@ -335,6 +354,8 @@ flowchart LR
         B --- B4["stores/*.deb"]
         B --- B5[dockerfile.j2]
         B --- B6[partition.yml]
+        B --- B7[applications.yml]
+        B --- B8["icons/*"]
     end
 ```
 

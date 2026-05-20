@@ -69,7 +69,6 @@ app.include_router(metrics.router_private)
 app.include_router(mci_build.router)
 app.include_router(mcs_build.router)
 app.include_router(mci_templates.router)
-app.include_router(mci_templates.router_private)
 
 
 @app.get("/v1/internal/health", tags=["status"])
