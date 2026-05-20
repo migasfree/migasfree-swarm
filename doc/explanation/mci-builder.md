@@ -80,6 +80,34 @@ sequenceDiagram
 
 ---
 
+## 📤 Triggering a Build (API Endpoint)
+
+Building a golden image is initiated through a secure, proxy-enabled endpoint in Django Core, making it fully accessible and documentable in the external **Swagger / OpenAPI** schema:
+
+### Trigger Build Endpoint
+
+* **Endpoint**: `POST /api/v1/token/mci/release/{id}/build/`
+* **Authentication**: Requires standard Token/JWT auth header (`Authorization: Token <token>`).
+* **Path Parameters**:
+  * `id` (integer, required): The ID of the `Release` database record.
+
+#### How It Works (Internal Proxy Flow)
+
+1. The administrator triggers the build in Swagger or via a client application by calling `POST /api/v1/token/mci/release/{id}/build/`.
+2. **Django Core** authenticates the request, fetches the corresponding `Release` record, and forwards the build command to the internal manager service over the Docker overlay network:
+   * **Internal Call**: `POST http://manager:8080/manager/v1/internal/mci/build`
+   * **Internal Body**: `{"release_id": <id>}`
+3. The **manager** enqueues the compilation task in Redis and returns a unique `task_id`:
+   ```json
+   {
+     "task_id": "4b9148d2-8b43-4330-8c29-4e50d5360f08"
+   }
+   ```
+4. Django Core propagates this response back to the caller with a `202 Accepted` HTTP status.
+5. The client can monitor progress by querying the task status on the manager at `GET /v1/internal/mci/build/{task_id}/status`.
+
+---
+
 ## 🛠️ Detailed Phase Breakdown
 
 The build pipeline executed within [build_mci_image](../../build/manager/defaults/usr/share/manager/core/mci_builder.py#L493) contains several sophisticated infrastructure engineering solutions:
@@ -202,15 +230,15 @@ To protect production workstations from deploying untested or buggy image compil
 
 ### Promotion & Demotion Endpoints
 
-Both endpoints are registered under the private manager router and require **superuser credentials**:
+Both endpoints are registered under the internal manager router and require **superuser credentials**:
 
-* **Promote Image**: `POST /manager/v1/private/mci/builds/{build_id}/promote`
+* **Promote Image**: `POST /manager/v1/internal/mci/builds/{build_id}/promote`
   * Reconstructs the exact image name (`mpi_name`) by fetching its `build`, `release`, `flavour`, and `project` metadata from Django Core.
   * Verifies the build status is `"completed"`.
   * Parses `catalog.json`, finds the corresponding entry, sets `"enabled": true` and `"build_id": build_id`, writes it to disk, and updates permissions (`chown 890:890`).
   * Returns `200 OK` on success.
 
-* **Demote Image**: `POST /manager/v1/private/mci/builds/{build_id}/demote`
+* **Demote Image**: `POST /manager/v1/internal/mci/builds/{build_id}/demote`
   * Performs the same sequence but updates the entry to `"enabled": false` and `"build_id": build_id`, immediately cutting off distribution.
   * Returns `200 OK` on success.
 
