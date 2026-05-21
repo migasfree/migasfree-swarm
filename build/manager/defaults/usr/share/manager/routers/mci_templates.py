@@ -53,6 +53,7 @@ async def get_mci_template(
         dockerfile = None
         partition = None
         deployments = None
+        base_os = None
         try:
             dockerfile = local_dir.joinpath("dockerfile.j2").read_text(encoding="utf-8")
         except Exception:
@@ -65,8 +66,21 @@ async def get_mci_template(
             deployments = local_dir.joinpath("deployments.yml").read_text(encoding="utf-8")
         except Exception:
             pass
+        try:
+            catalog_file = local_templates_dir / "catalog.yml"
+            if catalog_file.exists() and catalog_file.is_file():
+                import yaml
+                catalog_data = yaml.safe_load(catalog_file.read_text(encoding="utf-8"))
+                if isinstance(catalog_data, dict):
+                    for t in catalog_data.get("templates", []):
+                        if t.get("id") == template_id:
+                            base_os = t.get("base_os")
+                            break
+        except Exception:
+            pass
         return {
             "id": template_id,
+            "base_os": base_os,
             "dockerfile": dockerfile,
             "partition": partition,
             "deployments": deployments
@@ -320,12 +334,12 @@ async def export_deployments(
     yaml_content = yaml.safe_dump(export_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     # Build separate YAML content for the deployments.yml file (without applications)
-deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
     
     # Save deployments.yml, stores.yml, packages.yml, and applications.yml to pool/mci-templates
     try:
         from core.config import local_templates_dir
-           # 1. Query template_id, config, partition, base_os, build_type, provision_script, image_format for project_id from mci_config
+        # 1. Query template_id, config, partition, base_os, build_type, provision_script, image_format for project_id from mci_config
         template_id = None
         dockerfile_content = None
         partition_content = None
