@@ -37,18 +37,18 @@ CORE_USER_URL = f"{CORE_URL}/rest-auth/user/"
 CORE_TOKEN_URL = f"{CORE_URL}/api/v1/token"
 CORE_AUTH_URL = f"{CORE_URL}/token-auth/"
 
-# MCI (Migasfree Clone Image) build config
-MCI_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mci"
-MCI_TEMP_DIR = Path("/tmp/mci-build")
-MCI_PREFIX = os.environ.get("MCI_PREFIX", "mci")
-local_templates_dir = PATH_DATASHARES / STACK / "pool" / "mci-templates"
+# MGI (Migasfree Golden Image) build config
+MGI_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mgi"
+MGI_TEMP_DIR = Path("/tmp/mgi-build")
+MGI_PREFIX = os.environ.get("MGI_PREFIX", "mgi")
+local_templates_dir = PATH_DATASHARES / STACK / "pool" / "project-templates"
 
-MCI_TEMPLATES_GITHUB_URL = "https://raw.githubusercontent.com/migasfree/mci-templates/main"
+MGI_TEMPLATES_GITHUB_URL = "https://raw.githubusercontent.com/migasfree/project-templates/main"
 
 if local_templates_dir.exists() and local_templates_dir.is_dir():
-    MCI_TEMPLATES_URL = "http://proxy/pool/mci-templates"
+    MGI_TEMPLATES_URL = "http://proxy/pool/project-templates"
 else:
-    MCI_TEMPLATES_URL = MCI_TEMPLATES_GITHUB_URL
+    MGI_TEMPLATES_URL = MGI_TEMPLATES_GITHUB_URL
 
 # MCS (Migasfree Clone System) build config
 MCS_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mcs"

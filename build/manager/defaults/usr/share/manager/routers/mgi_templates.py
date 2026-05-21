@@ -3,15 +3,15 @@ import os
 import httpx
 import yaml
 from fastapi import APIRouter, HTTPException, status, Response, Request
-from core.config import MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL, API_VERSION, CORE_TOKEN_URL
+from core.config import MGI_TEMPLATES_URL, MGI_TEMPLATES_GITHUB_URL, API_VERSION, CORE_TOKEN_URL
 from core.database import get_db_connection
 from core.core_client import get_project_by_id, get_cached_token
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix=f"{API_VERSION}/internal/mci",
-    tags=["mci"],
+    prefix=f"{API_VERSION}/internal/mgi",
+    tags=["mgi"],
 )
 
 async def _fetch_text(url: str) -> str:
@@ -22,32 +22,32 @@ async def _fetch_text(url: str) -> str:
         return response.text
 
 @router.get("/catalog")
-async def get_mci_catalog():
-    """Fetch the MCI templates catalog."""
-    base_url = MCI_TEMPLATES_URL.rstrip("/")
+async def get_mgi_catalog():
+    """Fetch the MGI templates catalog."""
+    base_url = MGI_TEMPLATES_URL.rstrip("/")
     url = f"{base_url}/catalog.yml"
     try:
         content = await _fetch_text(url)
         return yaml.safe_load(content)
     except Exception as e:
-        logger.error(f"Error fetching MCI catalog: {e}")
+        logger.error(f"Error fetching MGI catalog: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not fetch catalog: {str(e)}"
         )
 
 @router.get("/templates/{template_id:path}")
-async def get_mci_template(
+async def get_mgi_template(
     template_id: str,
 ):
-    """Fetch the full content of a specific MCI template.
+    """Fetch the full content of a specific MGI template.
     Checks local pool first, then falls back to GitHub registry.
     Returns best-effort response (null content) if not found — Core can proceed
     and actual data comes from MciConfig when exported.
     """
     from core.config import local_templates_dir
 
-    # 1. Check local filesystem (pool/mci-templates/{template_id}/)
+    # 1. Check local filesystem (pool/project-templates/{template_id}/)
     local_dir = local_templates_dir / template_id
     if local_dir.exists() and local_dir.is_dir():
         dockerfile = None
@@ -87,9 +87,9 @@ async def get_mci_template(
         }
 
     # 2. Fallback: try GitHub registry (skip proxy — only local filesystem or canonical source)
-    if MCI_TEMPLATES_GITHUB_URL:
+    if MGI_TEMPLATES_GITHUB_URL:
         try:
-            base_url = MCI_TEMPLATES_GITHUB_URL.rstrip("/")
+            base_url = MGI_TEMPLATES_GITHUB_URL.rstrip("/")
             catalog_content = await _fetch_text(f"{base_url}/catalog.yml")
             catalog = yaml.safe_load(catalog_content)
             if isinstance(catalog, dict):
@@ -336,10 +336,10 @@ async def export_deployments(
     # Build separate YAML content for the deployments.yml file (without applications)
     deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
     
-    # Save deployments.yml, stores.yml, packages.yml, and applications.yml to pool/mci-templates
+    # Save deployments.yml, stores.yml, packages.yml, and applications.yml to pool/project-templates
     try:
         from core.config import local_templates_dir
-        # 1. Query template_id, config, partition, base_os, build_type, provision_script, image_format for project_id from mci_config
+        # 1. Query template_id, config, partition, base_os, build_type, provision_script, image_format for project_id from mgi_config
         template_id = None
         dockerfile_content = None
         partition_content = None
@@ -352,7 +352,7 @@ async def export_deployments(
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT template_id, config, partition, base_os, build_type, provision_script, image_format FROM mci_config WHERE project_id = %s", 
+                    "SELECT template_id, config, partition, base_os, build_type, provision_script, image_format FROM mgi_config WHERE project_id = %s", 
                     (project_id,)
                 )
                 row = cur.fetchone()
@@ -496,7 +496,7 @@ async def export_deployments(
                 except Exception as ex:
                     logger.error(f"Error downloading icon {icon_path}: {ex}")
                     
-            # G. Set ownership for the entire mci-templates tree
+            # G. Set ownership for the entire project-templates tree
             try:
                 import subprocess
                 subprocess.run(
@@ -587,13 +587,13 @@ async def import_deployments(
     # 2. If no payload was provided, try to load deployments.yml from the template directory
     if not payload:
         try:
-            from core.config import local_templates_dir, MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL
+            from core.config import local_templates_dir, MGI_TEMPLATES_URL, MGI_TEMPLATES_GITHUB_URL
             
-            # A. Query template_id for project_id from mci_config if not provided
+            # A. Query template_id for project_id from mgi_config if not provided
             if not template_id:
                 with get_db_connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute("SELECT template_id FROM mci_config WHERE project_id = %s", (project_id,))
+                        cur.execute("SELECT template_id FROM mgi_config WHERE project_id = %s", (project_id,))
                         row = cur.fetchone()
                         if row:
                             template_id = row[0]
@@ -608,7 +608,7 @@ async def import_deployments(
                 if local_file.exists() and local_file.is_file():
                     yaml_content = local_file.read_text(encoding="utf-8")
                 else:
-                    for fallback_url in [MCI_TEMPLATES_URL, MCI_TEMPLATES_GITHUB_URL]:
+                    for fallback_url in [MGI_TEMPLATES_URL, MGI_TEMPLATES_GITHUB_URL]:
                         if not fallback_url:
                             continue
                         try:
@@ -806,7 +806,7 @@ async def import_deployments(
     except Exception as ex:
         logger.error(f"Error during stores, packages, and applications resolution: {ex}")
 
-    # 3b. Update mci_config with template metadata (dockerfile, partition, base_os)
+    # 3b. Update mgi_config with template metadata (dockerfile, partition, base_os)
     try:
         from core.config import local_templates_dir
 
@@ -828,14 +828,14 @@ async def import_deployments(
 
         # If not in payload, try template directory files
         if template_path:
-            template_dir_mci = local_templates_dir / template_path
+            template_dir_mgi = local_templates_dir / template_path
         else:
             try:
                 project_obj = await get_project_by_id(project_id)
                 project_slug = project_obj.get("slug")
-                template_dir_mci = local_templates_dir / project_slug
+                template_dir_mgi = local_templates_dir / project_slug
             except Exception:
-                template_dir_mci = None
+                template_dir_mgi = None
 
         autounattend_content = None
         setupcomplete_content = None
@@ -843,10 +843,10 @@ async def import_deployments(
         build_type = "docker"
         image_format = "raw"
 
-        if template_dir_mci and template_dir_mci.exists():
-            autounattend_file = template_dir_mci / "autounattend.xml.j2"
-            setupcomplete_file = template_dir_mci / "setupcomplete.cmd.j2"
-            provision_file = template_dir_mci / "provision-migasfree.ps1.j2"
+        if template_dir_mgi and template_dir_mgi.exists():
+            autounattend_file = template_dir_mgi / "autounattend.xml.j2"
+            setupcomplete_file = template_dir_mgi / "setupcomplete.cmd.j2"
+            provision_file = template_dir_mgi / "provision-migasfree.ps1.j2"
 
             if autounattend_file.exists() or setupcomplete_file.exists() or provision_file.exists():
                 build_type = "qemu_win"
@@ -859,11 +859,11 @@ async def import_deployments(
                     provision_content = provision_file.read_text(encoding="utf-8")
 
             if not dockerfile_content and build_type == "docker":
-                dfile = template_dir_mci / "dockerfile.j2"
+                dfile = template_dir_mgi / "dockerfile.j2"
                 if dfile.exists() and dfile.is_file():
                     dockerfile_content = dfile.read_text(encoding="utf-8")
             if not partition_content:
-                pfile = template_dir_mci / "partition.yml"
+                pfile = template_dir_mgi / "partition.yml"
                 if pfile.exists() and pfile.is_file():
                     partition_content = pfile.read_text(encoding="utf-8")
             if not base_os_value and resolved_template_id:
@@ -880,7 +880,7 @@ async def import_deployments(
                         pass
 
             if not base_os_value and resolved_template_id:
-                for catalog_url in [MCI_TEMPLATES_GITHUB_URL, MCI_TEMPLATES_URL]:
+                for catalog_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
                     if not catalog_url:
                         continue
                     try:
@@ -897,10 +897,10 @@ async def import_deployments(
                     except Exception:
                         continue
 
-        # Upsert mci_config
+        # Upsert mgi_config
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id, config FROM mci_config WHERE project_id = %s", (project_id,))
+                cur.execute("SELECT id, config FROM mgi_config WHERE project_id = %s", (project_id,))
                 existing = cur.fetchone()
 
                 if build_type == "docker":
@@ -948,18 +948,18 @@ async def import_deployments(
 
                     if updates:
                         params.append(project_id)
-                        cur.execute(f"UPDATE mci_config SET {', '.join(updates)} WHERE project_id = %s", params)
+                        cur.execute(f"UPDATE mgi_config SET {', '.join(updates)} WHERE project_id = %s", params)
                         conn.commit()
-                        logger.info(f"Updated mci_config for project {project_id}")
+                        logger.info(f"Updated mgi_config for project {project_id}")
                 else:
                     cur.execute(
-                        "INSERT INTO mci_config (project_id, template_id, config, partition, base_os, build_type, image_format, provision_script) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        "INSERT INTO mgi_config (project_id, template_id, config, partition, base_os, build_type, image_format, provision_script) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
                         (project_id, resolved_template_id, json.dumps(target_cfg), partition_content or "", base_os_value or "", build_type, image_format, provision_content or "")
                     )
                     conn.commit()
-                    logger.info(f"Created mci_config for project {project_id}")
+                    logger.info(f"Created mgi_config for project {project_id}")
     except Exception as ex:
-        logger.error(f"Error updating mci_config for project {project_id}: {ex}")
+        logger.error(f"Error updating mgi_config for project {project_id}: {ex}")
 
     # 4. Process Applications Import
     for idx, app in enumerate(applications):

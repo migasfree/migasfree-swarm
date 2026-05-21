@@ -7,25 +7,25 @@ import subprocess
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from core.config import API_VERSION, MCI_POOL_DIR, CORE_TOKEN_URL
-from core.models import BuildMCImageRequest, BuildMCImageResponse, BuildTaskStatus
+from core.config import API_VERSION, MGI_POOL_DIR, CORE_TOKEN_URL
+from core.models import BuildMGImageRequest, BuildMGImageResponse, BuildTaskStatus
 from core.core_client import get_current_superuser, get_cached_token
 from core.redis import get_redis_connection
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix=f"{API_VERSION}/internal/mci",
-    tags=["mci"],
+    prefix=f"{API_VERSION}/internal/mgi",
+    tags=["mgi"],
 )
 
-MCI_QUEUE_KEY = "mci:build_queue"
-MCI_TASK_PREFIX = "mci:task:"
+MGI_QUEUE_KEY = "mgi:build_queue"
+MGI_TASK_PREFIX = "mgi:task:"
 
 
-@router.post("/build", response_model=BuildMCImageResponse)
-async def build_mci_image(
-    request: BuildMCImageRequest,
+@router.post("/build", response_model=BuildMGImageResponse)
+async def build_mgi_image(
+    request: BuildMGImageRequest,
     _: dict = Depends(get_current_superuser),
 ):
     release_id = request.release_id
@@ -37,10 +37,10 @@ async def build_mci_image(
         "release_id": release_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    con.rpush(MCI_QUEUE_KEY, json.dumps(task_data))
+    con.rpush(MGI_QUEUE_KEY, json.dumps(task_data))
 
     con.hset(
-        f"{MCI_TASK_PREFIX}{task_id}",
+        f"{MGI_TASK_PREFIX}{task_id}",
         mapping={
             "status": "queued",
             "progress": "0",
@@ -49,16 +49,16 @@ async def build_mci_image(
             "updated_at": task_data["created_at"],
         },
     )
-    con.expire(f"{MCI_TASK_PREFIX}{task_id}", 86400)
+    con.expire(f"{MGI_TASK_PREFIX}{task_id}", 86400)
 
-    logger.info(f"MCI build task {task_id} queued for release {release_id}")
-    return BuildMCImageResponse(task_id=task_id)
+    logger.info(f"MGI build task {task_id} queued for release {release_id}")
+    return BuildMGImageResponse(task_id=task_id)
 
 
 @router.get("/build/{task_id}/status", response_model=BuildTaskStatus)
 async def get_build_status(task_id: str):
     con = get_redis_connection()
-    key = f"{MCI_TASK_PREFIX}{task_id}"
+    key = f"{MGI_TASK_PREFIX}{task_id}"
     data = con.hgetall(key)
 
     if not data:
@@ -85,7 +85,7 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
     async with httpx.AsyncClient() as client:
         # 1. Fetch build record
         build_resp = await client.get(
-            f"{core_api_url}/token/mci/build/{build_id}/",
+            f"{core_api_url}/token/mgi/build/{build_id}/",
             headers=headers,
             follow_redirects=False,
         )
@@ -114,7 +114,7 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
 
         # 2. Fetch release
         release_resp = await client.get(
-            f"{core_api_url}/token/mci/release/{release_id}/",
+            f"{core_api_url}/token/mgi/release/{release_id}/",
             headers=headers,
             follow_redirects=False,
         )
@@ -128,7 +128,7 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
         # 3. Fetch config to get project_id
         config_id = release_data.get("config")
         config_resp = await client.get(
-            f"{core_api_url}/token/mci/config/{config_id}/",
+            f"{core_api_url}/token/mgi/config/{config_id}/",
             headers=headers,
             follow_redirects=False,
         )
@@ -155,7 +155,7 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
 
         # 5. Fetch flavour
         flavour_resp = await client.get(
-            f"{core_api_url}/token/mci/flavour/{flavour_id}/",
+            f"{core_api_url}/token/mgi/flavour/{flavour_id}/",
             headers=headers,
             follow_redirects=False,
         )
@@ -172,7 +172,7 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
 
 
 def _update_catalog_status(mpi_name: str, enabled: bool, build_id: int = None) -> None:
-    catalog_path = MCI_POOL_DIR / "catalog.json"
+    catalog_path = MGI_POOL_DIR / "catalog.json"
     if not catalog_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -221,12 +221,12 @@ def _update_catalog_status(mpi_name: str, enabled: bool, build_id: int = None) -
 
 
 @router.post("/builds/{build_id}/promote")
-async def promote_mci_build(
+async def promote_mgi_build(
     build_id: str,
     _: dict = Depends(get_current_superuser),
 ):
     """
-    Promote an MCI image by setting 'enabled': True in the catalog.json
+    Promote an MGI image by setting 'enabled': True in the catalog.json
     based on its completed Core build_id.
     """
     mpi_name = await _get_mpi_name_from_build(build_id)
@@ -236,12 +236,12 @@ async def promote_mci_build(
 
 
 @router.post("/builds/{build_id}/demote")
-async def demote_mci_build(
+async def demote_mgi_build(
     build_id: str,
     _: dict = Depends(get_current_superuser),
 ):
     """
-    Demote an MCI image by setting 'enabled': False in the catalog.json
+    Demote an MGI image by setting 'enabled': False in the catalog.json
     based on its completed Core build_id.
     """
     mpi_name = await _get_mpi_name_from_build(build_id)

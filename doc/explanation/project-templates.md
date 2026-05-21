@@ -1,8 +1,8 @@
-# MCI Deployment Export & Import (Explanation)
+# MGI Deployment Export & Import (Explanation)
 
-The **MCI Deployment Export/Import** system enables replicating the complete configuration of deployments, stores, and packages between Migasfree projects. It is designed so that a new project can automatically inherit the software repositories configured in a model project, streamlining the setup of new projects.
+The **MGI Deployment Export/Import** system enables replicating the complete configuration of deployments, stores, and packages between Migasfree projects. It is designed so that a new project can automatically inherit the software repositories configured in a model project, streamlining the setup of new projects.
 
-The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr/share/manager/routers/mci_templates.py) and are registered under the internal router (`/v1/internal/mci`).
+The endpoints are defined in [mgi_templates.py](../../build/manager/defaults/usr/share/manager/routers/mgi_templates.py) and are registered under the internal router (`/v1/internal/mgi`).
 
 ---
 
@@ -13,8 +13,8 @@ The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr
 | **External Deployment (source=E)** | External APT/YUM repository (e.g. `ftp.debian.org`). Defines base URL, suite, components, and signing options. |
 | **Internal Deployment (source=I)** | Migasfree-managed internal repository. Contains custom `.deb` packages stored in stores. |
 | **Store** | Logical storage unit within a project where packages are grouped (e.g. `thirds`, `org`, `updates`). |
-| **MCI Template** | Base template associated with a project via `mci_config`. Defines the OS family, Dockerfile, and default deployments. |
-| **Catalog (`catalog.yml`)** | Index of available MCI templates, mapping each `template_id` to its path on disk. |
+| **Project Template** | Base template associated with a project via `mgi_config`. Defines the OS family, Dockerfile, and default deployments. |
+| **Catalog (`catalog.yml`)** | Index of available Project templates, mapping each `template_id` to its path on disk. |
 
 ---
 
@@ -23,7 +23,7 @@ The endpoints are defined in [mci_templates.py](../../build/manager/defaults/usr
 The export generates a set of YAML files and binary packages inside the template directory:
 
 ```text
-pool/mci-templates/
+pool/project-templates/
 ├── catalog.yml                          # Template index
 └── <family>/<version>/                  # E.g.: debian/13/
     ├── dockerfile.j2                    # Dockerfile template (Jinja2)
@@ -42,11 +42,11 @@ pool/mci-templates/
 
 ---
 
-## 📤 Export (`GET /v1/internal/mci/projects/{project_id}/export`)
+## 📤 Export (`GET /v1/internal/mgi/projects/{project_id}/export`)
 
 ### Export Description
 
-Exports all internal and external deployments and applications of a project in YAML format. Simultaneously persists the files to the corresponding MCI template directory.
+Exports all internal and external deployments and applications of a project in YAML format. Simultaneously persists the files to the corresponding Project template directory.
 
 ### Export Execution Flow
 
@@ -59,14 +59,14 @@ sequenceDiagram
     participant FS as Filesystem
     participant PUB as Public (Proxy)
 
-    C->>M: GET /v1/internal/mci/projects/{id}/export
+    C->>M: GET /v1/internal/mgi/projects/{id}/export
     M->>DB: Query project deployments
     M->>DB: Query included attributes (prefix-value)
     M->>DB: Query associated packages and stores
 
     Note over M: Generate YAML with E/I schemas
 
-    M->>DB: Query template_id from mci_config
+    M->>DB: Query template_id from mgi_config
     M->>FS: Read catalog.yml → resolve template path
 
     M->>FS: Write deployments.yml
@@ -105,13 +105,13 @@ sequenceDiagram
 
 ### Destination Directory Resolution
 
-1. Queries `mci_config.template_id` for the project
+1. Queries `mgi_config.template_id` for the project
 2. Uses `template_id` directly as the directory name (no catalog lookup needed)
 3. **Fallback**: If no template is configured, uses the project's `slug`
 
 ---
 
-## 📥 Import (`POST /v1/internal/mci/projects/{project_id}/import`)
+## 📥 Import (`POST /v1/internal/mgi/projects/{project_id}/import`)
 
 ### Import Description
 
@@ -126,10 +126,10 @@ Imports deployments, stores, and packages into a target project. It is **idempot
 
 ```bash
 # Mode 1: Without payload (uses project template)
-curl -X POST https://server/manager/v1/internal/mci/projects/6/import -d ''
+curl -X POST https://server/manager/v1/internal/mgi/projects/6/import -d ''
 
 # Mode 2: With explicit payload
-curl -X POST https://server/manager/v1/internal/mci/projects/6/import \
+curl -X POST https://server/manager/v1/internal/mgi/projects/6/import \
   -H "Content-Type: text/yaml" \
   --data-binary @deployments.yml
 ```
@@ -145,10 +145,10 @@ sequenceDiagram
     participant CORE as Django Core API
     participant FS as Filesystem
 
-    C->>M: POST /v1/internal/mci/projects/{id}/import
+    C->>M: POST /v1/internal/mgi/projects/{id}/import
 
     alt Without payload
-        M->>DB: Query template_id from mci_config
+        M->>DB: Query template_id from mgi_config
         M->>FS: Read catalog.yml → resolve path
         M->>FS: Read deployments.yml from template
         M->>FS: Read applications.yml from template
@@ -209,9 +209,9 @@ sequenceDiagram
 
 The resolution follows this priority chain:
 
-1. **`mci_config.template_id`** → uses the `template_id` as directory name → reads `deployments.yml` from that subdirectory
-2. **Remote registry**: If not found locally, attempts to download from `MCI_TEMPLATES_URL`
-3. **Slug fallback**: Looks in `pool/mci-templates/<project_slug>/deployments.yml`
+1. **`mgi_config.template_id`** → uses the `template_id` as directory name → reads `deployments.yml` from that subdirectory
+2. **Remote registry**: If not found locally, attempts to download from `MGI_TEMPLATES_URL`
+3. **Slug fallback**: Looks in `pool/project-templates/<project_slug>/deployments.yml`
 4. **Error 400**: If no source has data
 
 ---
@@ -335,17 +335,17 @@ During import, `.deb` files are copied from the template directory (`stores/<slu
 
 ---
 
-## 🗺️ Relationship with the MCI Lifecycle
+## 🗺️ Relationship with the MGI Lifecycle
 
-The deployment export/import integrates into the overall MCI workflow:
+The deployment export/import integrates into the overall MGI workflow:
 
 ```mermaid
 flowchart LR
-    A["Model Project"] -->|Export| B["MCI Template"]
-    B -->|catalog.yml| C["Pool mci-templates"]
+    A["Model Project"] -->|Export| B["Project Template"]
+    B -->|catalog.yml| C["Pool project-templates"]
     C -->|Import| D["New Project"]
-    D -->|Configure MCI| E["Build MCI Image"]
-    E -->|Pool mci| F["Deploy to clients"]
+    D -->|Configure MGI| E["Build MGI Image"]
+    E -->|Pool mgi| F["Deploy to clients"]
 
     subgraph "Template Files"
         B --- B1[deployments.yml]
@@ -360,7 +360,7 @@ flowchart LR
 ```
 
 1. Configure a **model project** with the desired deployments, stores, and packages.
-2. **Export** the configuration, which is stored as MCI template files.
-3. When creating a **new project**, associate it with the same template via `mci_config`.
+2. **Export** the configuration, which is stored as Project template files.
+3. When creating a **new project**, associate it with the same template via `mgi_config`.
 4. **Import** the configuration, replicating the entire repository infrastructure.
-5. The project is ready to build MCI images with its preconfigured deployments.
+5. The project is ready to build MGI images with its preconfigured deployments.

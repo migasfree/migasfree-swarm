@@ -18,9 +18,9 @@ from core.config import (
     FQDN,
     FQDN_IP,
     STACK,
-    MCI_POOL_DIR,
-    MCI_TEMP_DIR,
-    MCI_PREFIX,
+    MGI_POOL_DIR,
+    MGI_TEMP_DIR,
+    MGI_PREFIX,
     CORE_TOKEN_URL,
     PATH_DATASHARES,
 )
@@ -29,8 +29,8 @@ SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
 
 logger = logging.getLogger(__name__)
 
-MCI_QUEUE_KEY = "mci:build_queue"
-MCI_TASK_PREFIX = "mci:task:"
+MGI_QUEUE_KEY = "mgi:build_queue"
+MGI_TASK_PREFIX = "mgi:task:"
 
 TEMPLATE_DIR = Path("/usr/share/manager/templates")
 MPI_TEMPLATE = "mpi.Dockerfile.j2"
@@ -146,16 +146,16 @@ def _get_project_from_core(project_id: int):
 
 
 def _get_release_from_core(release_id: int) -> dict:
-    return _get_core_resource(f"/token/mci/release/{release_id}/")
+    return _get_core_resource(f"/token/mgi/release/{release_id}/")
 
 
 def _get_config_from_core(config_id: int) -> dict:
-    return _get_core_resource(f"/token/mci/config/{config_id}/")
+    return _get_core_resource(f"/token/mgi/config/{config_id}/")
 
 
 def _get_flavours_from_core(config_id: int) -> list[dict]:
     # Use filtering query parameter to get flavours for a specific config
-    return _get_core_resource(f"/token/mci/flavour/?config={config_id}")
+    return _get_core_resource(f"/token/mgi/flavour/?config={config_id}")
 
 
 def _create_build_record(release_id: int, flavour_id: int, task_id: str):
@@ -166,8 +166,8 @@ def _create_build_record(release_id: int, flavour_id: int, task_id: str):
         "status": "running",
         "started_at": datetime.now(timezone.utc).isoformat()
     }
-    logger.debug(f"Creating MCI Build record: {data}")
-    return _post_core_resource("/token/mci/build/", data)
+    logger.debug(f"Creating MGI Build record: {data}")
+    return _post_core_resource("/token/mgi/build/", data)
 
 
 def _update_build_record(build_id: int, status: str, uri: str = None, size: int = None, log: str = None):
@@ -181,16 +181,16 @@ def _update_build_record(build_id: int, status: str, uri: str = None, size: int 
     
     if status in ("completed", "failed"):
         data["finished_at"] = datetime.now(timezone.utc).isoformat()
-        logger.debug(f"Updating MCI Build {build_id} to {status} at {data['finished_at']}")
+        logger.debug(f"Updating MGI Build {build_id} to {status} at {data['finished_at']}")
 
-    return _patch_core_resource(f"/token/mci/build/{build_id}/", data)
+    return _patch_core_resource(f"/token/mgi/build/{build_id}/", data)
 
 
 def _update_task_status(
     task_id: str, status: str, progress: int = 0, message: str = ""
 ):
     con = get_redis_connection()
-    key = f"{MCI_TASK_PREFIX}{task_id}"
+    key = f"{MGI_TASK_PREFIX}{task_id}"
     con.hset(
         key,
         mapping={
@@ -217,15 +217,15 @@ def generate_dockerfile(
         project_id=project_data.get("id"),
         project_slug=project_data.get("slug", ""),
         project_name=project_data.get("name", ""),
-        prefix=MCI_PREFIX,
-        user=flavour_data.get("user", "mci"),
-        password=flavour_data.get("password", "mci"),
+        prefix=MGI_PREFIX,
+        user=flavour_data.get("user", "mgi"),
+        password=flavour_data.get("password", "mgi"),
         keymap=flavour_data.get("keymap", "us"),
         keyboard_model=flavour_data.get("keyboard_model", "pc105"),
         charmap=flavour_data.get("charmap", "UTF-8"),
         codeset=flavour_data.get("codeset", "Lat15"),
         timezone=flavour_data.get("timezone", "UTC"),
-        hostname=flavour_data.get("hostname", "mci"),
+        hostname=flavour_data.get("hostname", "mgi"),
         fqdn_ip=FQDN_IP,
         system_uuid=SYSTEM_UUID,
         tags=flavour_data.get("tags", ""),
@@ -457,7 +457,7 @@ def generate_checksums(output_dir: Path, config_data: dict) -> Path:
 
 
 def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None) -> None:
-    catalog_path = MCI_POOL_DIR / "catalog.json"
+    catalog_path = MGI_POOL_DIR / "catalog.json"
     catalog = []
     if catalog_path.exists():
         try:
@@ -500,7 +500,7 @@ def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None)
         logger.error(f"Failed to update catalog.json: {e}")
 
 
-def build_mci_image(task_id: str, release_id: int):
+def build_mgi_image(task_id: str, release_id: int):
     _update_task_status(task_id, "fetching", 0, "Fetching release and project data")
     
     # Check if there is no MCS ISO in the pool directory. If so, automatically queue an MCS build task!
@@ -523,7 +523,7 @@ def build_mci_image(task_id: str, release_id: int):
                 mapping={
                     "status": "queued",
                     "progress": "0",
-                    "message": "Enqueued automatically by MCI build trigger",
+                    "message": "Enqueued automatically by MGI build trigger",
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 },
@@ -534,7 +534,7 @@ def build_mci_image(task_id: str, release_id: int):
         logger.error(f"Task {task_id}: Failed to queue automatic MCS build task: {ex}")
 
     try:
-        # mci_release → mci_config → core_project
+        # mgi_release → mgi_config → core_project
         release_data = _get_release_from_core(release_id)
         config_id = release_data.get("config")
         config_data = _get_config_from_core(config_id)
@@ -574,11 +574,11 @@ def build_mci_image(task_id: str, release_id: int):
                     task_id, "building MPI", actual_pct, f"[{mpi_name}] {msg}"
                 )
 
-            build_dir = MCI_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
-            image_tag = f"mci/{mpi_name}:{task_id[:8]}"
-            container_name = f"mci-{mpi_name}-{task_id[:8]}"
+            build_dir = MGI_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
+            image_tag = f"mgi/{mpi_name}:{task_id[:8]}"
+            container_name = f"mgi-{mpi_name}-{task_id[:8]}"
             root_dir = build_dir / "root"
-            pool_dir = MCI_POOL_DIR / mpi_name
+            pool_dir = MGI_POOL_DIR / mpi_name
 
             build_dir.mkdir(parents=True, exist_ok=True)
 
@@ -595,7 +595,7 @@ def build_mci_image(task_id: str, release_id: int):
 
             # Copy certificate to build context
             cert_name = f"ca-{FQDN}.crt"
-            src_cert = MCI_POOL_DIR.parent / "install" / cert_name
+            src_cert = MGI_POOL_DIR.parent / "install" / cert_name
             if src_cert.exists():
                 dest_dir = build_dir / "pool" / "install"
                 dest_dir.mkdir(parents=True, exist_ok=True)
@@ -614,7 +614,7 @@ def build_mci_image(task_id: str, release_id: int):
 
             _flavour_progress(38, "Configuring network, hosts and keyboard")
             etc_dir = root_dir / "etc"
-            flavour_hostname = flavour.get("hostname", "mci")
+            flavour_hostname = flavour.get("hostname", "mgi")
             (etc_dir / "hostname").write_text(f"{flavour_hostname}\n")
             hosts_content = f"127.0.0.1 localhost {flavour_hostname}\n::1 localhost ip6-localhost ip6-loopback {flavour_hostname}\n"
             if FQDN_IP:
@@ -665,7 +665,7 @@ def build_mci_image(task_id: str, release_id: int):
                     shutil.move(str(fpath), str(pool_dir / f))
 
             _flavour_progress(95, "Setting permissions")
-            subprocess.run(["chown", "-R", "890:890", str(MCI_POOL_DIR)], check=True)
+            subprocess.run(["chown", "-R", "890:890", str(MGI_POOL_DIR)], check=True)
 
             try:
                 build_id_val = build_record["id"] if build_record else None
@@ -677,7 +677,7 @@ def build_mci_image(task_id: str, release_id: int):
             
             if build_record:
                 try:
-                    uri = f"https://{FQDN}/pool/mci/{mpi_name}/"
+                    uri = f"https://{FQDN}/pool/mgi/{mpi_name}/"
                     size = (pool_dir / "SYSTEM.raw").stat().st_size if (pool_dir / "SYSTEM.raw").exists() else 0
                     success_log = f"Build completed successfully for {mpi_name}. All partitions created and metadata generated."
                     _update_build_record(build_record["id"], "completed", uri=uri, size=size, log=success_log)
@@ -707,12 +707,12 @@ def _cleanup_build(build_dir: Path, image_tag: str) -> None:
         shutil.rmtree(build_dir, ignore_errors=True)
 
 
-def _mci_worker():
+def _mgi_worker():
     con = get_redis_connection()
-    logger.info("MCI build worker started")
+    logger.info("MGI build worker started")
     while True:
         try:
-            result = con.blpop(MCI_QUEUE_KEY, timeout=5)
+            result = con.blpop(MGI_QUEUE_KEY, timeout=5)
             if result is None:
                 continue
             _, task_data = result
@@ -724,24 +724,24 @@ def _mci_worker():
             task_id = task.get("task_id", str(uuid.uuid4()))
             release_id = task.get("release_id")
             logger.info(
-                f"MCI worker processing task {task_id} for release {release_id}"
+                f"MGI worker processing task {task_id} for release {release_id}"
             )
             _update_task_status(task_id, "queued", 0, "Task accepted, starting build")
-            build_mci_image(task_id, release_id)
+            build_mgi_image(task_id, release_id)
         except Exception as e:
-            logger.error(f"MCI worker error: {e}")
+            logger.error(f"MGI worker error: {e}")
             time.sleep(1)
 
 
-def start_mci_worker():
+def start_mgi_worker():
     import asyncio
 
     def _run_worker():
         try:
-            _mci_worker()
+            _mgi_worker()
         except Exception as e:
-            logger.error(f"MCI worker crashed: {e}")
+            logger.error(f"MGI worker crashed: {e}")
 
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, _run_worker)
-    logger.info("MCI build worker registered")
+    logger.info("MGI build worker registered")

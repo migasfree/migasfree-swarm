@@ -104,8 +104,8 @@ Tasks are managed in Redis via two principal data keys:
 
 ## 🔄 Automatic Sequential MCS Build Trigger
 
-To provide an optimal out-of-the-box experience (handling the "chicken-and-egg" bootstrapping problem), the **MCI Builder** is integrated with the **MCS Builder** dynamically:
+To provide an optimal out-of-the-box experience (handling the "chicken-and-egg" bootstrapping problem), the **MGI Builder** is integrated with the **MCS Builder** dynamically:
 
-1.  **MCI Initialization Check**: At the start of any MCI image compilation (`build_mci_image`), the manager checks `/pool/mcs/` for any `.iso` files.
+1.  **MGI Initialization Check**: At the start of any MGI image compilation (`build_mgi_image`), the manager checks `/pool/mcs/` for any `.iso` files.
 2.  **Asynchronous Auto-Triggering**: If the pool contains no bootable ISOs, the manager enqueues a default MCS build task sequentially inside `mcs:build_queue` in Redis.
 3.  **Resource Contention Avoidance**: Because tasks are processed sequentially/asynchronously by independent background threads, CPU and I/O congestion is completely avoided, maintaining smooth system performance.

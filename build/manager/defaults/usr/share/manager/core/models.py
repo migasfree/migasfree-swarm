@@ -40,11 +40,11 @@ class TokenComputerResponse(BaseModel):
     token: str
 
 
-class BuildMCImageRequest(BaseModel):
+class BuildMGImageRequest(BaseModel):
     release_id: int
 
 
-class BuildMCImageResponse(BaseModel):
+class BuildMGImageResponse(BaseModel):
     task_id: str
 
 
@@ -72,8 +72,8 @@ TokenCreateRequest.model_rebuild()
 TokenComputerRequest.model_rebuild()
 TokenAdminResponse.model_rebuild()
 TokenComputerResponse.model_rebuild()
-BuildMCImageRequest.model_rebuild()
-BuildMCImageResponse.model_rebuild()
+BuildMGImageRequest.model_rebuild()
+BuildMGImageResponse.model_rebuild()
 BuildMCSISORequest.model_rebuild()
 BuildMCSISOResponse.model_rebuild()
 BuildTaskStatus.model_rebuild()
