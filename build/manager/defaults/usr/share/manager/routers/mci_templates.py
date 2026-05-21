@@ -320,23 +320,40 @@ async def export_deployments(
     yaml_content = yaml.safe_dump(export_data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     # Build separate YAML content for the deployments.yml file (without applications)
-    deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
+deployments_yaml = yaml.safe_dump({"deployments": deployments}, default_flow_style=False, sort_keys=False, allow_unicode=True)
     
     # Save deployments.yml, stores.yml, packages.yml, and applications.yml to pool/mci-templates
     try:
         from core.config import local_templates_dir
-        
-        # 1. Query template_id, dockerfile and partition for project_id from mci_config
+           # 1. Query template_id, config, partition, base_os, build_type, provision_script, image_format for project_id from mci_config
         template_id = None
         dockerfile_content = None
         partition_content = None
         base_os = None
+        build_type = "docker"
+        provision_script = ""
+        image_format = "raw"
+        config_data = {}
+        
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT template_id, dockerfile, partition, base_os FROM mci_config WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "SELECT template_id, config, partition, base_os, build_type, provision_script, image_format FROM mci_config WHERE project_id = %s", 
+                    (project_id,)
+                )
                 row = cur.fetchone()
                 if row:
-                    template_id, dockerfile_content, partition_content, base_os = row
+                    template_id, config_val, partition_content, base_os, build_type, provision_script, image_format = row
+                    
+                    import json
+                    if config_val:
+                        if isinstance(config_val, str):
+                            config_data = json.loads(config_val)
+                        elif isinstance(config_val, dict):
+                            config_data = config_val
+                    
+                    if build_type == "docker":
+                        dockerfile_content = config_data.get("dockerfile")
                     
         # 2. Use template_id as directory name directly (no catalog lookup needed)
         template_path = template_id or project.get("slug")
@@ -349,12 +366,27 @@ async def export_deployments(
             dest_file = dest_dir / "deployments.yml"
             dest_file.write_text(deployments_yaml, encoding="utf-8")
             logger.info(f"Exported deployments saved to {dest_file}")
-
-            if dockerfile_content:
+ 
+            if build_type == "docker" and dockerfile_content:
                 dockerfile_file = dest_dir / "dockerfile.j2"
                 dockerfile_file.write_text(dockerfile_content, encoding="utf-8")
                 logger.info(f"Exported dockerfile.j2 saved to {dockerfile_file}")
-
+            elif build_type == "qemu_win":
+                autounattend_content = config_data.get("autounattend_template")
+                setupcomplete_content = config_data.get("setupcomplete_template")
+                if autounattend_content:
+                    autounattend_file = dest_dir / "autounattend.xml.j2"
+                    autounattend_file.write_text(autounattend_content, encoding="utf-8")
+                    logger.info(f"Exported autounattend.xml.j2 saved to {autounattend_file}")
+                if setupcomplete_content:
+                    setupcomplete_file = dest_dir / "setupcomplete.cmd.j2"
+                    setupcomplete_file.write_text(setupcomplete_content, encoding="utf-8")
+                    logger.info(f"Exported setupcomplete.cmd.j2 saved to {setupcomplete_file}")
+                if provision_script:
+                    provision_file = dest_dir / "provision-migasfree.ps1.j2"
+                    provision_file.write_text(provision_script, encoding="utf-8")
+                    logger.info(f"Exported provision-migasfree.ps1.j2 saved to {provision_file}")
+ 
             if partition_content:
                 partition_file = dest_dir / "partition.yml"
                 partition_file.write_text(partition_content, encoding="utf-8")
@@ -791,8 +823,28 @@ async def import_deployments(
             except Exception:
                 template_dir_mci = None
 
+        autounattend_content = None
+        setupcomplete_content = None
+        provision_content = None
+        build_type = "docker"
+        image_format = "raw"
+
         if template_dir_mci and template_dir_mci.exists():
-            if not dockerfile_content:
+            autounattend_file = template_dir_mci / "autounattend.xml.j2"
+            setupcomplete_file = template_dir_mci / "setupcomplete.cmd.j2"
+            provision_file = template_dir_mci / "provision-migasfree.ps1.j2"
+
+            if autounattend_file.exists() or setupcomplete_file.exists() or provision_file.exists():
+                build_type = "qemu_win"
+                image_format = "wim"
+                if autounattend_file.exists():
+                    autounattend_content = autounattend_file.read_text(encoding="utf-8")
+                if setupcomplete_file.exists():
+                    setupcomplete_content = setupcomplete_file.read_text(encoding="utf-8")
+                if provision_file.exists():
+                    provision_content = provision_file.read_text(encoding="utf-8")
+
+            if not dockerfile_content and build_type == "docker":
                 dfile = template_dir_mci / "dockerfile.j2"
                 if dfile.exists() and dfile.is_file():
                     dockerfile_content = dfile.read_text(encoding="utf-8")
@@ -834,14 +886,42 @@ async def import_deployments(
         # Upsert mci_config
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id FROM mci_config WHERE project_id = %s", (project_id,))
+                cur.execute("SELECT id, config FROM mci_config WHERE project_id = %s", (project_id,))
                 existing = cur.fetchone()
+
+                if build_type == "docker":
+                    target_cfg = {"dockerfile": dockerfile_content or ""}
+                else:
+                    target_cfg = {
+                        "autounattend_template": autounattend_content or "",
+                        "setupcomplete_template": setupcomplete_content or "",
+                        "disk_size_gb": 40,
+                        "vm_ram_mb": 4096,
+                        "vm_cpus": 4
+                    }
+
+                import json
                 if existing:
+                    existing_id, existing_cfg_raw = existing
+                    existing_cfg = {}
+                    if existing_cfg_raw:
+                        if isinstance(existing_cfg_raw, str):
+                            existing_cfg = json.loads(existing_cfg_raw)
+                        elif isinstance(existing_cfg_raw, dict):
+                            existing_cfg = existing_cfg_raw
+                    existing_cfg.update(target_cfg)
+
                     updates = []
                     params = []
-                    if dockerfile_content is not None:
-                        updates.append("dockerfile = %s")
-                        params.append(dockerfile_content)
+                    updates.append("config = %s")
+                    params.append(json.dumps(existing_cfg))
+                    updates.append("build_type = %s")
+                    params.append(build_type)
+                    updates.append("image_format = %s")
+                    params.append(image_format)
+                    if provision_content is not None:
+                        updates.append("provision_script = %s")
+                        params.append(provision_content)
                     if partition_content is not None:
                         updates.append("partition = %s")
                         params.append(partition_content)
@@ -851,6 +931,7 @@ async def import_deployments(
                     if resolved_template_id is not None:
                         updates.append("template_id = %s")
                         params.append(resolved_template_id)
+
                     if updates:
                         params.append(project_id)
                         cur.execute(f"UPDATE mci_config SET {', '.join(updates)} WHERE project_id = %s", params)
@@ -858,8 +939,8 @@ async def import_deployments(
                         logger.info(f"Updated mci_config for project {project_id}")
                 else:
                     cur.execute(
-                        "INSERT INTO mci_config (project_id, template_id, dockerfile, partition, base_os) VALUES (%s, %s, %s, %s, %s)",
-                        (project_id, resolved_template_id, dockerfile_content, partition_content, base_os_value)
+                        "INSERT INTO mci_config (project_id, template_id, config, partition, base_os, build_type, image_format, provision_script) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        (project_id, resolved_template_id, json.dumps(target_cfg), partition_content or "", base_os_value or "", build_type, image_format, provision_content or "")
                     )
                     conn.commit()
                     logger.info(f"Created mci_config for project {project_id}")
