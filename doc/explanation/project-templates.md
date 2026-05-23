@@ -53,11 +53,11 @@ Exports all internal and external deployments and applications of a project in Y
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Client
-    participant M as Manager API
-    participant DB as PostgreSQL
-    participant FS as Filesystem
-    participant PUB as Public (Proxy)
+    participant C as "Client"
+    participant M as "Manager API"
+    participant DB as "PostgreSQL"
+    participant FS as "Filesystem"
+    participant PUB as "Public (Proxy)"
 
     C->>M: GET /v1/internal/mgi/projects/{id}/export
     M->>DB: Query project deployments
@@ -139,11 +139,11 @@ curl -X POST https://server/manager/v1/internal/mgi/projects/6/import \
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Client
-    participant M as Manager API
-    participant DB as PostgreSQL
-    participant CORE as Django Core API
-    participant FS as Filesystem
+    participant C as "Client"
+    participant M as "Manager API"
+    participant DB as "PostgreSQL"
+    participant CORE as "Django Core API"
+    participant FS as "Filesystem"
 
     C->>M: POST /v1/internal/mgi/projects/{id}/import
 
@@ -329,9 +329,70 @@ The following deployment fields are **not exported** by design:
 - **Excluded attributes**: Not considered portable between projects.
 - **Numeric IDs**: Resolved dynamically during import.
 
-### Physical Package Copy
+---
 
-During import, `.deb` files are copied from the template directory (`stores/<slug>/`) to the target project's public directory (`public/<project_slug>/stores/<slug>/`), making them accessible to clients through the web server.
+## 🌐 Django Core (Public REST API) Endpoints
+
+The internal endpoints in the `manager` service are exposed to administrators and frontend applications through a secure proxy layer in Django Core. These endpoints are documented in the **Swagger/OpenAPI** schema and require a token-based authentication header (`Authorization: Token <token>`).
+
+### 1. Catalog / Templates Discovery
+
+#### List Templates Catalog
+
+- **Endpoint**: `GET /api/v1/token/projects/templates/`
+- **Description**: Lists all MGI templates available, querying both local templates (`pool/project-templates`) and remote templates (configured in `MGI_TEMPLATES_URL`).
+
+#### Retrieve Template Details
+
+- **Endpoint**: `GET /api/v1/token/projects/templates/{template_id}/`
+- **Description**: Returns the comprehensive metadata for a specific template (including base OS, partition schema, Dockerfile contents, and preconfigured project fields: `platform`, `pms`, and `architecture`).
+
+### 2. Unified Template Import
+
+#### Import Template to Existing or New Project
+
+- **Endpoint**: `POST /api/v1/token/projects/template-import/`
+- **Description**: Initiates a template import workflow.
+
+  - **To create a new project**: Pass `project_name` (string)
+  - **To update an existing project**: Pass `project_id` (integer)
+  - **Optional parameter**: Pass `origin` (string: `'local'` or `'remote'`) to specify the template source catalog.
+
+- **Payload Examples**:
+
+  - **Option A: Auto-create a new project**:
+
+    ```json
+    {
+      "template_id": "debian-13-desktop",
+      "project_name": "My New Brand Project",
+      "origin": "local"
+    }
+    ```
+
+  - **Option B: Import into an existing project**:
+
+    ```json
+    {
+      "template_id": "debian-13-desktop",
+      "project_id": 45,
+      "origin": "local"
+    }
+    ```
+
+### 3. Unified Template Export
+
+#### Export Project to MGI Template Pool
+
+- **Endpoint**: `POST /api/v1/token/projects/template-export/`
+- **Description**: Triggers an export of the project's deployments, stores, and packages to the template catalog directory (`pool/project-templates/`). During the process, the project's own `platform`, `pms`, and `architecture` fields are serialized and persisted into the template's `catalog.yml`.
+- **Payload Example**:
+
+  ```json
+  {
+    "project_id": 45
+  }
+  ```
 
 ---
 

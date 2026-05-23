@@ -32,18 +32,15 @@ logger = logging.getLogger(__name__)
 MGI_QUEUE_KEY = "mgi:build_queue"
 MGI_TASK_PREFIX = "mgi:task:"
 
+
 TEMPLATE_DIR = Path("/usr/share/manager/templates")
 MPI_TEMPLATE = "mpi.Dockerfile.j2"
 
 
 def _get_core_token():
     try:
-        superadmin_name = (
-            open(f"/run/secrets/{STACK}_superadmin_name", "r").read().strip()
-        )
-        superadmin_pass = (
-            open(f"/run/secrets/{STACK}_superadmin_pass", "r").read().strip()
-        )
+        superadmin_name = open(f"/run/secrets/{STACK}_superadmin_name", "r").read().strip()
+        superadmin_pass = open(f"/run/secrets/{STACK}_superadmin_pass", "r").read().strip()
     except FileNotFoundError:
         logger.error("Superadmin secrets not found")
         return None
@@ -78,9 +75,7 @@ def _get_core_resource(endpoint: str):
             follow_redirects=False,
         )
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
-            )
+            raise RuntimeError(f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}")
         return response.json()
     except httpx.RequestError as e:
         raise RuntimeError(f"Error calling Core API: {e}")
@@ -91,11 +86,7 @@ def _post_core_resource(endpoint: str, data: dict):
     if not token:
         raise RuntimeError("Could not obtain Core API token")
 
-    headers = {
-        "accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": f"Token {token}"
-    }
+    headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": f"Token {token}"}
     try:
         core_api_url = CORE_TOKEN_URL.replace("/token", "")
         response = httpx.post(
@@ -105,9 +96,7 @@ def _post_core_resource(endpoint: str, data: dict):
             follow_redirects=False,
         )
         if response.status_code not in (200, 201):
-            raise RuntimeError(
-                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
-            )
+            raise RuntimeError(f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}")
         return response.json()
     except httpx.RequestError as e:
         raise RuntimeError(f"Error calling Core API: {e}")
@@ -118,11 +107,7 @@ def _patch_core_resource(endpoint: str, data: dict):
     if not token:
         raise RuntimeError("Could not obtain Core API token")
 
-    headers = {
-        "accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": f"Token {token}"
-    }
+    headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": f"Token {token}"}
     try:
         core_api_url = CORE_TOKEN_URL.replace("/token", "")
         response = httpx.patch(
@@ -132,9 +117,7 @@ def _patch_core_resource(endpoint: str, data: dict):
             follow_redirects=False,
         )
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}"
-            )
+            raise RuntimeError(f"Core API returned {response.status_code} for endpoint {endpoint}: {response.text}")
         return response.json()
     except httpx.RequestError as e:
         raise RuntimeError(f"Error calling Core API: {e}")
@@ -164,7 +147,7 @@ def _create_build_record(release_id: int, flavour_id: int, task_id: str):
         "flavour": flavour_id,
         "task_id": task_id,
         "status": "running",
-        "started_at": datetime.now(timezone.utc).isoformat()
+        "started_at": datetime.now(timezone.utc).isoformat(),
     }
     logger.debug(f"Creating MGI Build record: {data}")
     return _post_core_resource("/token/mgi/build/", data)
@@ -178,7 +161,7 @@ def _update_build_record(build_id: int, status: str, uri: str = None, size: int 
         data["size"] = size
     if log is not None:
         data["log"] = log
-    
+
     if status in ("completed", "failed"):
         data["finished_at"] = datetime.now(timezone.utc).isoformat()
         logger.debug(f"Updating MGI Build {build_id} to {status} at {data['finished_at']}")
@@ -186,9 +169,7 @@ def _update_build_record(build_id: int, status: str, uri: str = None, size: int 
     return _patch_core_resource(f"/token/mgi/build/{build_id}/", data)
 
 
-def _update_task_status(
-    task_id: str, status: str, progress: int = 0, message: str = ""
-):
+def _update_task_status(task_id: str, status: str, progress: int = 0, message: str = ""):
     con = get_redis_connection()
     key = f"{MGI_TASK_PREFIX}{task_id}"
     con.hset(
@@ -203,9 +184,7 @@ def _update_task_status(
     con.expire(key, 86400)
 
 
-def generate_dockerfile(
-    project_data: dict, config_data: dict, flavour_data: dict, build_dir: Path
-) -> Path:
+def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dict, build_dir: Path) -> Path:
     template = Template(config_data["dockerfile"])
     base_os = config_data.get("base_os", "")
     if not base_os:
@@ -283,12 +262,7 @@ def build_docker_image(
                 last_step = msg
                 if progress_cb:
                     progress_cb(0, msg)
-        if (
-            "failed" in line.lower()
-            or "error:" in line.lower()
-            or "non-zero" in line
-            or line.startswith("E:")
-        ):
+        if "failed" in line.lower() or "error:" in line.lower() or "non-zero" in line or line.startswith("E:"):
             errors.append(line)
             if len(errors) > 5:
                 errors.pop(0)
@@ -358,9 +332,7 @@ def export_and_extract(
     logger.info(f"Image extracted to {root_dir} preserving xattrs")
 
 
-def _create_ext4_image_from_dir(
-    source_dir: Path, output_path: Path, headroom_mb: int = 16
-) -> str:
+def _create_ext4_image_from_dir(source_dir: Path, output_path: Path, headroom_mb: int = 16) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     du = subprocess.run(
         ["du", "-sm", str(source_dir)],
@@ -422,9 +394,7 @@ def _create_ext4_image_from_dir(
     )
     fs_uuid = uuid_result.stdout.strip() if uuid_result.returncode == 0 else ""
     real_mb = output_path.stat().st_size / (1024 * 1024)
-    logger.info(
-        f"Created {output_path.name}: {src_mb}MiB src → {real_mb:.0f}MiB UUID={fs_uuid}"
-    )
+    logger.info(f"Created {output_path.name}: {src_mb}MiB src → {real_mb:.0f}MiB UUID={fs_uuid}")
     return fs_uuid
 
 
@@ -438,11 +408,7 @@ def generate_checksums(output_dir: Path, config_data: dict) -> Path:
     checksum_path = output_dir / "checksums.sha256"
     partition_def = yaml.safe_load(config_data["partition"])
     excluded = {"BIOS", "EFI", "SWAP"}
-    files = [
-        f"{p['name']}.raw"
-        for p in partition_def.get("partitions", [])
-        if p["name"] not in excluded
-    ]
+    files = [f"{p['name']}.raw" for p in partition_def.get("partitions", []) if p["name"] not in excluded]
     files.append("partition.yml")
 
     lines = []
@@ -483,11 +449,7 @@ def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None)
             break
 
     if not entry_found:
-        new_entry = {
-            "name": mpi_name,
-            "enabled": enabled,
-            "description": description
-        }
+        new_entry = {"name": mpi_name, "enabled": enabled, "description": description}
         if build_id is not None:
             new_entry["build_id"] = build_id
         catalog.append(new_entry)
@@ -502,7 +464,7 @@ def update_catalog_json(mpi_name: str, flavour_data: dict, build_id: int = None)
 
 def build_mgi_image(task_id: str, release_id: int):
     _update_task_status(task_id, "fetching", 0, "Fetching release and project data")
-    
+
     # Check if there is no MCS ISO in the pool directory. If so, automatically queue an MCS build task!
     try:
         mcs_pool_dir = PATH_DATASHARES / STACK / "pool" / "mcs"
@@ -511,13 +473,18 @@ def build_mgi_image(task_id: str, release_id: int):
             logger.info(f"Task {task_id}: No MCS ISO found in pool. Queueing automatic MCS build task sequentially...")
             con = get_redis_connection()
             mcs_task_id = str(uuid.uuid4())
-            con.rpush("mcs:build_queue", json.dumps({
-                "task_id": mcs_task_id,
-                "server_url": None,
-                "server_ip": None,
-                "keymap": None,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }))
+            con.rpush(
+                "mcs:build_queue",
+                json.dumps(
+                    {
+                        "task_id": mcs_task_id,
+                        "server_url": None,
+                        "server_ip": None,
+                        "keymap": None,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                ),
+            )
             con.hset(
                 f"mcs:task:{mcs_task_id}",
                 mapping={
@@ -540,15 +507,16 @@ def build_mgi_image(task_id: str, release_id: int):
         config_data = _get_config_from_core(config_id)
         project_id = config_data.get("project")
         project_data = _get_project_from_core(project_id)
-        
+
         # In DRF, list endpoints usually return a dict with a "results" array if paginated
         flavours_response = _get_flavours_from_core(config_id)
-        flavours_list = flavours_response.get("results", flavours_response) if isinstance(flavours_response, dict) else flavours_response
-        
-        flavours_data = [
-            f for f in flavours_list
-            if f.get("enabled", True)
-        ]
+        flavours_list = (
+            flavours_response.get("results", flavours_response)
+            if isinstance(flavours_response, dict)
+            else flavours_response
+        )
+
+        flavours_data = [f for f in flavours_list if f.get("enabled", True)]
     except Exception as e:
         logger.error(f"Task {task_id}: Build failed: {e}")
         _update_task_status(task_id, "error", 0, str(e))
@@ -570,9 +538,7 @@ def build_mgi_image(task_id: str, release_id: int):
 
             def _flavour_progress(pct, msg):
                 actual_pct = base_pct + int((pct / 100) * flavour_span)
-                _update_task_status(
-                    task_id, "building MPI", actual_pct, f"[{mpi_name}] {msg}"
-                )
+                _update_task_status(task_id, "building MPI", actual_pct, f"[{mpi_name}] {msg}")
 
             build_dir = MGI_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
             image_tag = f"mgi/{mpi_name}:{task_id[:8]}"
@@ -583,7 +549,7 @@ def build_mgi_image(task_id: str, release_id: int):
             build_dir.mkdir(parents=True, exist_ok=True)
 
             _flavour_progress(5, "Generating Dockerfile")
-            
+
             # Create build record in Core
             build_record = None
             try:
@@ -608,15 +574,15 @@ def build_mgi_image(task_id: str, release_id: int):
             build_docker_image(build_dir, image_tag, progress_cb=_flavour_progress, task_id=task_id)
 
             _flavour_progress(35, "Exporting and extracting root filesystem")
-            export_and_extract(
-                image_tag, container_name, root_dir, progress_cb=_flavour_progress
-            )
+            export_and_extract(image_tag, container_name, root_dir, progress_cb=_flavour_progress)
 
             _flavour_progress(38, "Configuring network, hosts and keyboard")
             etc_dir = root_dir / "etc"
             flavour_hostname = flavour.get("hostname", "mgi")
             (etc_dir / "hostname").write_text(f"{flavour_hostname}\n")
-            hosts_content = f"127.0.0.1 localhost {flavour_hostname}\n::1 localhost ip6-localhost ip6-loopback {flavour_hostname}\n"
+            hosts_content = (
+                f"127.0.0.1 localhost {flavour_hostname}\n::1 localhost ip6-localhost ip6-loopback {flavour_hostname}\n"
+            )
             if FQDN_IP:
                 hosts_content += f"{FQDN_IP} {FQDN}\n"
             (etc_dir / "hosts").write_text(hosts_content)
@@ -627,11 +593,7 @@ def build_mgi_image(task_id: str, release_id: int):
 
             partition_def = yaml.safe_load(config_data["partition"])
             excluded = {"BIOS", "EFI", "SWAP"}
-            raw_partitions = [
-                p
-                for p in partition_def.get("partitions", [])
-                if p["name"] not in excluded
-            ]
+            raw_partitions = [p for p in partition_def.get("partitions", []) if p["name"] not in excluded]
 
             for part in raw_partitions:
                 name = part["name"]
@@ -674,12 +636,14 @@ def build_mgi_image(task_id: str, release_id: int):
                 logger.error(f"Failed to update catalog.json: {ce}")
 
             _cleanup_build(build_dir, image_tag)
-            
+
             if build_record:
                 try:
                     uri = f"https://{FQDN}/pool/mgi/{mpi_name}/"
                     size = (pool_dir / "SYSTEM.raw").stat().st_size if (pool_dir / "SYSTEM.raw").exists() else 0
-                    success_log = f"Build completed successfully for {mpi_name}. All partitions created and metadata generated."
+                    success_log = (
+                        f"Build completed successfully for {mpi_name}. All partitions created and metadata generated."
+                    )
                     _update_build_record(build_record["id"], "completed", uri=uri, size=size, log=success_log)
                 except Exception as e:
                     logger.error(f"Task {task_id}: Could not update build record to completed in Core: {e}")
@@ -690,7 +654,7 @@ def build_mgi_image(task_id: str, release_id: int):
     except Exception as e:
         logger.error(f"Task {task_id}: Build failed: {e}")
         _update_task_status(task_id, "error", 0, str(e))
-        if 'build_record' in locals() and build_record:
+        if "build_record" in locals() and build_record:
             try:
                 _update_build_record(build_record["id"], "failed", log=str(e))
             except Exception as e2:
@@ -716,16 +680,10 @@ def _mgi_worker():
             if result is None:
                 continue
             _, task_data = result
-            task = (
-                json.loads(task_data)
-                if isinstance(task_data, str)
-                else json.loads(task_data.decode("utf-8"))
-            )
+            task = json.loads(task_data) if isinstance(task_data, str) else json.loads(task_data.decode("utf-8"))
             task_id = task.get("task_id", str(uuid.uuid4()))
             release_id = task.get("release_id")
-            logger.info(
-                f"MGI worker processing task {task_id} for release {release_id}"
-            )
+            logger.info(f"MGI worker processing task {task_id} for release {release_id}")
             _update_task_status(task_id, "queued", 0, "Task accepted, starting build")
             build_mgi_image(task_id, release_id)
         except Exception as e:

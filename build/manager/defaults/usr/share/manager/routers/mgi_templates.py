@@ -27,7 +27,7 @@ async def _fetch_text(url: str) -> str:
         return response.text
 
 
-@router.get("/catalog")
+@router.get("/projects/templates")
 async def get_mgi_catalog():
     """Fetch the MGI templates catalog combining local and remote sources."""
     from core.config import local_templates_dir
@@ -75,7 +75,7 @@ async def get_mgi_catalog():
     return {"templates": templates}
 
 
-@router.get("/templates/{template_id:path}")
+@router.get("/projects/templates/{template_id:path}")
 async def get_mgi_template(
     template_id: str,
     origin: str = None,
@@ -95,6 +95,9 @@ async def get_mgi_template(
             partition = None
             deployments = None
             base_os = None
+            platform = None
+            pms = None
+            architecture = None
             try:
                 dockerfile = local_dir.joinpath("dockerfile.j2").read_text(
                     encoding="utf-8"
@@ -123,12 +126,18 @@ async def get_mgi_template(
                         for t in catalog_data.get("templates", []):
                             if t.get("id") == template_id:
                                 base_os = t.get("base_os")
+                                platform = t.get("platform")
+                                pms = t.get("pms")
+                                architecture = t.get("architecture")
                                 break
             except Exception:
                 pass
             return {
                 "id": template_id,
                 "base_os": base_os,
+                "platform": platform,
+                "pms": pms,
+                "architecture": architecture,
                 "dockerfile": dockerfile,
                 "partition": partition,
                 "deployments": deployments,
@@ -161,6 +170,9 @@ async def get_mgi_template(
                     return {
                         "id": template_id,
                         "base_os": template_info.get("base_os"),
+                        "platform": template_info.get("platform"),
+                        "pms": template_info.get("pms"),
+                        "architecture": template_info.get("architecture"),
                         "dockerfile": dockerfile,
                         "partition": partition,
                         "deployments": deployments,
@@ -712,6 +724,24 @@ async def export_deployments(
                 entry = {"id": template_id}
                 if base_os:
                     entry["base_os"] = base_os
+                
+                # Fetch platform name, pms, and architecture from project
+                platform_name = (
+                    project.get("platform", {}).get("name")
+                    if isinstance(project.get("platform"), dict)
+                    else None
+                )
+                if platform_name:
+                    entry["platform"] = platform_name
+                
+                pms_val = project.get("pms")
+                if pms_val:
+                    entry["pms"] = pms_val
+                
+                arch_val = project.get("architecture")
+                if arch_val:
+                    entry["architecture"] = arch_val
+
                 if existing:
                     templates[templates.index(existing)] = entry
                 else:
