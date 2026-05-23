@@ -29,6 +29,104 @@ SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_builder_computer_in_db(project_id: int):
+    """
+    Ensure the builder computer identity (UUID = '71656d75-a1b2-c3d4-e5f6-7890abcdef02')
+    is registered in client_computer for the specified project.
+    """
+    from core.database import get_db_connection
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, project_id FROM client_computer WHERE uuid = %s;",
+                (SYSTEM_UUID.upper(),)
+            )
+            row = cur.fetchone()
+            if row:
+                existing_id, existing_project_id = row
+                if existing_project_id != project_id:
+                    logger.info(f"Updating builder computer {SYSTEM_UUID} project assignment to {project_id}...")
+                    cur.execute(
+                        "UPDATE client_computer SET project_id = %s, updated_at = NOW() WHERE id = %s;",
+                        (project_id, existing_id)
+                    )
+            else:
+                logger.info(f"Pre-registering builder computer {SYSTEM_UUID} in database for project {project_id}...")
+                cur.execute(
+                    """
+                    INSERT INTO client_computer (
+                        uuid, status, name, fqdn, created_at, updated_at, machine, project_id
+                    ) VALUES (
+                        %s, 'intended', 'mgi-builder', 'mgi-builder', NOW(), NOW(), 'P', %s
+                    );
+                    """,
+                    (SYSTEM_UUID.upper(), project_id)
+                )
+            conn.commit()
+            logger.info("Builder computer pre-registered successfully")
+
+
+
+def _ensure_builder_certificate(project_id: int) -> tuple[Path, Path]:
+    """
+    Ensure client certificate and decrypted private key exist for the builder UUID on the specified project.
+    Returns (cert_path, decrypted_key_path).
+    """
+    import asyncio
+    from core.security import create_computer_cert
+    from core.config import PATH_CERTIFICATES, STACK, FQDN
+    from core.utils import get_host
+
+    common_name = f"{SYSTEM_UUID}_{project_id}"
+    cert_dir = PATH_CERTIFICATES / STACK / "computer" / "certs"
+    cert_dir.mkdir(parents=True, exist_ok=True)
+
+    cert_path = cert_dir / f"{common_name}.crt"
+    key_path = cert_dir / f"{common_name}.key"
+    decrypted_key_path = cert_dir / f"{common_name}.decrypted.key"
+
+    password = "migasfree_builder_secure_pass"
+
+    if not cert_path.exists() or not key_path.exists():
+        logger.info(f"Generating builder certificate for CN {common_name}...")
+        host = get_host(STACK)
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        success = loop.run_until_complete(
+            create_computer_cert(
+                fqdn=FQDN,
+                host=host,
+                stack=STACK,
+                common_name=common_name,
+                password=password,
+                days="7305",
+                email="builder@migasfree.org",
+            )
+        )
+        if not success:
+            raise RuntimeError(f"Failed to generate builder certificate for CN {common_name}")
+
+    if not decrypted_key_path.exists():
+        logger.info(f"Decrypting builder private key for CN {common_name}...")
+        cmd = [
+            "openssl", "rsa",
+            "-in", str(key_path),
+            "-passin", f"pass:{password}",
+            "-out", str(decrypted_key_path)
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            raise RuntimeError(f"Failed to decrypt builder private key: {res.stderr}")
+
+    return cert_path, decrypted_key_path
+
+
 MGI_QUEUE_KEY = "mgi:build_queue"
 MGI_TASK_PREFIX = "mgi:task:"
 
@@ -208,6 +306,39 @@ def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dic
         fqdn_ip=FQDN_IP,
         system_uuid=SYSTEM_UUID,
         tags=flavour_data.get("tags", ""),
+    )
+
+    # Programmatic edits for Task A (Static Builder Identity mTLS)
+    # 1. Inject client certificates COPY command right before the RUN command containing migasfree conf
+    lines = dockerfile_content.splitlines()
+    run_idx = -1
+    for i, line in enumerate(lines):
+        if "migasfree conf" in line:
+            # Search backwards for the nearest line starting with RUN
+            for j in range(i, -1, -1):
+                if lines[j].strip().startswith("RUN"):
+                    run_idx = j
+                    break
+            break
+
+    if run_idx != -1:
+        lines.insert(run_idx, "COPY keys/ /etc/migasfree/keys/")
+        # Also copy keys to the mtls path where migasfree client expects them
+        mtls_setup_cmds = [
+            f"RUN mkdir -p /var/migasfree-client/mtls/{FQDN}",
+            f"RUN cp /etc/migasfree/keys/computer.crt /var/migasfree-client/mtls/{FQDN}/cert.pem",
+            f"RUN cp /etc/migasfree/keys/computer.key /var/migasfree-client/mtls/{FQDN}/key.pem",
+            f"RUN cp /etc/migasfree/keys/ca.crt /var/migasfree-client/mtls/{FQDN}/ca.pem"
+        ]
+        for cmd in reversed(mtls_setup_cmds):
+            lines.insert(run_idx + 1, cmd)
+        logger.info("Programmatically injected COPY keys/ and mtls copy commands to Dockerfile")
+
+    # Reassemble and replace registration with true bypass
+    dockerfile_content = "\n".join(lines)
+    dockerfile_content = dockerfile_content.replace(
+        'echo "y" | USER=root migasfree register',
+        'true'
     )
 
     dockerfile_path = build_dir / "Dockerfile"
@@ -557,6 +688,20 @@ def build_mgi_image(task_id: str, release_id: int):
             except Exception as e:
                 logger.error(f"Task {task_id}: Could not create build record in Core: {e}")
 
+            # Ensure builder computer in DB and generate certificates
+            try:
+                _ensure_builder_computer_in_db(project_id)
+                cert_path, decrypted_key_path = _ensure_builder_certificate(project_id)
+                
+                keys_dest = build_dir / "keys"
+                keys_dest.mkdir(parents=True, exist_ok=True)
+                shutil.copy(cert_path, keys_dest / "computer.crt")
+                shutil.copy(decrypted_key_path, keys_dest / "computer.key")
+                logger.info("Builder certificates injected into build context keys/")
+            except Exception as e:
+                logger.error(f"Task {task_id}: Failed to ensure or inject builder certificates: {e}")
+                raise
+
             generate_dockerfile(project_data, config_data, flavour, build_dir)
 
             # Copy certificate to build context
@@ -567,6 +712,9 @@ def build_mgi_image(task_id: str, release_id: int):
                 dest_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src_cert, dest_dir / cert_name)
                 logger.info(f"Copied {src_cert} to {dest_dir}")
+                
+                # Also copy CA to keys/ for local validation if needed
+                shutil.copy(src_cert, build_dir / "keys" / "ca.crt")
             else:
                 logger.warning(f"Certificate {src_cert} not found")
 
