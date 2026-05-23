@@ -227,6 +227,17 @@ async def service_stream(request: Request):
     return EventSourceResponse(event_generator())
 
 
+@router_private.get("/status/json")
+async def status_json():
+    """Returns services status cache as JSON"""
+    try:
+        cache_result = await docker_monitor.cache()
+        return JSONResponse(content=cache_result)
+    except Exception as e:
+        logger.error(f"Error getting status json: {e}")
+        return JSONResponse(content={}, status_code=500)
+
+
 @router_private.get("/info")
 async def get_info():
     """Get static application info (organization, stack, tag, disabled)"""

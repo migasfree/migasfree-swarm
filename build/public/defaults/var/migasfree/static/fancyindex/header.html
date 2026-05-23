@@ -9,18 +9,18 @@
         <title>Migasfree Public Pool</title>
         <script type="text/javascript">
             $(document).ready(function() {
-                $.ajax({
-                    url: '/manager/v1/private/info',
-                    type: 'GET',
-                    success: function(info) {
-                        $('#organization').text(info.organization || '');
-                        $('#stack').text(info.stack || '');
-                        $('#tag').text(info.tag || '');
-                    },
-                    error: function(err) {
-                        console.error('Error fetching info:', err);
-                    }
-                });
+                const path = window.location.pathname;
+                const titleEl = $('#page-title');
+                const footerEl = $('#footer-text');
+                if (path.includes('/public')) {
+                    titleEl.text('migasfree public files');
+                    document.title = 'Migasfree Public Repository';
+                    footerEl.text('migasfree public files');
+                } else {
+                    titleEl.text('migasfree pool files');
+                    document.title = 'Migasfree Public Pool';
+                    footerEl.text('migasfree pool files');
+                }
             });
         </script>
     </head>
@@ -28,27 +28,7 @@
 <div class="main-container">
     <div class="info-panel">
         <div class="info-content">
-            <h1 class="panel-title">Pool</h1>
-            <span class="split-badge">
-                <span class="badge-key">Organization</span>
-                <span class="badge-value" id="organization"></span>
-            </span>
-            <span class="split-badge">
-                <span class="badge-key">Stack</span>
-                <span class="badge-value" id="stack"></span>
-            </span>
-            <span class="split-badge">
-                <span class="badge-key">Tag</span>
-                <span class="badge-value" id="tag"></span>
-            </span>
-        </div>
-        <div class="flex-row">
-            <a id="status_emoji_link" href="/manager/v1/private/status" class="action-link" title="Status">
-                Status
-            </a>
-            <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" class="action-link" title="Metrics Dashboard">
-                Metrics
-            </a>
+            <h1 class="panel-title" id="page-title">POOL</h1>
         </div>
     </div>
 

@@ -325,6 +325,76 @@
       text-decoration: none;
       color: inherit;
     }
+
+    .status-dot {
+      width: 16px;
+      height: 16px;
+      background-color: #10b981;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-right: 0.4rem;
+    }
+
+    .tabs-nav {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 3rem;
+      background: var(--glass-bg);
+      padding: 0.6rem;
+      border-radius: 1.25rem;
+      border: 1px solid var(--glass-border);
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+      backdrop-filter: var(--glass-blur);
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn {
+      padding: 0.75rem 1.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      color: var(--link-color);
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.85rem;
+    }
+
+    .tab-btn:hover {
+      background: var(--link-hover-bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(67, 20, 7, 0.1);
+      border-color: var(--brand-tertiary);
+    }
+
+    .tab-btn.active {
+      background: var(--brand-primary);
+      color: white;
+      border-color: var(--brand-primary);
+      box-shadow: 0 8px 20px rgba(67, 20, 7, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .tab-btn .mdi {
+      font-size: 1.25rem;
+      opacity: 0.9;
+    }
+
+    .tab-btn.active .mdi {
+      color: var(--brand-tertiary);
+      opacity: 1;
+    }
   </style>
 </head>
 
@@ -332,7 +402,6 @@
   <!-- Info Panel -->
   <div class="info-panel panel">
     <div class="info-content">
-      <h1 class="panel-title">Status</h1>
       <span class="split-badge">
         <span class="badge-key">Organization</span>
         <span class="badge-value" id="organization"></span>
@@ -346,16 +415,20 @@
         <span class="badge-value" id="tag"></span>
       </span>
     </div>
-    <div class="flex-row">
-      <a id="pool_emoji_link" href="/pool/" class="action-link" title="Open Public Pool">
-        <span class="mdi mdi-package-variant-closed"></span>
-        Pool
-      </a>
-      <a id="metrics_emoji_link" href="/manager/v1/private/metrics/dashboard" class="action-link" title="Metrics Dashboard">
-        <span class="mdi mdi-chart-box"></span>
-        Metrics
-      </a>
-    </div>
+    <nav class="tabs-nav" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; backdrop-filter: none; display: flex; gap: 0.75rem;">
+      <button id="btn-status" class="tab-btn active" onclick="location.href='/manager/v1/private/status'">
+        <span class="status-dot" id="status-dot"></span> Status
+      </button>
+      <button id="btn-sync" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=sync'">
+        <span class="mdi mdi-sync"></span> Synchronizations
+      </button>
+      <button id="btn-db" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=db'">
+        <span class="mdi mdi-database"></span> Database Cluster
+      </button>
+      <button id="btn-pool" class="tab-btn" onclick="window.open('/pool/', '_blank')">
+        <span class="mdi mdi-package-variant-closed"></span> Pool
+      </button>
+    </nav>
   </div>
 
   <!-- Services Section -->
@@ -854,11 +927,31 @@
         const now = Date.now();
         let sprite, prefix;
 
-        const allHealthy = Object.values(state.serviceStates).every(s => s.status === 'healthy');
-        const anyDown = Object.values(state.serviceStates).some(s => s.status === 'down');
-        const anyDegraded = Object.values(state.serviceStates).some(s =>
-          s.status === 'degraded' || s.status === 'starting'
-        );
+        const services = [
+          ...Object.values(state.serviceStates),
+          ...Object.values(state.pmsServices)
+        ];
+        const total = services.length;
+        const downCount = services.filter(s => s.status === 'down').length;
+        const healthyCount = services.filter(s => s.status === 'healthy').length;
+
+        const allHealthy = healthyCount === total && total > 0;
+        const anyDown = downCount > 0;
+        const anyDegraded = services.some(s => s.status === 'degraded' || s.status === 'starting');
+
+        const dotEl = document.getElementById('status-dot');
+        if (dotEl) {
+          if (total === 0 || downCount === total) {
+            dotEl.style.backgroundColor = '#dc2626';
+            dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+          } else if (allHealthy) {
+            dotEl.style.backgroundColor = '#10b981';
+            dotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
+          } else {
+            dotEl.style.backgroundColor = '#eab308';
+            dotEl.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
+          }
+        }
 
         if (allHealthy && Object.keys(state.serviceStates).length > 0) {
           sprite = Math.floor((now / 1000) % 2);
@@ -1068,6 +1161,12 @@
         dom.message.textContent = 'waiting...';
         dom.messageServ.textContent = '';
         dom.mascot.src = mascotImages['mascot-welcome'].src;
+
+        const dotEl = document.getElementById('status-dot');
+        if (dotEl) {
+          dotEl.style.backgroundColor = '#dc2626';
+          dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+        }
       }
 
       function showDisconnected() {
@@ -1082,6 +1181,12 @@
         Object.values(dom.links).forEach(link => {
           if (link) link.style.display = 'none';
         });
+
+        const dotEl = document.getElementById('status-dot');
+        if (dotEl) {
+          dotEl.style.backgroundColor = '#dc2626';
+          dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+        }
       }
 
       function checkConnection() {
