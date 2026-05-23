@@ -98,6 +98,7 @@ async def get_mgi_template(
             platform = None
             pms = None
             architecture = None
+            auto_register_computers = False
             try:
                 dockerfile = local_dir.joinpath("dockerfile.j2").read_text(
                     encoding="utf-8"
@@ -129,6 +130,7 @@ async def get_mgi_template(
                                 platform = t.get("platform")
                                 pms = t.get("pms")
                                 architecture = t.get("architecture")
+                                auto_register_computers = t.get("auto_register_computers", False)
                                 break
             except Exception:
                 pass
@@ -138,6 +140,7 @@ async def get_mgi_template(
                 "platform": platform,
                 "pms": pms,
                 "architecture": architecture,
+                "auto_register_computers": auto_register_computers,
                 "dockerfile": dockerfile,
                 "partition": partition,
                 "deployments": deployments,
@@ -173,6 +176,7 @@ async def get_mgi_template(
                         "platform": template_info.get("platform"),
                         "pms": template_info.get("pms"),
                         "architecture": template_info.get("architecture"),
+                        "auto_register_computers": template_info.get("auto_register_computers", False),
                         "dockerfile": dockerfile,
                         "partition": partition,
                         "deployments": deployments,
@@ -184,6 +188,10 @@ async def get_mgi_template(
     return {
         "id": template_id,
         "base_os": None,
+        "platform": None,
+        "pms": None,
+        "architecture": None,
+        "auto_register_computers": False,
         "dockerfile": None,
         "partition": None,
         "deployments": None,
@@ -741,6 +749,10 @@ async def export_deployments(
                 arch_val = project.get("architecture")
                 if arch_val:
                     entry["architecture"] = arch_val
+
+                auto_register_computers_val = project.get("auto_register_computers")
+                if auto_register_computers_val is not None:
+                    entry["auto_register_computers"] = auto_register_computers_val
 
                 if existing:
                     templates[templates.index(existing)] = entry
