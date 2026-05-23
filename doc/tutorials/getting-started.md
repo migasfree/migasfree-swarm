@@ -17,7 +17,7 @@ mkdir migasfree-cluster && cd migasfree-cluster
 docker run --detach=false --rm -ti \
   -v $(pwd):/stack \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  migasfree/swarm:5.0-beta15 config
+  migasfree/swarm:5.0-beta16 config
 ```
 
 During configuration, select `local` if you are testing on a single node:
