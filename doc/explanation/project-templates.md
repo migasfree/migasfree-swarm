@@ -351,7 +351,7 @@ The internal endpoints in the `manager` service are exposed to administrators an
 
 #### Import Template to Existing or New Project
 
-- **Endpoint**: `POST /api/v1/token/projects/template-import/`
+- **Endpoint**: `POST /api/v1/token/projects/templates/import/`
 - **Description**: Initiates a template import workflow.
 
   - **To create a new project**: Pass `project_name` (string)
@@ -384,7 +384,7 @@ The internal endpoints in the `manager` service are exposed to administrators an
 
 #### Export Project to MGI Template Pool
 
-- **Endpoint**: `POST /api/v1/token/projects/template-export/`
+- **Endpoint**: `POST /api/v1/token/projects/templates/export/`
 - **Description**: Triggers an export of the project's deployments, stores, and packages to the template catalog directory (`pool/project-templates/`). During the process, the project's own `platform`, `pms`, and `architecture` fields are serialized and persisted into the template's `catalog.yml`.
 - **Payload Example**:
 
