@@ -118,9 +118,7 @@ check_celery_worker() {
 
 send_message() {
     _MESSAGE="$1"
-    _SERVER="${2:-manager}"
-    _DATA="{\"text\":\"$_MESSAGE\", \"service\":\"$SERVICE\", \"node\":\"$NODE\", \"container\":\"$(hostname)\"}"
-    curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
-        -d "$_DATA" -H "Content-Type: application/json" \
-        -X POST "http://${_SERVER}:8080/v1/internal/message" > /dev/null 2>&1 || :
+    if [ -n "$_MESSAGE" ]; then
+        echo "[STATUS] $_MESSAGE"
+    fi
 }
