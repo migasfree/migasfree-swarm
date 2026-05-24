@@ -30,10 +30,10 @@ SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
 logger = logging.getLogger(__name__)
 
 
-def _ensure_builder_computer_in_db(project_id: int):
+def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
     """
     Ensure the builder computer identity (UUID = '71656d75-a1b2-c3d4-e5f6-7890abcdef02')
-    is registered in client_computer for the specified project.
+    is registered in client_computer for the specified project and has the flavour's tags.
     """
     from core.database import get_db_connection
 
@@ -52,6 +52,7 @@ def _ensure_builder_computer_in_db(project_id: int):
                         "UPDATE client_computer SET project_id = %s, updated_at = NOW() WHERE id = %s;",
                         (project_id, existing_id)
                     )
+                computer_id = existing_id
             else:
                 logger.info(f"Pre-registering builder computer {SYSTEM_UUID} in database for project {project_id}...")
                 cur.execute(
@@ -60,12 +61,38 @@ def _ensure_builder_computer_in_db(project_id: int):
                         uuid, status, name, fqdn, created_at, updated_at, machine, project_id
                     ) VALUES (
                         %s, 'intended', 'mgi-builder', 'mgi-builder', NOW(), NOW(), 'P', %s
-                    );
+                    ) RETURNING id;
                     """,
                     (SYSTEM_UUID.upper(), project_id)
                 )
+                computer_id = cur.fetchone()[0]
+
+            # Sync flavour tags to client_computer_tags for this computer
+            if flavour_id is not None:
+                logger.info(f"Syncing tags for flavour {flavour_id} to builder computer {computer_id}...")
+                
+                # Fetch flavour tag attributes
+                cur.execute(
+                    "SELECT serverattribute_id FROM mgi_flavour_tags WHERE flavour_id = %s;",
+                    (flavour_id,)
+                )
+                tag_ids = [r[0] for r in cur.fetchall()]
+                
+                # Delete existing tags for the builder computer
+                cur.execute(
+                    "DELETE FROM client_computer_tags WHERE computer_id = %s;",
+                    (computer_id,)
+                )
+                
+                # Insert the new flavour tags
+                for tag_id in tag_ids:
+                    cur.execute(
+                        "INSERT INTO client_computer_tags (computer_id, serverattribute_id) VALUES (%s, %s);",
+                        (computer_id, tag_id)
+                    )
+
             conn.commit()
-            logger.info("Builder computer pre-registered successfully")
+            logger.info("Builder computer pre-registered and tags synchronized successfully")
 
 
 
@@ -305,7 +332,7 @@ def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dic
         hostname=flavour_data.get("hostname", "mgi"),
         fqdn_ip=FQDN_IP,
         system_uuid=SYSTEM_UUID,
-        tags=flavour_data.get("tags", ""),
+        tags=" ".join([t.strip() for t in flavour_data.get("tags", "").replace(",", " ").split() if t.strip()]),
     )
 
     # Programmatic edits for Task A (Static Builder Identity mTLS)
@@ -690,7 +717,7 @@ def build_mgi_image(task_id: str, release_id: int):
 
             # Ensure builder computer in DB and generate certificates
             try:
-                _ensure_builder_computer_in_db(project_id)
+                _ensure_builder_computer_in_db(project_id, flavour["id"])
                 cert_path, decrypted_key_path = _ensure_builder_certificate(project_id)
                 
                 keys_dest = build_dir / "keys"
