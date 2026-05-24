@@ -63,9 +63,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1rem;
-      padding: 1.5rem 1.25rem;
-      border-radius: 12px;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1.25rem;
+      width: 220px;
+      aspect-ratio: 1 / 1;
+      justify-self: center;
+      border-radius: 50%;
       background: rgba(var(--brand-primary-rgb), 0.03);
       border: 1px solid transparent;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -93,8 +97,8 @@
     }
 
     .service-icon-wrap img {
-      width: 64px;
-      height: 64px;
+      width: 80px;
+      height: 80px;
       opacity: 0.8;
       transition: opacity 0.3s ease;
     }
@@ -110,8 +114,8 @@
     }
 
     .service-indicator {
-      width: 10px;
-      height: 10px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background-color: lightgray;
       display: none;
@@ -120,14 +124,14 @@
     }
 
     .service-count {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: var(--brand-tertiary);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--brand-secondary);
       min-width: 0;
     }
 
     .service-name {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 700;
       color: var(--brand-secondary);
       letter-spacing: 0.02em;
@@ -136,194 +140,10 @@
     .service-link {
       position: absolute;
       inset: 0;
-      border-radius: 12px;
+      border-radius: 50%;
       display: none;
       z-index: 1;
       cursor: pointer;
-    }
-
-    .mascot-area {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      width: 120px;
-      flex-shrink: 0;
-      padding: 1rem;
-      align-self: flex-end;
-    }
-
-    .mascot-area img {
-      width: 72px;
-      height: 72px;
-      transition: opacity 0.3s ease;
-    }
-
-    .mascot-status-text {
-      font-size: 0.85rem;
-      font-style: italic;
-      color: var(--brand-secondary);
-      text-align: center;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .mascot-service-text {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--brand-primary);
-      text-align: center;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .logs-section {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-    }
-
-    .logs-header {
-      padding: 15px 20px;
-      background: var(--neutral-100);
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .logs-header:hover {
-      background: #e9ecef;
-    }
-
-    .logs-header h2 {
-      margin: 0;
-      font-size: 1.5em;
-      font-weight: 100;
-      color: #333;
-    }
-
-    .toggle-icon {
-      font-size: 1.5em;
-      transition: transform 0.3s ease;
-    }
-
-    .toggle-icon.expanded {
-      transform: rotate(180deg);
-    }
-
-    .logs-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-
-    .logs-content.expanded {
-      max-height: 600px;
-      overflow-y: auto;
-    }
-
-    .logs-table-container {
-      padding: 20px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid #ddd;
-    }
-
-    th {
-      background: #f8f9fa;
-      font-weight: bold;
-      text-transform: uppercase;
-      font-size: 0.9em;
-      letter-spacing: 0.5px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    th,
-    td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-
-    tbody tr {
-      transition: background-color 0.2s ease;
-    }
-
-    tbody tr:hover {
-      background-color: #f8f9fa;
-    }
-
-    tbody tr:nth-child(even) {
-      background-color: #fafafa;
-    }
-
-    .loading,
-    .error,
-    .empty {
-      padding: 40px;
-      text-align: center;
-      font-size: 1.2em;
-      color: #666;
-    }
-
-    .error {
-      color: #dc3545;
-    }
-
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-
-      th,
-      td {
-        padding: 6px;
-        font-size: 0.9em;
-      }
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    .loading {
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .flex-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .action-link {
-      text-decoration: none;
-      color: inherit;
     }
 
     .status-dot {
@@ -394,6 +214,45 @@
     .tab-btn.active .mdi {
       color: var(--brand-tertiary);
       opacity: 1;
+    }
+
+    @media (max-width: 1200px) {
+      .services-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (max-width: 992px) {
+      .services-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .info-panel {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .info-content {
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      .services-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .info-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -610,28 +469,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Mascot Status -->
-    <div class="mascot-area">
-      <a href="/manager/v1/private/logs" target="_blank">
-        <img id="mascot" src="/manager/static/img/mascot-welcome.svg" alt="mascot" />
-      </a>
-      <span class="mascot-service-text" id="message_serv"></span>
-      <span class="mascot-status-text" id="message">one moment, please</span>
-    </div>
-  </div>
-
-  <!-- Logs Section (Collapsible) -->
-  <div class="logs-section">
-    <div class="logs-header" id="logs-toggle">
-      <h2>Messages Log</h2>
-      <span class="toggle-icon" id="toggle-icon">▼</span>
-    </div>
-    <div class="logs-content" id="logs-content">
-      <div class="logs-table-container" id="logs-container">
-        <p class="loading">Loading messages...</p>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -644,8 +481,6 @@
         streamEndpoint: '/manager/v1/private/stream',
         reconnectDelay: 5000,
         waitingThreshold: 5000,
-        welcomeMessages: ['salut!', 'Hi!', '¡hola!', '¡hola, co!', 'kaixo!', 'ola!', 'Hallo!'],
-        logsColumns: ['timestamp', 'service', 'text', 'node', 'container'],
         serviceList: [
           'portainer', 'proxy', 'manager',
           'console', 'public', 'pms',
@@ -670,9 +505,7 @@
         pmsServices: {},
         waiting: true,
         wasDisconnected: false,
-        allHealthy: false,
-        logsExpanded: false,
-        logsData: []
+        allHealthy: false
       };
 
       // DOM Cache
@@ -680,54 +513,16 @@
         nodes: {},
         links: {},
         nodeTexts: {},
-        mascot: null,
-        message: null,
-        messageServ: null,
         organization: null,
         stack: null,
-        tag: null,
-        logsToggle: null,
-        logsContent: null,
-        logsContainer: null,
-        toggleIcon: null
+        tag: null
       };
-
-      // Preload mascot images
-      const mascotImages = {};
-
-      function preloadMascotImages() {
-        const sprites = {
-          'mascot-ok': 2,
-          'mascot-starting': 2,
-          'mascot-checking': 3,
-          'mascot-disconnect': 1,
-          'mascot-welcome': 1
-        };
-
-        Object.keys(sprites).forEach(prefix => {
-          for (let sprite = 0; sprite < sprites[prefix]; sprite++) {
-            // Solo mascot-disconnect y mascot-welcome usan la clave sin sprite
-            const key = (sprites[prefix] === 1) ? prefix : `${prefix}-${sprite}`;
-            const img = new Image();
-            img.src = `/manager/static/img/${key}.svg`;
-            mascotImages[key] = img;
-          }
-        });
-        console.debug(mascotImages)
-      }
 
       // Initialize DOM cache
       function cacheDOMElements() {
-        dom.mascot = document.getElementById('mascot');
-        dom.message = document.getElementById('message');
-        dom.messageServ = document.getElementById('message_serv');
         dom.organization = document.getElementById('organization');
         dom.stack = document.getElementById('stack');
         dom.tag = document.getElementById('tag');
-        dom.logsToggle = document.getElementById('logs-toggle');
-        dom.logsContent = document.getElementById('logs-content');
-        dom.logsContainer = document.getElementById('logs-container');
-        dom.toggleIcon = document.getElementById('toggle-icon');
 
         // Cache all service nodes
         CONFIG.serviceList.forEach(elementId => {
@@ -815,7 +610,7 @@
 
       function getColorFromStatus(status) {
         const colorMap = {
-          'healthy': '#166534',   // branding success
+          'healthy': '#10b981',   // branding success
           'degraded': '#a16207',  // branding warning
           'starting': '#feda00',  // branding tertiary (yellow)
           'down': '#dc2626',      // branding error
@@ -850,7 +645,7 @@
         if (dom.nodeTexts[serviceName]) {
           console.debug('nodeText:', dom.nodeTexts[serviceName]);
           const nodeCount = statusInfo.running || 0;
-          dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? nodeCount : '';
+          dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? `(${nodeCount})` : '';
         }
 
         // Updates console link visibility
@@ -895,7 +690,7 @@
           } else {
             issueList.push(`${summary} - ${status.status}`);
             if (status.status === 'down') anyDown = true;
-            if (status.status === 'degraded') anyDegraded = true; // 'starting' is handled by count
+            if (status.status === 'degraded') anyDegraded = true;
           }
         });
 
@@ -918,15 +713,11 @@
         node.style.display = 'block';
 
         if (dom.nodeTexts.pms) {
-          dom.nodeTexts.pms.textContent = totalRunning > 0 ? totalRunning : '';
-          dom.nodeTexts.pms.style.color = color;
+          dom.nodeTexts.pms.textContent = totalRunning > 0 ? `(${totalRunning})` : '';
         }
       }
 
-      function updateMascot() {
-        const now = Date.now();
-        let sprite, prefix;
-
+      function updateStatusDot() {
         const services = [
           ...Object.values(state.serviceStates),
           ...Object.values(state.pmsServices)
@@ -936,8 +727,6 @@
         const healthyCount = services.filter(s => s.status === 'healthy').length;
 
         const allHealthy = healthyCount === total && total > 0;
-        const anyDown = downCount > 0;
-        const anyDegraded = services.some(s => s.status === 'degraded' || s.status === 'starting');
 
         const dotEl = document.getElementById('status-dot');
         if (dotEl) {
@@ -951,73 +740,6 @@
             dotEl.style.backgroundColor = '#eab308';
             dotEl.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
           }
-        }
-
-        if (allHealthy && Object.keys(state.serviceStates).length > 0) {
-          sprite = Math.floor((now / 1000) % 2);
-          prefix = 'mascot-ok';
-          dom.message.textContent = 'ready';
-          dom.messageServ.textContent = '';
-          state.allHealthy = true;
-        } else if (anyDown) {
-          sprite = Math.floor((now / 1000) % 2);
-          prefix = 'mascot-starting';
-
-          const downService = Object.entries(state.serviceStates).find(([_, s]) => s.status === 'down');
-          if (downService) {
-            dom.messageServ.textContent = downService[0];
-            dom.message.textContent = `${downService[1].running}/${downService[1].desired ?? 1} down`;
-          }
-          state.allHealthy = false;
-        } else if (anyDegraded) {
-          sprite = Math.floor((now / 1000) % 3);
-          prefix = 'mascot-checking';
-
-          const degradedService = Object.entries(state.serviceStates).find(([_, s]) =>
-            s.status === 'degraded' || s.status === 'starting'
-          );
-          if (degradedService) {
-            dom.messageServ.textContent = degradedService[0];
-            dom.message.textContent = `${degradedService[1].running}/${degradedService[1].desired ?? 1} ${degradedService[1].status}`;
-          }
-          state.allHealthy = false;
-        } else {
-          sprite = 0;
-          prefix = 'mascot-welcome';
-          state.allHealthy = false;
-        }
-
-        let key = (sprite === 0 && (prefix === 'mascot-disconnect' || prefix === 'mascot-welcome'))
-          ? prefix
-          : `${prefix}-${sprite}`;
-        if (mascotImages[key]) {
-          // Use preloaded image src to avoid new fetch
-          dom.mascot.src = mascotImages[key].src;
-        } else {
-          // Fallback to default image if not preloaded
-          dom.mascot.src = `/manager/static/img/${key}.svg`;
-        }
-      }
-
-      function toggleLogs() {
-        state.logsExpanded = !state.logsExpanded;
-
-        if (state.logsExpanded) {
-          dom.logsContent.classList.add('expanded');
-          dom.toggleIcon.classList.add('expanded');
-          if (state.logsData.length > 0) {
-            dom.logsContainer.innerHTML = buildLogsTable(state.logsData);
-          } else {
-            dom.logsContainer.innerHTML = '<p class="empty">No messages available.</p>';
-          }
-        } else {
-          dom.logsContent.classList.remove('expanded');
-          dom.toggleIcon.classList.remove('expanded');
-        }
-
-        const h2 = dom.logsToggle.querySelector('h2');
-        if (h2) {
-          h2.textContent = `Messages Log (${state.logsData.length})`;
         }
       }
 
@@ -1046,78 +768,11 @@
             updateServiceNode(serviceName, data.status);
           }
 
-          updateMascot();
+          updateStatusDot();
           state.wasDisconnected = false;
         } catch (error) {
           console.error('Status SSE parse error:', error);
         }
-      }
-
-      function handleLogsSSEMessage(event) {
-        try {
-          console.debug('event.data', event.data);
-          const data = JSON.parse(event.data);
-          console.debug('Logs SSE event received:', data);
-
-          if (!data.service || !data.container) {
-            console.warn('Invalid Logs SSE data:', data);
-            return;
-          }
-
-          // Add new message to beginning of array
-          state.logsData.unshift(data);
-
-          // Keep only last 500 messages
-          if (state.logsData.length > 500) {
-            state.logsData = state.logsData.slice(0, 500);
-          }
-
-          // Update table if expanded
-          if (state.logsExpanded && dom.logsContainer) {
-            dom.logsContainer.innerHTML = buildLogsTable(state.logsData);
-          }
-
-          if (dom.logsToggle) {
-            const h2 = dom.logsToggle.querySelector('h2');
-            if (h2) {
-              h2.textContent = `Messages Log (${state.logsData.length})`;
-            }
-          }
-
-          dom.message.textContent = data?.text || 'ready';
-          dom.messageServ.textContent = data?.service || '';
-        } catch (error) {
-          console.error('Logs SSE parse error:', error);
-        }
-      }
-
-      function buildLogsTable(data) {
-        if (!data || data.length === 0) {
-          return '<p class="empty">No messages available.</p>';
-        }
-
-        const thead = CONFIG.logsColumns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
-
-        const tbody = data.map(row => {
-          const cells = CONFIG.logsColumns.map(col => {
-            let value = row[col];
-
-            if (value === undefined || value === null || value === '') {
-              value = col === 'text' ? '🚀' : '';
-            }
-
-            return `<td>${escapeHtml(String(value))}</td>`;
-          }).join('');
-
-          return `<tr>${cells}</tr>`;
-        }).join('');
-
-        return `
-          <table>
-            <thead><tr>${thead}</tr></thead>
-            <tbody>${tbody}</tbody>
-          </table>
-        `;
       }
 
       function initSSE() {
@@ -1129,7 +784,6 @@
         state.eventSource = new EventSource(CONFIG.streamEndpoint);
 
         state.eventSource.addEventListener('status', handleStatusSSEMessage);
-        state.eventSource.addEventListener('log', handleLogsSSEMessage);
 
         state.eventSource.addEventListener('ping', () => {
           console.debug('SSE ping received');
@@ -1150,30 +804,11 @@
         };
       }
 
-      // Logs SSE handling
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
       function showWaiting() {
-        dom.message.textContent = 'waiting...';
-        dom.messageServ.textContent = '';
-        dom.mascot.src = mascotImages['mascot-welcome'].src;
-
-        const dotEl = document.getElementById('status-dot');
-        if (dotEl) {
-          dotEl.style.backgroundColor = '#dc2626';
-          dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
-        }
+        // No-op to prevent status dot from turning red due to simple inactivity
       }
 
       function showDisconnected() {
-        dom.message.textContent = 'disconnected';
-        dom.messageServ.textContent = '';
-        dom.mascot.src = mascotImages['mascot-disconnect'].src;
-
         Object.values(dom.nodes).forEach(node => {
           if (node) node.style.display = 'none';
         });
@@ -1194,27 +829,10 @@
           showDisconnected();
           return;
         }
-
-        const elapsed = Date.now() - state.lastUpdate;
-        if (elapsed > CONFIG.waitingThreshold) {
-          if (!state.waiting) {
-            state.waiting = true;
-            showWaiting();
-          }
-        }
+        updateStatusDot();
       }
 
       function showWelcome() {
-        const randomMsg = CONFIG.welcomeMessages[Math.floor(Math.random() * CONFIG.welcomeMessages.length)];
-        dom.message.textContent = randomMsg;
-        dom.messageServ.textContent = '';
-        dom.mascot.style.display = 'none';
-        dom.mascot.src = mascotImages['mascot-welcome'].src;
-
-        setTimeout(() => {
-          dom.mascot.style.display = 'block';
-        }, 100);
-
         Object.values(dom.nodes).forEach(node => {
           if (node) {
             node.style.backgroundColor = 'lightgray';
@@ -1230,7 +848,6 @@
       // Initialize
       async function init() {
         cacheDOMElements();
-        preloadMascotImages();
         setupLinks();
         showWelcome();
 
@@ -1240,13 +857,7 @@
           initSSE();
         }
 
-        // Setup logs toggle
-        if (dom.logsToggle) {
-          dom.logsToggle.addEventListener('click', toggleLogs);
-        }
-
         setInterval(checkConnection, 2000);
-        setInterval(updateMascot, 1000);
       }
 
       // Cleanup on unload

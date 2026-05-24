@@ -3,7 +3,6 @@ import sys
 import logging
 import asyncio
 import json
-from collections import deque
 
 from fastapi import APIRouter, Request, FastAPI
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
@@ -28,8 +27,6 @@ from core.mcs_builder import start_mcs_worker
 FQDN = os.environ["FQDN"]
 STACK = os.environ["STACK"]
 TAG = os.environ["TAG"]
-
-MESSAGES_LOG = deque(maxlen=500)
 
 client_id_counter = 0
 docker_monitor = None
@@ -86,12 +83,6 @@ async def lifespan(app: FastAPI):
 @router_internal.post("/message")
 async def post_message(message: Message):
     """Receives a message with the status of the process during the startup"""
-
-    data = message.dict()
-    data["timestamp"] = get_timestamp()
-    MESSAGES_LOG.append(data)
-    logger.debug("post_message data: %s", data)
-
     return JSONResponse(content={"status": "ok"})
 
 
@@ -182,11 +173,7 @@ async def service_stream(request: Request):
                 )
                 yield {"event": "status", "data": json.dumps(initial_data)}
 
-            # Send last 50 log messages
-            log_count = len(list(MESSAGES_LOG)[-50:])
-            logger.debug(f"Client {client_id}: Sending {log_count} log messages")
-            for message in list(MESSAGES_LOG)[-50:]:
-                yield {"event": "log", "data": json.dumps(message)}
+
 
             logger.info(
                 f"Client {client_id}: Initial state sent, starting event stream"
