@@ -496,7 +496,7 @@ class MultiProtocolServer:
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
-            if connection_type == "agent" and agent_id:
+            if connection_type == "agent" and agent_id is not None:
                 if agent_id in self.connected_agents:
                     del self.connected_agents[agent_id]
                     self.active_connections -= 1
