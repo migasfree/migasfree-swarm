@@ -213,6 +213,7 @@ def deploy_stack(compose_file, stack_name, max_retries=5, initial_delay=5):
 def wait_for_stack_healthy(client, stack_name, timeout=300):
     print(f"  Waiting for services in stack '{stack_name}' to be healthy...")
     start_time = time.time()
+    num_lines_printed = 0
 
     while time.time() - start_time < timeout:
         try:
@@ -228,12 +229,14 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
             time.sleep(2)
             continue
 
+        # Sort services alphabetically for a stable layout
+        services = sorted(services, key=lambda s: s.name)
+
         all_ok = True
-        status_line = []
+        service_statuses = []
 
         for service in services:
             # Skip services with 0 replicas desired
-            # Swarm service attributes structure: service.attrs['Spec']['Mode']['Replicated']['Replicas']
             mode = service.attrs.get("Spec", {}).get("Mode", {})
             if "Replicated" in mode:
                 desired = mode["Replicated"].get("Replicas", 0)
@@ -259,22 +262,30 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
                         # No healthcheck defined, assume 'running' is enough
                         healthy += 1
 
-            status_line.append(f"{service.name.replace(stack_name + '_', '')} ({healthy}/{desired})")
+            service_name = service.name.replace(stack_name + "_", "")
+            status_char = "🟢" if healthy >= desired else "🟡"
+            service_statuses.append(f"    {status_char} {service_name} ({healthy}/{desired})")
             if healthy < desired:
                 all_ok = False
 
-        # Clear line and print status
-        sys.stdout.write("\033[K")
-        print(f"    {' | '.join(status_line)}", end="\r")
+        if num_lines_printed > 0:
+            sys.stdout.write(f"\033[{num_lines_printed}A")
+
+        for status in service_statuses:
+            sys.stdout.write(f"\r\033[K{status}\n")
+        sys.stdout.flush()
+
+        num_lines_printed = len(service_statuses)
 
         if all_ok:
-            print(f"\n  Stack '{stack_name}' is healthy!")
+            print(f"  Stack '{stack_name}' is healthy!")
             return True
 
         time.sleep(2)
 
     print(f"\n  Warning: Timeout reached waiting for stack '{stack_name}' to be healthy.")
     return False
+
 
 
 def create_network_overlay(network_name):
