@@ -12,7 +12,7 @@
                 const path = window.location.pathname;
                 const titleEl = $('#page-title');
                 const footerEl = $('#footer-text');
-                if (path.includes('/public')) {
+                if (path.includes('/public') || path.includes('/repo')) {
                     titleEl.text('migasfree public files');
                     document.title = 'Migasfree Public Repository';
                     footerEl.text('migasfree public files');
@@ -21,6 +21,7 @@
                     document.title = 'Migasfree Public Pool';
                     footerEl.text('migasfree pool files');
                 }
+                titleEl.prepend('<img src="/static/fancyindex/logo.svg" alt="Migasfree Logo" style="height: 38px; width: auto; vertical-align: middle; margin-right: 15px; display: inline-block;" />');
             });
         </script>
     </head>
