@@ -2,70 +2,93 @@ import os
 
 
 def get_secret_pass():
-    password = ''
-    with open(f'/run/secrets/{os.environ["STACK"]}_superadmin_pass', 'r', encoding='utf-8') as f:
-        password = f.read()
+    password = ""
+    with open(f"/run/secrets/{os.environ['STACK']}_superadmin_pass", "r", encoding="utf-8") as f:
+        password = f.read().strip()
 
     return password
 
 
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+CSRF_TRUSTED_ORIGINS = [f"https://{os.environ['FQDN']}", f"http://{os.environ['FQDN']}"]
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_USE_SESSIONS = True
+
+ALLOWED_HOSTS = [
+    os.environ["FQDN"],
+    "localhost",
+    "127.0.0.1",
+    "core",
+    f"{os.environ['STACK']}_core",
+]
+
+
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ALLOWED_ORIGINS = [
+    f"https://{os.environ['FQDN']}",
+    f"http://{os.environ['FQDN']}",
+]
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ['POSTGRES_DB'],
-        'USER': os.environ['POSTGRES_USER'],
-        'PASSWORD': get_secret_pass(),
-        'HOST': os.environ['POSTGRES_HOST'],
-        'PORT': os.environ['POSTGRES_PORT'],
+    "default": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": os.environ["POSTGRES_DB"],
+        "USER": os.environ["POSTGRES_USER"],
+        "PASSWORD": get_secret_pass(),
+        "HOST": os.environ["POSTGRES_HOST"],
+        "PORT": os.environ["POSTGRES_PORT"],
     }
 }
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'},
-        'simple': {'format': '%(levelname)s %(message)s'},
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s"},
+        "simple": {"format": "%(levelname)s %(message)s"},
     },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
-    'loggers': {
-        'migasfree': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
+    "loggers": {
+        "migasfree": {
+            "handlers": ["console"],
+            "level": "DEBUG",
         }
     },
-    'root': {'level': 'INFO', 'handlers': ['console']},
+    "root": {"level": "INFO", "handlers": ["console"]},
 }
 
 # DATASTORE
 # =========
-REDIS_HOST = 'datastore'
+REDIS_HOST = "datastore"
 REDIS_PORT = 6379
 REDIS_DB = 0
-BROKER_URL = f'redis://default:{get_secret_pass()}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+BROKER_URL = f"redis://default:{get_secret_pass()}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 CELERY_BROKER_URL = BROKER_URL
 CELERY_RESULT_BACKEND = BROKER_URL
 CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': BROKER_URL,
-        'OPTIONS': {
-            'PASSWORD': get_secret_pass(),
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": BROKER_URL,
+        "OPTIONS": {
+            "PASSWORD": get_secret_pass(),
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     }
 }
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {'hosts': [{'host': REDIS_HOST, 'port': REDIS_PORT, 'password': get_secret_pass()}]},
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [{"host": REDIS_HOST, "port": REDIS_PORT, "password": get_secret_pass()}]},
     }
 }
 
@@ -73,74 +96,48 @@ CHANNEL_LAYERS = {
 # Setup support for proxy headers
 # SWAGGER_SETTINGS['DEFAULT_INFO'] = 'import.path.to.urls.api_info'
 USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 DEBUG = False
 
 # e-mail config
 EMAIL_USE_TLS = True
-EMAIL_HOST = 'webmail.mydomain.es'
+EMAIL_HOST = "webmail.mydomain.es"
 EMAIL_PORT = 25
-EMAIL_HOST_USER = 'myuser'
-EMAIL_HOST_PASSWORD = ''
-DEFAULT_FROM_EMAIL = 'migasfree-server <noreply@mydomain.es>'
+EMAIL_HOST_USER = "myuser"
+EMAIL_HOST_PASSWORD = ""
+DEFAULT_FROM_EMAIL = "migasfree-server <noreply@mydomain.es>"
 ADMINS = [
-    ('mymame', 'myuser@mydomain.es'),
+    ("mymame", "myuser@mydomain.es"),
 ]
 
-MEDIA_URL = '/public/'
-MIGASFREE_TMP_DIR = '/var/tmp'
-MIGASFREE_SECRET_DIR = '/var/run/secrets'
+MEDIA_URL = "/public/"
+
+
+# ==================
+# MIGASFREE SETTINGS
+# ==================
+
+MIGASFREE_TMP_DIR = "/var/tmp"
+MIGASFREE_SECRET_DIR = "/var/run/secrets"
 
 MIGASFREE_EXTERNAL_ACTIONS = {
-    'computer': {
-        'ping': {'title': 'PING', 'description': 'check connectivity'},
-        'ssh': {'title': 'SSH', 'description': 'remote control via ssh'},
-        'vnc': {'title': 'VNC', 'description': 'remote control vnc', 'many': False},
-        'sync': {'title': 'SYNC', 'description': 'ssh -> run client synchronization'},
-        'install': {
-            'title': 'INSTALL',
-            'description': 'ssh -> install a package',
-            'related': ['deployment', 'computer'],
+    "computer": {
+        "ping": {"title": "PING", "description": "check connectivity"},
+        "ssh": {"title": "SSH", "description": "remote control via ssh"},
+        "vnc": {"title": "VNC", "description": "remote control vnc", "many": False},
+        "sync": {"title": "SYNC", "description": "ssh -> run client synchronization"},
+        "install": {
+            "title": "INSTALL",
+            "description": "ssh -> install a package",
+            "related": ["deployment", "computer"],
         },
     },
-    'error': {
-        'clean': {'title': 'delete', 'description': 'delete errors'},
+    "error": {
+        "clean": {"title": "delete", "description": "delete errors"},
     },
 }
 
-MIGASFREE_ORGANIZATION = 'ACME'
-MIGASFREE_HELP_DESK = 'Help Desk: 555 555 555'
+MIGASFREE_ORGANIZATION = "ACME"
+MIGASFREE_HELP_DESK = "Help Desk: 555 555 555"
 # MIGASFREE_COMPUTER_SEARCH_FIELDS = ('name', 'id', 'ip_address', 'forwarded_ip_address')
-
-# Important!!!
-# SESSION_COOKIE_AGE = 1209600  # Default is 2 weeks
-
-CORS_ORIGIN_ALLOW_ALL = True
-ALLOWED_HOSTS = ['*']
-
-# Uncomment and fill with FQDN value (protocol included!!!)
-# CSRF_TRUSTED_ORIGINS = ['fill_FQDN_value']
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_FILTER_BACKENDS': (
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.OrderingFilter',
-        'rest_framework.filters.SearchFilter',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'migasfree.paginations.DefaultPagination',
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/minute',
-        'user': '1000/minute',
-    },
-}
-
