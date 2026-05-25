@@ -172,8 +172,27 @@ generate_dynamic_config() {
     local primary_ip
     primary_ip=$(curl -s "http://manager:8080/v1/internal/backends" | jq -r '.[] | select(.role == "PRIMARY") | .ip')
     
+    local node_count
+    node_count=$(jq '.nodes | length' /var/run/pgpool/topology.json)
+
     for node_ip in $nodes_ips
     do
+        local target_ip="$node_ip"
+        local target_port="$PORT_DATABASE"
+
+        # If it's a single-node cluster, bypass the host port loopback and connect directly to the container overlay IP on its internal port
+        if [ "$node_count" -eq 1 ]
+        then
+            local db_container_ip
+            db_container_ip=$(jq -r '.nodes[0].db_container_ip' /var/run/pgpool/topology.json)
+            if [ -n "$db_container_ip" ] && [ "$db_container_ip" != "null" ]
+            then
+                target_ip="$db_container_ip"
+                target_port="${POSTGRES_PORT:-5432}"
+                echo "Single-node detected. Routing Pgpool directly to container overlay IP: $target_ip on port $target_port (bypassing host-port loopback)."
+            fi
+        fi
+
         # Primary gets weight 0 (only writes). Replicas get weight 1 (reads).
         local weight=1
         if [ "$node_ip" = "$primary_ip" ]
@@ -182,9 +201,9 @@ generate_dynamic_config() {
         fi
         
         backends="${backends}
-# Backend $index -> Swarm Node: $node_ip
-backend_hostname${index} = '${node_ip}'
-backend_port${index} = ${PORT_DATABASE}
+# Backend $index -> Swarm Node: $node_ip (Target: $target_ip:$target_port)
+backend_hostname${index} = '${target_ip}'
+backend_port${index} = ${target_port}
 backend_weight${index} = ${weight}
 backend_flag${index} = 'ALLOW_TO_FAILOVER'
 "
@@ -205,26 +224,34 @@ start_topology_watchdog() {
         do
             if [ -f "$PGPOOL_PIDFILE" ]
             then
-                local index=0
-                local nodes_ips
-                nodes_ips=$(jq -r '.nodes[].node_ip' /var/run/pgpool/topology.json)
-                
-                for node_ip in $nodes_ips
-                do
-                    local current_status
-                    current_status=$(pcp_node_info -h localhost -p "$PCP_PORT" -U "$PCP_USER" -w "$index" | awk '{print $3}')
-                    
-                    if [ "$current_status" = "3" ]
-                    then
-                        # Node is marked down by pgpool. Check network availability
-                        if nc -zv "$node_ip" "$PORT_DATABASE" >/dev/null 2>&1
+                local count
+                count=$(pcp_node_count -h localhost -p "$PCP_PORT" -U "$PCP_USER" -w)
+                if [ -n "$count" ] && [ "$count" -gt 0 ] 2>/dev/null
+                then
+                    local index=0
+                    while [ "$index" -lt "$count" ]
+                    do
+                        local info
+                        info=$(pcp_node_info -h localhost -p "$PCP_PORT" -U "$PCP_USER" -w "$index")
+                        local status
+                        status=$(echo "$info" | awk '{print $3}')
+                        local ip
+                        ip=$(echo "$info" | awk '{print $1}')
+                        local port
+                        port=$(echo "$info" | awk '{print $2}')
+                        
+                        if [ "$status" = "3" ]
                         then
-                            echo "[watchdog] Node $index ($node_ip) is reachable again. Attempting to attach..."
-                            pcp_attach_node -h localhost -p $PCP_PORT -U "$PCP_USER" -w $index || true
+                            # Node is marked down by pgpool. Check network availability on configured IP/port
+                            if nc -zv "$ip" "$port" >/dev/null 2>&1
+                            then
+                                echo "[watchdog] Node $index ($ip:$port) is reachable again. Attempting to attach..."
+                                pcp_attach_node -h localhost -p "$PCP_PORT" -U "$PCP_USER" -w "$index" || true
+                            fi
                         fi
-                    fi
-                    index=$((index + 1))
-                done
+                        index=$((index + 1))
+                    done
+                fi
             fi
             sleep 15
         done
@@ -304,13 +331,14 @@ trap cleanup SIGTERM SIGINT
             # Status code is the 3rd column
             status=$(echo "$line" | awk '{print $3}')
             ip=$(echo "$line" | awk '{print $1}')
+            port=$(echo "$line" | awk '{print $2}')
             
             if [ "$status" = "3" ]
             then
-                # Node is DOWN. Check if it's reachable now.
-                if nc -zv "$ip" "$PORT_DATABASE" >/dev/null 2>&1
+                # Node is DOWN. Check if it's reachable now on the configured port.
+                if nc -zv "$ip" "$port" >/dev/null 2>&1
                 then
-                    echo "[auto-attach] Node $index ($ip) is reachable. Attempting to attach..."
+                    echo "[auto-attach] Node $index ($ip:$port) is reachable. Attempting to attach..."
                     pcp_attach_node -h localhost -p $PCP_PORT -U "$PCP_USER" -w "$index" || true
                 fi
             fi

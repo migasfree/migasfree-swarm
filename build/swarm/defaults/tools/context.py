@@ -55,9 +55,7 @@ class ContextLoader:
             self.context[name] = input(f"{name} ({default}): ") or default
         else:
             while True:
-                answer = (
-                    input(f"{name} ({' | '.join(options)}) [{default}]: ") or default
-                )
+                answer = input(f"{name} ({' | '.join(options)}) [{default}]: ") or default
                 if answer in options:
                     self.context[name] = answer
                     break
@@ -131,9 +129,7 @@ class ContextLoader:
         self.default("REPLICATION_USER", "repuser")
         self.default("POSTGRESQL_CONF", "work_mem=32MB")
 
-        db_port_default = (
-            "5432" if self.context["POSTGRES_HOST"] in ["pgpool", "database"] else ""
-        )
+        db_port_default = "5432" if self.context["POSTGRES_HOST"] in ["pgpool", "database"] else ""
         self.default("PORT_DATABASE", db_port_default)
 
         # Server Certificate  mode
@@ -153,7 +149,6 @@ class ContextLoader:
         # PMS
         # ===
         self.default("PMS_ENABLED", "pms-apt,pms-yum,pms-pacman,pms-apk,pms-wpt")
-
 
         for key in [
             "REPLICAS_console",
@@ -316,15 +311,16 @@ class ContextLoader:
 #    Determines how the application connects to the PostgreSQL database.
 #
 #    Options for Internal Cluster:
-#        'pgpool'   (DEFAULT): Connects via Pgpool-II gateway. Enables High Availability,
+#        'pgpool' (DEFAULT):   Connects via Pgpool-II gateway. Enables High Availability,
 #                              Load Balancing (read/write split), and Auto-Failback.
-#        'database': Connects directly to the PostgreSQL engine. Bypasses Pgpool-II.
-#                    Use only for single-node setups or specific maintenance.
+#                              Highly recommended for production / multi-node clusters.
+#        'database':           Connects directly to the PostgreSQL engine. Bypasses Pgpool-II.
+#                              Use for single-node setups or specific maintenance.
 #
 #    Options for External Database:
-#        'IP' or 'FQDN': If set to anything else (e.g., '10.0.0.50'), the internal
-#                         'database' and 'pgpool' services will NOT be deployed.
-#                         The application will connect directly to the external host.
+#        'IP' or 'FQDN':       If set to anything else (e.g., '10.0.0.50'), the internal
+#                              'database' and 'pgpool' services will NOT be deployed.
+#                              The application will connect directly to the external host.
 # {line}
 """,
             "POSTGRESQL_CONF": f"""# {line}
