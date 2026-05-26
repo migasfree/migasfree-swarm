@@ -1216,8 +1216,16 @@ SELECT setval(
 
 \echo 'device_device'
 DELETE FROM device_device;
-INSERT INTO device_device
-    SELECT T.*
+INSERT INTO device_device (id, name, data, connection_id, model_id)
+    SELECT
+        T.id,
+        T.name,
+        CASE
+            WHEN T.data IS NULL OR T.data = '' THEN '{}'::jsonb
+            ELSE T.data::jsonb
+        END,
+        T.connection_id,
+        T.model_id
     FROM dblink(
         'REMOTE',
         'SELECT id, name, data, connection_id, model_id FROM server_device'
