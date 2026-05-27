@@ -5,8 +5,7 @@ import subprocess
 
 from pathlib import Path
 
-_PATH = Path("/stack")
-_FILE_CLUSTER_VARS = _PATH / "env.py"
+_FILE_CLUSTER_VARS = Path("/etc/migasfree-swarm/cluster.conf")
 
 
 def get_stacks():
@@ -20,18 +19,24 @@ def get_stacks():
     return [d.name for d in Path(path).iterdir() if d.is_dir()]
 
 
+from importlib.machinery import SourceFileLoader
+
+
 def import_source_file(filename):
     filename = Path(filename)
-    modname = filename.name
-    spec = importlib.util.spec_from_file_location(modname, filename)
-    if spec is None:
-        raise ImportError(f"Could not load spec for module '{modname}' at: {filename}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[modname] = module
+    modname = filename.stem
     try:
-        spec.loader.exec_module(module)
+        loader = SourceFileLoader(modname, str(filename))
+        spec = importlib.util.spec_from_loader(modname, loader)
+        if spec is None:
+            raise ImportError(f"Could not load spec for module '{modname}' at: {filename}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[modname] = module
+        loader.exec_module(module)
     except FileNotFoundError as e:
         raise ImportError(f"{e.strerror}: {filename}") from e
+    except Exception as e:
+        raise ImportError(f"Error executing module '{modname}' at: {filename}: {e}") from e
 
     return module
 
@@ -98,7 +103,8 @@ class ContextLoader:
         path_stack = Path("/mnt/cluster/datashares") / self.context["STACK"]
         path_stack.mkdir(parents=True, exist_ok=True)
 
-        file_stack_vars = path_stack / "env.py"
+        file_stack_vars = path_stack / "stack.conf"
+
         if not file_stack_vars.exists():
             file_stack_vars.write_text("")
 
@@ -112,7 +118,7 @@ class ContextLoader:
 
         # Network Management
         # ==================
-        self.default("NETWORK_MNG", "127.0.0.1")
+        self.default("NETWORK_MNG", "0.0.0.0/0")
         self.default("NETWORK_MCP", "127.0.0.1")
 
         # Exposed Ports
@@ -501,4 +507,4 @@ class ContextLoader:
         path_stack = Path("/mnt/cluster/datashares") / self.context["STACK"]
         path_stack.mkdir(parents=True, exist_ok=True)
 
-        (path_stack / "env.py").write_text(self.environment())
+        (path_stack / "stack.conf").write_text(self.environment())
