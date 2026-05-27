@@ -192,10 +192,7 @@ def deploy_stack(compose_file, stack_name, max_retries=5, initial_delay=5):
         error_output = result.stderr or ""
         if "AlreadyExists" in error_output and attempt < max_retries:
             delay = initial_delay * (2 ** (attempt - 1))
-            print(
-                f"  Service conflict detected (attempt {attempt}/{max_retries}). "
-                f"Retrying in {delay}s..."
-            )
+            print(f"  Service conflict detected (attempt {attempt}/{max_retries}). Retrying in {delay}s...")
             if error_output:
                 print(f"  {error_output.strip()}")
             time.sleep(delay)
@@ -205,9 +202,7 @@ def deploy_stack(compose_file, stack_name, max_retries=5, initial_delay=5):
                 print(result.stdout, end="")
             if error_output:
                 print(error_output, end="", file=sys.stderr)
-            raise subprocess.CalledProcessError(
-                result.returncode, cmd, result.stdout, result.stderr
-            )
+            raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
 
 
 def wait_for_stack_healthy(client, stack_name, timeout=300):
@@ -217,9 +212,7 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
 
     while time.time() - start_time < timeout:
         try:
-            services = client.services.list(
-                filters={"label": f"com.docker.stack.namespace={stack_name}"}
-            )
+            services = client.services.list(filters={"label": f"com.docker.stack.namespace={stack_name}"})
         except Exception as e:
             print(f"    Error listing services: {e}")
             time.sleep(2)
@@ -285,7 +278,6 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
 
     print(f"\n  Warning: Timeout reached waiting for stack '{stack_name}' to be healthy.")
     return False
-
 
 
 def create_network_overlay(network_name):
@@ -391,9 +383,7 @@ def config_portainer(client, context):
             )
             if response.status_code == 200 or response.status_code == 409:
                 break
-            print(
-                f"    Waiting for Portainer to be ready... (Status: {response.status_code})"
-            )
+            print(f"    Waiting for Portainer to be ready... (Status: {response.status_code})")
         except requests.RequestException as e:
             print(f"    Waiting for Portainer network... ({e})", end="\r")
         time.sleep(2)
@@ -418,9 +408,7 @@ def config_portainer(client, context):
 
     if not token:
         token_file.unlink(missing_ok=True)
-        print(
-            "Error: The credentials file 'credentials/portainer-token' could not be generated."
-        )
+        print("Error: The credentials file 'credentials/portainer-token' could not be generated.")
         exit()
 
     # Customize logo
@@ -517,8 +505,8 @@ def deploy_migasfree(client, context, services=None):
 
 def main():
     cl = ContextLoader()
-    cl.load_stack(" | ".join(get_stacks()))
     cl.save()
+    cl.load_stack(" | ".join(get_stacks()))
 
     context = cl.context
     cl.save_stack()
@@ -544,10 +532,8 @@ def main():
         user=repl_user,
         password=generate_password(32),
     )
-    create_secret(
-        client, f"{context['STACK']}_replication_pass", repl_password.encode()
-    )
-    
+    create_secret(client, f"{context['STACK']}_replication_pass", repl_password.encode())
+
     # MCP RO secrets
     ro_user = context.get("MCP_RO_USER", "mcp_ro")
     _, ro_password = credentials(
@@ -555,9 +541,7 @@ def main():
         user=ro_user,
         password=generate_password(32),
     )
-    create_secret(
-        client, f"{context['STACK']}_mcp_ro_pass", ro_password.encode()
-    )
+    create_secret(client, f"{context['STACK']}_mcp_ro_pass", ro_password.encode())
 
     create_labels(client)
     create_network_overlay("infra_network")
@@ -574,15 +558,9 @@ def main():
         token = token_file.read_text().strip()
         api = PortainerAPI("http://portainer:9000/api", token)
         api.set_enpoint_id("primary")
-        api.execute_in_service(
-            f"{context['STACK']}_certbot", ["/usr/bin/send_message", "HTTPSMODE='auto'"]
-        )
-        api.execute_in_service(
-            f"{context['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"]
-        )
-        api.execute_in_service(
-            f"{context['STACK']}_certbot", ["/usr/bin/send_message", ""]
-        )
+        api.execute_in_service(f"{context['STACK']}_certbot", ["/usr/bin/send_message", "HTTPSMODE='auto'"])
+        api.execute_in_service(f"{context['STACK']}_certbot", ["/usr/bin/renew-certificates.sh"])
+        api.execute_in_service(f"{context['STACK']}_certbot", ["/usr/bin/send_message", ""])
 
     cache_path = _PATH_SHARE / "datashares" / context["STACK"] / "__pycache__"
     try:
