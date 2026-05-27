@@ -196,6 +196,7 @@ frontend http
     acl url_manager path_beg /manager/v1/public/
     acl url_manager path_beg /manager/v1/private/
     acl url_manager_static path_beg /manager/static/ /favicon.ico
+    acl url_manager_public path_beg /manager/v1/public/
 
     acl is_GET method GET
     acl is_POST method POST
@@ -323,6 +324,20 @@ frontend http
 
 {% endif %}
 
+    # IP/Network Restriction Denies
+    # ============================
+    # Deny administrative console access if the source is not in the allowed network list (NETWORK_MNG)
+    http-request deny deny_status 403 if url_datastore_console !network_mng
+    http-request deny deny_status 403 if url_database_console !network_mng
+    http-request deny deny_status 403 if url_datashare_console !network_mng
+    http-request deny deny_status 403 if url_worker_console !network_mng
+    http-request deny deny_status 403 if url_portainer_console !network_mng
+    http-request deny deny_status 403 if url_manager !url_manager_public !url_manager_static !network_mng
+    http-request deny deny_status 403 if url_core_mng !network_mng
+    http-request deny deny_status 403 if is_stats !network_mng
+
+    # Deny MCP access if the source is not in the allowed MCP network list (NETWORK_MCP)
+    http-request deny deny_status 403 if url_mcp !network_mcp
 
 
     # USE BACKENDS SECTION
@@ -333,6 +348,8 @@ frontend http
     # Allow WebSocket connections to /tunnel path
     use_backend tunnel if url_tunnel hdr_connection_upgrade hdr_upgrade_websocket
 
+    use_backend manager if url_manager_public
+    use_backend manager if url_manager_static
     use_backend manager if network_mng url_manager
     use_backend mcp if network_mcp url_mcp
 
@@ -350,7 +367,7 @@ frontend http
     use_backend mf_core if url_core || hdr_connection_upgrade || hdr_upgrade_websocket
     use_backend mf_core if network_mng url_core_mng
 
-    use_backend manager if network_mng is_GET url_manager || url_manager_static
+    use_backend manager if network_mng is_GET url_manager
 
     use_backend mf_public if url_public || url_packages || url_src
 
