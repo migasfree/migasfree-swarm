@@ -7,6 +7,7 @@ Welcome to the FAQ. Here you will find answers to the most common questions and 
 - [🔌 Connection Issues](#connection-issues)
   - [TLS Certificate Verification Error](#tls-certificate-verification-error)
   - [MCP Client Error: Method Not Allowed](#mcp-client-error-method-not-allowed)
+  - [403 Forbidden on Dev Consoles or Bootstrap URLs](#403-forbidden-on-dev-consoles-or-bootstrap-urls)
 - [⚙️ Configuration](#configuration)
 - [🗄️ Database](#database)
 - [💻 Migasfree Client](#migasfree-client)
@@ -57,7 +58,7 @@ This error occurs because the client's IP address or network is not authorized t
 To resolve this, you must authorize the specific IP or network by editing the `.env` configuration file in your swarm environment and updating the `NETWORK_MCP` variable:
 
 ```bash
-# In 'https://datashare-<FQDN>/files/env.py edit the `NETWORK_MCP` variable 
+# In 'https://datashare-<FQDN>/files/stack.conf' edit the `NETWORK_MCP` variable 
 
 # ------------------------------------------------------------------------------------------------------------------------
 # NETWORK_MCP
@@ -68,6 +69,28 @@ To resolve this, you must authorize the specific IP or network by editing the `.
 # ------------------------------------------------------------------------------------------------------------------------
 NETWORK_MCP='<CLIENTS_IPS>'
 ```
+
+### 403 Forbidden on Dev Consoles or Bootstrap URLs
+
+**Problem:**  
+When accessing the bootstrap URL to get administrative certificates or when trying to access the dev consoles (such as Portainer, database console, datastore console, etc.) from an external browser, you receive a `403 Forbidden` error 
+
+**Solution:**  
+This occurs because the client's IP address or network range is not permitted by the `NETWORK_MNG` setting in the stack configuration. 
+
+By default, to secure the cluster, administrative consoles and certificate issuance forms are restricted. 
+
+To resolve this and allow your network to access these consoles:
+1. Open the stack configuration file (located at `/var/lib/docker/volumes/migasfree-swarm/_data/datashares/<STACK>/stack.conf` or accessed via the Datashare console).
+2. Locate the `NETWORK_MNG` variable.
+3. Update the variable to include your computer's IP address or subnet range, or set it to `'0.0.0.0/0'` to allow access from any network:
+   ```python
+   NETWORK_MNG = '0.0.0.0/0'
+   ```
+4. Re-deploy the stack to apply the new network rules:
+   ```bash
+   migasfree-swarm deploy <STACK>
+   ```
 
 ---
 
