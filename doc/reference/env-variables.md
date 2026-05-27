@@ -1,12 +1,12 @@
-# Configuration Variables (env.py)
+# Configuration Variables
 
-This document provides a comprehensive reference of all configuration variables available in `env.py`.
+This document provides a comprehensive reference of all configuration variables.
 
 > [!NOTE]
-> There are two levels of `env.py` files:
+> There are two levels of configuration files:
 >
-> 1. **Cluster level** (`./env.py`): Configuration for storage and shared infrastructure.
-> 2. **Stack level** (`/mnt/cluster/datashares/<stack_name>/env.py`): Configuration specific to each deployed stack.
+> 1. **Cluster level** (`/etc/migasfree-swarm/cluster.conf`): Configuration for storage and shared infrastructure.
+> 2. **Stack level** (`/mnt/cluster/datashares/<stack_name>/stack.conf`): Configuration specific to each deployed stack.
 
 ---
 

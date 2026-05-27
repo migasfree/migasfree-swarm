@@ -4,7 +4,7 @@ set -e
 VERSION=$(cat /VERSION)
 
 # shellcheck source=/dev/null
-. /stack/env.py
+. /etc/migasfree-swarm/cluster.conf
 
 
 if [ "${DATASHARE_FS}" = 'nfs' ]
@@ -52,7 +52,7 @@ else
     response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
     if [ "$response" = "y" ] || [ "$response" = "yes" ]
     then
-            echo "DATASHARE_FS='nfs'" > /stack/env.py
+            echo "DATASHARE_FS='nfs'" > /etc/migasfree-swarm/cluster.conf
             python3 /tools/config.py
     fi
 fi

@@ -56,7 +56,7 @@ EOF
 COMMAND="$1"
 ROLE="$(get_swarm_role)"
 
-[ -d /stack ] && cp /tools/migasfree-swarm /stack/migasfree-swarm
+[ -f /usr/bin/migasfree-swarm ] && cat /tools/migasfree-swarm > /usr/bin/migasfree-swarm
 # shellcheck source=/dev/null
 . /venv/bin/activate
 
@@ -142,4 +142,4 @@ case "$COMMAND" in
     ;;
 esac
 
-rm -rf /stack/__pycache__  || :
+rm -rf /tmp/deploy/__pycache__  || :

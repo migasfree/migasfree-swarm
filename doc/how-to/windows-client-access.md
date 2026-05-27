@@ -49,7 +49,7 @@ If your Migasfree Swarm deployment uses self-signed certificates (such as in loc
 
 ## 3. Mutual TLS (mTLS) for Windows Administrators
 
-If **mTLS** is enabled (`MTLS = 'True'` in `env.py`), your browser on Windows must present a valid client certificate to access the console.
+If **mTLS** is enabled (`MTLS = 'True'` in `stack.conf`), your browser on Windows must present a valid client certificate to access the console.
 
 ### Installing a Client Certificate on Windows
 
@@ -75,10 +75,10 @@ Now, when navigating to `https://<YOUR_FQDN>/`, your browser will prompt you to 
 
 To access the administrative consoles from a Windows client located on another subnet, update your access control permissions.
 
-Edit the `env.py` file on your manager node to add your Windows client subnet to the `NETWORK_MNG` variable:
+Edit the `stack.conf` file on your manager node to add your Windows client subnet to the `NETWORK_MNG` variable:
 
 ```python
-# env.py
+# stack.conf
 NETWORK_MNG = '192.168.1.0/24'  # Allow Windows client network access
 ```
 

@@ -16,7 +16,7 @@ Requires port 80 accessibility to handle ACME challenges.
 **To Enable**:
 
 1. Open the **Datashare Console**.
-2. Set `HTTPSMODE = 'auto'` in `env.py`.
+2. Set `HTTPSMODE = 'auto'` in `stack.conf`.
 3. Redeploy: `./migasfree-swarm redeploy`
 
 ## 3. Manual Replacement
@@ -43,7 +43,7 @@ mTLS adds a layer of identity verification for administrative consoles and secur
 
 **To Enable**:
 
-1. Set `MTLS = 'True'` in `env.py`.
+1. Set `MTLS = 'True'` in `stack.conf`.
 2. Redeploy: `./migasfree-swarm redeploy`
 
 ### Generating Certificates

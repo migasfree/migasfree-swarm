@@ -8,32 +8,43 @@ from core.config import PATH_DATASHARES
 
 def grep(file, pattern):
     regex = re.compile(pattern)
-    with open(file, "r") as f:
-        for line in f:
-            if regex.search(line):
-                return line.strip()
+    try:
+        with open(file, "r") as f:
+            for line in f:
+                if regex.search(line):
+                    return line.strip()
+    except Exception:
+        pass
+    return None
 
 
 def get_variable(file, variable):
-    line = grep(file, r"^" + variable + r"\s*=")
-    if line:
-        _, value = line.split("=", 1)
-        value = value.strip().strip('"').strip("'")
-        return value
-    else:
+    from pathlib import Path
+    path = Path(file)
+    if not path.exists():
         return ""
+
+    try:
+        line = grep(str(path), r"^" + variable + r"\s*=")
+        if line:
+            _, value = line.split("=", 1)
+            value = value.strip().strip('"').strip("'")
+            return value
+    except Exception:
+        pass
+    return ""
 
 
 def get_host(stack) -> str:
     fqdn = get_fqdn(stack)
-    port = get_variable(str(PATH_DATASHARES/stack/"env.py"), "PORT_HTTPS")
-    if port == "443":
+    port = get_variable(str(PATH_DATASHARES/stack/"stack.conf"), "PORT_HTTPS")
+    if port == "443" or not port:
         return fqdn
     return f"{fqdn}:{port}"
 
 
 def get_fqdn(stack) -> str:
-    return get_variable(str(PATH_DATASHARES/stack/"env.py"), "FQDN")
+    return get_variable(str(PATH_DATASHARES/stack/"stack.conf"), "FQDN")
 
 
 async def get_organization(stack) -> str:

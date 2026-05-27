@@ -1,6 +1,6 @@
 # PostgreSQL Deployment Strategies
 
-Migasfree Swarm offers three distinct strategies for database deployment, controlled by the `POSTGRES_HOST` variable in your `env.py`.
+Migasfree Swarm offers three distinct strategies for database deployment, controlled by the `POSTGRES_HOST` variable in your `stack.conf`.
 
 ## Comparison Matrix
 

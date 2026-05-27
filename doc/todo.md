@@ -19,7 +19,7 @@
 
 * [x] **Labels y Volúmenes**: Relación entre etiquetas de nodo (`database=true`, `datastore=true`) y persistencia. Documentado en `doc/explanation/data-persistence.md`.
 * [x] **Comando `info`**: Implementado comando `migasfree-swarm info` para auditoría rápida del cluster y los stacks.
-* [x] **Referencia `env.py`**: Nuevo documento de referencia detallando todas las variables de personalización. Documentado en `doc/reference/env-variables.md`.
+* [x] **Referencia `env.py`**: Nuevo documento de referencia detallando todas las variables de personalización. Documentado en `doc/reference/env-variables.md`. Renombrado a `cluster.conf` / `stack.conf`.
 * [x] **Comando `help`**: Implementado en el entrypoint de la imagen `swarm`. Se muestra por defecto si el comando no existe.
 * [x] **QA Clientes**: Entornos de prueba (`test/client*`) modernizados. Los scripts `run.sh` ahora detectan automáticamente la configuración del stack y recuperan el certificado CA del volumen compartido. Se han eliminado hacks obsoletos en los Dockerfiles.
 
@@ -27,7 +27,7 @@
 
 * [x] **Refactorización Consolas**: `datastore_console` y otras consolas ya inicializan configuración mediante entrypoint refactorizado (patrón Root-Init).
 * [x] **Limpieza de imágenes**: Implementado prune automático de imágenes `<none>` en `build.sh` y `pull.sh`. Añadido comando `migasfree-swarm prune`.
-* [x] **Puertos dinámicos**: Eliminado el harcodeo de puertos 80/443 en `haproxy.template` y `stack.template`. Ahora el cluster puede servir en cualquier puerto configurado en `env.py`.
+* [x] **Puertos dinámicos**: Eliminado el harcodeo de puertos 80/443 en `haproxy.template` y `stack.template`. Ahora el cluster puede servir en cualquier puerto configurado en `stack.conf`.
 
 ---
 

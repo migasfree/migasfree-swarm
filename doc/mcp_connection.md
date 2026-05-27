@@ -8,7 +8,7 @@ For security reasons, MCP server access is restricted to local connections by de
 
 ### Variable to Configure
 
-In your stack's `env.py` file (or via the `./migasfree-swarm config` command), locate or add the following variable:
+In your stack's `stack.conf` file (or via the `migasfree-swarm config` command), locate or add the following variable:
 
 ```python
 NETWORK_MCP='YOUR_IP_OR_RANGE'

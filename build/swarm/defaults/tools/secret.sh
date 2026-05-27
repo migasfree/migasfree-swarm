@@ -18,7 +18,7 @@ echo
 for _DIR in /mnt/cluster/datashares/*; do
     if [ -d "$_DIR" ]; then
         _STACK_NAME=$(basename "$_DIR")
-        _ENV_FILE="$_DIR/env.py"
+        _ENV_FILE="$_DIR/stack.conf"
         
         if [ -f "$_ENV_FILE" ]; then
             # Temporarily source to get FQDN for this stack

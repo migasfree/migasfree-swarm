@@ -4,9 +4,9 @@ Migasfree Swarm is designed to be hybrid. While it includes a built-in High Avai
 
 ## How to Configure
 
-To use an external database, you only need to modify your `env.py` file. The system will detect the external host and automatically adjust the deployment.
+To use an external database, you only need to modify your `stack.conf` file. The system will detect the external host and automatically adjust the deployment.
 
-### 1. Update `env.py`
+### 1. Update `stack.conf`
 
 Set the following variables in your stack configuration:
 

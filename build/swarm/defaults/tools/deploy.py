@@ -24,11 +24,10 @@ from cryptography.hazmat.backends import default_backend
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-_PATH = Path("/stack")  # Path in this container
+_PATH = Path("/tmp/deploy")  # Ephemeral temp dir in this container
 _PATH_SHARE = Path("/mnt/cluster")  # data shared
 _PATH_CREDENTIALS = _PATH_SHARE / "credentials"
 _PATH_CERTIFICATE = _PATH_SHARE / "certificates"
-_FILE_SETTINGS = _PATH / "settings.py"
 
 
 def generate_password(length=12):
@@ -504,6 +503,8 @@ def deploy_migasfree(client, context, services=None):
 
 
 def main():
+    _PATH.mkdir(parents=True, exist_ok=True)
+
     cl = ContextLoader()
     cl.save()
     cl.load_stack(" | ".join(get_stacks()))

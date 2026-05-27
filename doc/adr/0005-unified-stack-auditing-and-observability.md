@@ -24,7 +24,7 @@ We decided to implement a **Unified Auditing CLI Tool** (`info`) that provides a
    * Accessible via `./migasfree-swarm info`.
 3. **Output Structure**:
    * **Cluster Level**: Node count, manager role, and readiness.
-   * **Stack Level**: Correlation between `FQDN` (from `env.py`) and actual service replicas.
+   * **Stack Level**: Correlation between `FQDN` (from `stack.conf`) and actual service replicas.
 
 ## Consequences
 

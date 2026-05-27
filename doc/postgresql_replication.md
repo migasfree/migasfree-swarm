@@ -59,7 +59,7 @@ In Migasfree Swarm, database failover is handled following **Infrastructure as C
 When the Primary node becomes unavailable:
 
 1. **Identify a new Primary**: Choose one of your healthy Standby (Replica) nodes to become the new boss.
-2. **Update Configuration**: Edit your `env.py` file and update the `POSTGRES_PRIMARY_NODE` variable with the hostname of the chosen node.
+2. **Update Configuration**: Edit your `stack.conf` file and update the `POSTGRES_PRIMARY_NODE` variable with the hostname of the chosen node.
 
     ```python
     POSTGRES_PRIMARY_NODE = 'worker-node-02'
@@ -84,12 +84,12 @@ When you redeploy with a new `POSTGRES_PRIMARY_NODE`, the following happens auto
 
 When the failed node comes back online:
 
-- It will start as a **Replica** (because the `env.py` now says so).
+- It will start as a **Replica** (because the `stack.conf` now says so).
 - The entrypoint will detect that its local data is "dirty" (it was a primary before).
 - For safety and consistency, it will **wipe its local data** and perform a fresh `pg_basebackup` from the current Primary.
 - It joins the cluster as a healthy, synchronized Standby.
 
-> **Note**: Manual promotion via `pg_ctl promote` is discouraged as it can lead to "Split-Brain" scenarios. Always use the `env.py` update and redeploy flow to ensure the cluster state matches your configuration.
+> **Note**: Manual promotion via `pg_ctl promote` is discouraged as it can lead to "Split-Brain" scenarios. Always use the `stack.conf` update and redeploy flow to ensure the cluster state matches your configuration.
 
 ## Automatic Recovery (Auto-Attach)
 

@@ -78,7 +78,7 @@ If you started with a single-node cluster using `DATASHARE_FS='local'` and now w
 
 ## 2. Migration Procedure
 
-1. **Edit Configuration**: Open your `env.py` file and update the variables to point to your new NFS server:
+1. **Edit Configuration**: Open your `cluster.conf` file and update the variables to point to your new NFS server:
 
     ```python
     DATASHARE_FS='nfs'

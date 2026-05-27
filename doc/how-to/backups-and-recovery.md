@@ -8,7 +8,7 @@ Both **PostgreSQL** (Database) and **Redis** (Datastore) are automatically backe
 
 * **Location**: `https://datashare.<FQDN>/files/dump/`
 * **Files**: `migasfree.sql` (PostgreSQL) and `dump.rdb` (Redis).
-* **Configuration**: The `BACKUP_CRON` variable in `env.py` defines the frequency.
+* **Configuration**: The `BACKUP_CRON` variable in `stack.conf` defines the frequency.
 
 ## Performing a Full Backup
 

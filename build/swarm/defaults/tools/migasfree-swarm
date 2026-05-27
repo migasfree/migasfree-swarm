@@ -1,15 +1,14 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 _IMAGE="migasfree/swarm:@@TAG@@"
 _COMMAND="$1"
+_CONF_DIR="/etc/migasfree-swarm"
+_CONF_FILE="${_CONF_DIR}/cluster.conf"
  
 if [ -z "$STACK" ]; then
     # Auto-discover stack name from core service
     STACK=$(docker service ls --format '{{.Name}}' | grep '_core$' | sed 's/_core$//' | head -n 1)
 fi
-export STACK=${STACK:-devel}
 
 VOLUME=migasfree-swarm
 VOLUME_TMP=${VOLUME}-temporal
@@ -99,7 +98,7 @@ check_nfs_v4() {
     else
         echo
         echo "No NFSv4 service detected on $ip :$port ${path_server}"
-        echo "Please review the env.py file."
+        echo "Please review ${_CONF_FILE}."
         echo
         rmdir "$mount_dir"
         exit 1
@@ -111,7 +110,7 @@ function local2nfs {
     # TYPE_NFS="0" is 'nfs'
     TYPE_NFS=$(docker volume inspect $VOLUME 2>/dev/null | grep '"type": "nfs"' > /dev/null; echo $?)
 
-    # Check nfs in env.py and migasfree-swarm volume is type local
+    # Check nfs in cluster.conf and migasfree-swarm volume is type local
     if [ "$DATASHARE_FS" = "nfs" ] && [ "$TYPE_NFS" = "1" ]
     then
         STACKS="$(find ${PATH_STACKS} -maxdepth 1 -type d ! -path ${PATH_STACKS} -exec basename {} \;)"
@@ -215,17 +214,21 @@ function create_volume_cluster {
 }
 
 
+
 ROLE="$(get_swarm_role)"
 if [ "${ROLE}" = "" ] || [ "${ROLE}" = "MANAGER" ]
 then
-    if ! [ -f "${SCRIPT_DIR}/env.py" ]
+    mkdir -p "${_CONF_DIR}"
+    if ! [ -f "${_CONF_FILE}" ]
     then
-        docker run --name migasfree-swarm --detach=false --rm -ti -v "$(pwd)":/stack -v /var/run/docker.sock:/var/run/docker.sock "$_IMAGE" "config"
+        docker run --name migasfree-swarm --detach=false --rm -ti \
+            -v "${_CONF_DIR}":"${_CONF_DIR}" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "$_IMAGE" "config"
     fi
-    . "${SCRIPT_DIR}/env.py"
+    . "${_CONF_FILE}"
     if [ -z "$FQDN_IP" ] && [ -n "$FQDN" ]; then
         CLEAN_FQDN=$(echo "$FQDN" | tr -d '\r' | sed 's/[^[:print:]]//g' | xargs | tr '[:upper:]' '[:lower:]')
-        # Usamos la búsqueda simple que confirmamos que funciona en el debug
         DETECTED_IP=$(grep -i "$CLEAN_FQDN" /etc/hosts | grep -vE "^#|127.0.0.1|::1" | awk '{print $1}' | head -n 1)
 
         if [ -n "$DETECTED_IP" ]; then
@@ -235,27 +238,26 @@ then
     fi
     local2nfs
     create_volume_cluster "${VOLUME}"
-
-
 fi
 
 if docker volume ls | grep -q "$VOLUME"
 then
-  if [ -t 1 ] && [ -t 0 ]
-  then
-      _DETACH=false
-  else
-      _DETACH=true
-  fi
+    if [ -t 1 ] && [ -t 0 ]
+    then
+        _DETACH=false
+    else
+        _DETACH=true
+    fi
 
-  docker run --name migasfree-swarm \
-      --detach=${_DETACH} --rm -ti \
-      --env STACK="${STACK}" \
-      --env FQDN_IP="${FQDN_IP}" \
-      -v "${SCRIPT_DIR}":/stack \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      -v $VOLUME:/mnt/cluster \
-      "$_IMAGE" "$@"
+    docker run --name migasfree-swarm \
+        --detach=${_DETACH} --rm -ti \
+        --env STACK="${STACK}" \
+        --env FQDN_IP="${FQDN_IP}" \
+        -v "${_CONF_DIR}":"${_CONF_DIR}" \
+        -v /usr/bin/migasfree-swarm:/usr/bin/migasfree-swarm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v $VOLUME:/mnt/cluster \
+        "$_IMAGE" "$@"
 else
     echo "volume $VOLUME not found"
 fi
