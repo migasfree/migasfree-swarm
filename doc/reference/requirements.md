@@ -20,7 +20,7 @@ Before deploying Migasfree Swarm, ensure your infrastructure meets the following
 
 ### FQDN Configuration
 
-Choose a Fully Qualified Domain Name (e.g., `migasfree.mydomain.com`). The following subdomains must resolve to the Swarm manager's IP:
+Choose a Fully Qualified Domain Name (e.g., `migasfree.mydomain.com`). In a production environment, you must register the following subdomains in your organization's DNS server to resolve to the Swarm manager's IP:
 
 * `<FQDN>`
 * `portainer-<FQDN>`
@@ -29,17 +29,19 @@ Choose a Fully Qualified Domain Name (e.g., `migasfree.mydomain.com`). The follo
 * `datashare-<FQDN>`
 * `worker-<FQDN>`
 
-### Local Testing Proxy (/etc/hosts)
+### Local Name Resolution (/etc/hosts)
 
-For testing purposes, you can map these domains in your local `/etc/hosts`:
+If you are testing or developing locally and do not have access to a DNS server, you must manually define resolution for these domains on the client computers by adding them to the `/etc/hosts` file. Remember that this IP address must match the IP of your Swarm manager:
+
+For example, if FQDN = `migasfree.acme.com` and the IP is `172.0.0.30`, then:
 
 ```text
-127.0.0.1 migasfree.acme.com
-127.0.0.1 portainer-migasfree.acme.com
-127.0.0.1 database-migasfree.acme.com
-127.0.0.1 datashare-migasfree.acme.com
-127.0.0.1 datastore-migasfree.acme.com
-127.0.0.1 worker-migasfree.acme.com
+172.0.0.30 migasfree.acme.com
+172.0.0.30 portainer-migasfree.acme.com
+172.0.0.30 database-migasfree.acme.com
+172.0.0.30 datashare-migasfree.acme.com
+172.0.0.30 datastore-migasfree.acme.com
+172.0.0.30 worker-migasfree.acme.com
 ```
 
 > [!TIP]

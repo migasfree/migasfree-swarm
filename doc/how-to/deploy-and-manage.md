@@ -4,7 +4,7 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 
 ## Service Lifecycle
 
-* **Update Configuration**: Edit `env.py` and run `./migasfree-swarm deploy`.
+* **Update Configuration**: Edit `stack.conf` and run `migasfree-swarm deploy`.
 * **Update Code/Images**: Run `./migasfree-swarm pull` followed by `./migasfree-swarm deploy`.
 * **Targeted Deployment/Redeployment**: To force an update on specific services (useful after a local image build), specify the service names. This works with `deploy`, `redeploy`, and `undeploy`:
 
@@ -40,11 +40,11 @@ Disable sensitive consoles (Database, Datastore, Worker) while keeping the publi
 
 ### Remote Access Security
 
-By default, all administrative consoles are restricted to `127.0.0.1` for security. To access them from your management network, edit `env.py` and set `NETWORK_MNG`:
+By default, all administrative consoles allow access from any network (`0.0.0.0/0`). For increased security in production environments, you can restrict access to your management network by editing `stack.conf` and setting `NETWORK_MNG`:
 
 ```python
-# env.py
-NETWORK_MNG = '192.168.1.0/24'  # Allow your local network
+# stack.conf
+NETWORK_MNG = '192.168.1.0/24'  # Restrict access to your local network
 ```
 
 Then redeploy the stack:
