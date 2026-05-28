@@ -7,7 +7,7 @@ _CONF_FILE="${_CONF_DIR}/cluster.conf"
  
 if [ -z "$STACK" ]; then
     # Auto-discover stack name from core service
-    STACK=$(docker service ls --format '{{.Name}}' | grep '_core$' | sed 's/_core$//' | head -n 1)
+    STACK=$(docker service ls --format '{{.Name}}' 2>/dev/null | grep '_core$' | sed 's/_core$//' | head -n 1)
 fi
 
 VOLUME=migasfree-swarm
