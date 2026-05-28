@@ -60,28 +60,6 @@ def wait_url_available(url, timeout=60):
         time.sleep(2)
 
 
-def wait_for_dns(hostname, timeout=60, interval=3):
-    """
-    Waits until hostname can be resolved or until timeout is reached.
-    :param hostname: Name to resolve.
-    :param timeout: Maximum time in seconds to wait.
-    :param interval: Interval in seconds between attempts.
-    :return: True if resolved, False if timeout.
-    """
-    start_time = time.time()
-    print(f"Waiting to resolve {hostname} ...")
-    while True:
-        try:
-            socket.getaddrinfo(hostname, None)
-            return True
-        except socket.gaierror:
-            elapsed = time.time() - start_time
-            if elapsed > timeout:
-                print(f"Timeout waiting to resolve {hostname}")
-                return False
-            print(f"    retrying in {interval}s...")
-            time.sleep(interval)
-
 
 def download_resource(url, output_path):
     try:
@@ -367,7 +345,6 @@ def deploy_infra(client, context):
 
 
 def config_portainer(client, context):
-    wait_for_dns("portainer")
     wait_url_available("http://portainer:9000/api/system/status")
 
     # credentials configuration
@@ -569,7 +546,6 @@ def main():
     except Exception:
         pass
 
-    wait_for_dns("proxy")
     wait_url_available(f"https://{context['FQDN']}/status")
 
     logo = """

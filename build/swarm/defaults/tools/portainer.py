@@ -116,7 +116,7 @@ class PortainerAPI:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code not in [502, 503, 504]:
+            if e.response.status_code not in [500, 502, 503, 504]:
                 print("HTTP Error:", e)
             return None
         except requests.exceptions.RequestException as e:
