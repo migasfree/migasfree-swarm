@@ -121,7 +121,7 @@ async def register_agent(
 
     # Expiration? Maybe agents should send heartbeats.
     # For now, we just set it.
-    await r.set(f"agent:{agent.id}", json.dumps(agent_data))
+    await r.set(f"agent:{agent.id}", json.dumps(agent_data), ex=120)
 
     logger.info(f"Agent registered: {agent.id} -> {relay_public}")
 
