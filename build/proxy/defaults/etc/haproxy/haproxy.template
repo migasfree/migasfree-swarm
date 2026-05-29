@@ -253,6 +253,7 @@ frontend http
 
     acl url_no_mTLS_get   path_beg /manager/static/
     acl url_no_mTLS_get   path_beg /public/ /static/ /pool/ /src/
+    acl url_no_mTLS_head  path_beg /public/ /static/ /pool/ /src/
     acl url_no_mTLS_get   path_beg /get_key_repositories /get_properties /get_computer_info /repository-url-template
 
     # required for clients
