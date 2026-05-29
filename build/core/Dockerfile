@@ -85,6 +85,7 @@ RUN apt update && \
     libzmq5 \
     ca-certificates \
     curl \
+    gnupg \
     python3 \
     postgresql-client \
     netcat-traditional \
