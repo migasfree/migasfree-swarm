@@ -409,7 +409,6 @@
           <span class="service-name">tunnel</span>
           <span class="service-count" id="nodes_tunnel"></span>
         </div>
-        <a id="tunnel_link_parent" target="_blank" class="service-link" title="Tunnel"></a>
       </div>
 
       <div class="service-card">
@@ -493,8 +492,7 @@
           'portainer', 'proxy', 'manager',
           'console',
           'core', 'worker',
-          'database', 'datastore', 'datashare_console',
-          'tunnel'
+          'database', 'datastore', 'datashare_console'
         ],
         infoData: null,
       };
@@ -576,7 +574,6 @@
           database_link_parent: `https://database-${host}`,
           datastore_link_parent: `https://datastore-${host}`,
           datashare_console_link_parent: `https://datashare-${host}`,
-          tunnel_link_parent: `https://${host}/manager/v1/private/tunnel/console`,
         };
 
         Object.entries(links).forEach(([id, href]) => {
