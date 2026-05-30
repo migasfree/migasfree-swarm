@@ -185,6 +185,7 @@ frontend http
     acl url_tunnel path_beg /tunnel
     acl url_tunnel_ws hdr(Connection) -i upgrade
     acl url_tunnel_ws hdr(Upgrade) -i websocket
+    acl url_tunnel_register path /manager/v1/private/tunnel/register
 
 
     # MANAGER
@@ -325,6 +326,10 @@ frontend http
 
 {% endif %}
 
+    # Tunnel: Allow agent registration from any network
+    # (agents run on managed computers which may be outside NETWORK_MNG)
+    http-request allow if url_tunnel_register is_POST
+
     # IP/Network Restriction Denies
     # ============================
     # Deny administrative console access if the source is not in the allowed network list (NETWORK_MNG)
@@ -349,6 +354,7 @@ frontend http
     # Allow WebSocket connections to /tunnel path
     use_backend tunnel if url_tunnel hdr_connection_upgrade hdr_upgrade_websocket
 
+    use_backend manager if url_tunnel_register is_POST
     use_backend manager if url_manager_public
     use_backend manager if url_manager_static
     use_backend manager if network_mng url_manager
