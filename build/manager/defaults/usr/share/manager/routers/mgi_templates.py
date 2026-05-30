@@ -260,6 +260,20 @@ async def export_deployments(
                     attrs = cur.fetchall()
                     included_attrs = [f"{r[0]}-{r[1]}" for r in attrs]
 
+                    # A.2 Fetch prefix-value excluded attributes linked to this deployment
+                    cur.execute(
+                        """
+                        SELECT p.prefix, a.value
+                        FROM core_deployment_excluded_attributes dea
+                        JOIN core_attribute a ON dea.attribute_id = a.id
+                        JOIN core_property p ON a.property_att_id = p.id
+                        WHERE dea.deployment_id = %s
+                    """,
+                        (dep_id,),
+                    )
+                    exattrs = cur.fetchall()
+                    excluded_attrs = [f"{r[0]}-{r[1]}" for r in exattrs]
+
                     # B. Build deployment dict according to source type (Internal vs External)
                     d = {"name": dep["name"], "enabled": dep["enabled"]}
 
@@ -273,6 +287,7 @@ async def export_deployments(
                                 "options": dep["options"],
                                 "frozen": dep["frozen"],
                                 "included_attributes": included_attrs,
+                                "excluded_attributes": excluded_attrs,
                                 "source": "E",
                             }
                         )
@@ -381,6 +396,7 @@ async def export_deployments(
                                 "packages_to_install": packages_to_install,
                                 "packages_to_remove": packages_to_remove,
                                 "included_attributes": included_attrs,
+                                "excluded_attributes": excluded_attrs,
                                 "store": store_slug,
                                 "source": "I",
                             }
@@ -625,10 +641,17 @@ async def export_deployments(
                                 "project_slug": project_slug,
                             }
                         )
+            # Strip project_slug for YAML export to keep template files clean and generic
+            yaml_packages = []
+            for pkg in packages:
+                pkg_copy = pkg.copy()
+                pkg_copy.pop("project_slug", None)
+                yaml_packages.append(pkg_copy)
+
             packages_file = dest_dir / "packages.yml"
             packages_file.write_text(
                 yaml.safe_dump(
-                    {"packages": packages},
+                    {"packages": yaml_packages},
                     default_flow_style=False,
                     sort_keys=False,
                     allow_unicode=True,
@@ -984,136 +1007,230 @@ async def import_deployments(
         logger.info(
             f"Import: template_dir={template_dir}, exists={template_dir.exists() if template_dir else False}"
         )
+        target_project = await get_project_by_id(project_id)
+        target_slug = target_project.get("slug")
+
+        # B. Import Stores
+        stores_data = None
         if template_dir and template_dir.exists():
-            # B. Import Stores from stores.yml
             stores_file = template_dir / "stores.yml"
             if stores_file.exists() and stores_file.is_file():
                 try:
                     stores_data = yaml.safe_load(
                         stores_file.read_text(encoding="utf-8")
                     )
-                    if isinstance(stores_data, dict) and "stores" in stores_data:
-                        for store in stores_data["stores"]:
-                            s_name = store.get("name")
-                            s_slug = store.get("slug")
-                            if s_name and s_slug:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as cur:
-                                        cur.execute(
-                                            "SELECT id FROM core_store WHERE project_id = %s AND LOWER(slug) = LOWER(%s)",
-                                            (project_id, s_slug),
-                                        )
-                                        row = cur.fetchone()
-                                        if not row:
-                                            logger.info(
-                                                f"Creating missing store '{s_name}' for project {project_id}"
-                                            )
-                                            cur.execute(
-                                                "INSERT INTO core_store (name, slug, project_id) VALUES (%s, %s, %s)",
-                                                (s_name, s_slug, project_id),
-                                            )
-                                            conn.commit()
-                                            stores_created += 1
                 except Exception as ex:
                     logger.error(f"Error importing stores from {stores_file}: {ex}")
+        elif origin == "remote" and (template_path or target_slug):
+            from core.config import MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL
+            template_name = template_path if template_path else target_slug
+            for base_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
+                if not base_url:
+                    continue
+                try:
+                    url = f"{base_url.rstrip('/')}/{template_name}/stores.yml"
+                    content = await _fetch_text(url)
+                    if content:
+                        stores_data = yaml.safe_load(content)
+                        break
+                except Exception:
+                    continue
 
-            # C. Import Packages from packages.yml and copy physical .deb files
+        if isinstance(stores_data, dict) and "stores" in stores_data:
+            for store in stores_data["stores"]:
+                s_name = store.get("name")
+                s_slug = store.get("slug")
+                if s_name and s_slug:
+                    with get_db_connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "SELECT id FROM core_store WHERE project_id = %s AND LOWER(slug) = LOWER(%s)",
+                                (project_id, s_slug),
+                            )
+                            row = cur.fetchone()
+                            if not row:
+                                logger.info(
+                                    f"Creating missing store '{s_name}' for project {project_id}"
+                                )
+                                cur.execute(
+                                    "INSERT INTO core_store (name, slug, project_id) VALUES (%s, %s, %s)",
+                                    (s_name, s_slug, project_id),
+                                )
+                                conn.commit()
+                                stores_created += 1
+
+        # C. Import Packages from packages.yml and copy physical .deb files or download them
+        packages_data = None
+        if template_dir and template_dir.exists():
             packages_file = template_dir / "packages.yml"
             if packages_file.exists() and packages_file.is_file():
                 try:
                     packages_data = yaml.safe_load(
                         packages_file.read_text(encoding="utf-8")
                     )
-                    if isinstance(packages_data, dict) and "packages" in packages_data:
-                        target_project = await get_project_by_id(project_id)
-                        target_slug = target_project.get("slug")
+                except Exception as ex:
+                    logger.error(f"Error importing packages from {packages_file}: {ex}")
+        elif origin == "remote" and (template_path or target_slug):
+            from core.config import MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL
+            template_name = template_path if template_path else target_slug
+            for base_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
+                if not base_url:
+                    continue
+                try:
+                    url = f"{base_url.rstrip('/')}/{template_name}/packages.yml"
+                    content = await _fetch_text(url)
+                    if content:
+                        packages_data = yaml.safe_load(content)
+                        break
+                except Exception:
+                    continue
 
-                        for pkg in packages_data["packages"]:
-                            fullname = pkg.get("fullname")
-                            name = pkg.get("name")
-                            version = pkg.get("version")
-                            arch = pkg.get("architecture")
-                            store_slug = pkg.get("store")
+        if isinstance(packages_data, dict) and "packages" in packages_data:
+            for pkg in packages_data["packages"]:
+                fullname = pkg.get("fullname")
+                name = pkg.get("name")
+                version = pkg.get("version")
+                arch = pkg.get("architecture")
+                store_slug = pkg.get("store")
 
-                            if not (
-                                fullname and name and version and arch and store_slug
-                            ):
-                                continue
+                if not (
+                    fullname and name and version and arch and store_slug
+                ):
+                    continue
 
-                            # C1. Physical copy of .deb file to destination public store folder
-                            src_pkg = template_dir / "stores" / store_slug / fullname
-                            if src_pkg.exists() and src_pkg.is_file():
-                                dest_pkg_dir = (
-                                    PATH_DATASHARES
-                                    / STACK
-                                    / "public"
-                                    / target_slug
-                                    / "stores"
-                                    / store_slug
-                                )
-                                dest_pkg_dir.mkdir(parents=True, exist_ok=True)
-                                dest_pkg = dest_pkg_dir / fullname
-                                shutil.copy2(src_pkg, dest_pkg)
+                # C1. Physical copy or download of .deb file to destination public store folder
+                src_pkg = template_dir / "stores" / store_slug / fullname if template_dir and template_dir.exists() else None
+                if src_pkg and src_pkg.exists() and src_pkg.is_file():
+                    dest_pkg_dir = (
+                        PATH_DATASHARES
+                        / STACK
+                        / "public"
+                        / target_slug
+                        / "stores"
+                        / store_slug
+                    )
+                    dest_pkg_dir.mkdir(parents=True, exist_ok=True)
+                    try:
+                        os.chown(dest_pkg_dir, 890, 890)
+                    except Exception as chown_ex:
+                        logger.warning(f"Could not set owner of directory {dest_pkg_dir}: {chown_ex}")
+                    dest_pkg = dest_pkg_dir / fullname
+                    shutil.copy2(src_pkg, dest_pkg)
+                    try:
+                        os.chown(dest_pkg, 890, 890)
+                    except Exception as chown_ex:
+                        logger.warning(f"Could not set owner of package file {dest_pkg}: {chown_ex}")
+                    logger.info(
+                        f"Copied imported package {fullname} to {dest_pkg}"
+                    )
+                else:
+                    # Fallback: download from migasfree.org/pub/project-templates/
+                    template_name = template_path if template_path else target_slug
+                    download_url = f"https://migasfree.org/pub/project-templates/{template_name}/stores/{store_slug}/{fullname}"
+                    logger.info(
+                        f"Local package {fullname} not found. Attempting download from {download_url}"
+                    )
+                    try:
+                        dest_pkg_dir = (
+                            PATH_DATASHARES
+                            / STACK
+                            / "public"
+                            / target_slug
+                            / "stores"
+                            / store_slug
+                        )
+                        dest_pkg_dir.mkdir(parents=True, exist_ok=True)
+                        try:
+                            os.chown(dest_pkg_dir, 890, 890)
+                        except Exception as chown_ex:
+                            logger.warning(f"Could not set owner of directory {dest_pkg_dir}: {chown_ex}")
+                        dest_pkg = dest_pkg_dir / fullname
+
+                        async with httpx.AsyncClient(verify=False) as client:
+                            response = await client.get(download_url, timeout=120.0)
+                            if response.status_code == 200:
+                                dest_pkg.write_bytes(response.content)
+                                try:
+                                    os.chown(dest_pkg, 890, 890)
+                                except Exception as chown_ex:
+                                    logger.warning(f"Could not set owner of downloaded package {dest_pkg}: {chown_ex}")
                                 logger.info(
-                                    f"Copied imported package {fullname} to {dest_pkg}"
+                                    f"Successfully downloaded and imported package from {download_url}"
                                 )
                             else:
                                 logger.warning(
-                                    f"Import package file {src_pkg} not found in template"
+                                    f"Failed to download package from {download_url}: HTTP {response.status_code}"
                                 )
+                    except Exception as ex:
+                        logger.error(
+                            f"Error downloading package {fullname} from {download_url}: {ex}"
+                        )
 
-                            # C2. Register package in core_package database table
-                            with get_db_connection() as conn:
-                                with conn.cursor() as cur:
-                                    cur.execute(
-                                        "SELECT id FROM core_store WHERE project_id = %s AND LOWER(slug) = LOWER(%s)",
-                                        (project_id, store_slug),
-                                    )
-                                    store_row = cur.fetchone()
-                                    if store_row:
-                                        t_store_id = store_row[0]
-                                        cur.execute(
-                                            "SELECT id FROM core_package WHERE project_id = %s AND store_id = %s AND fullname = %s",
-                                            (project_id, t_store_id, fullname),
-                                        )
-                                        pkg_row = cur.fetchone()
-                                        if not pkg_row:
-                                            logger.info(
-                                                f"Registering package {fullname} in DB for project {project_id}"
-                                            )
-                                            cur.execute(
-                                                "INSERT INTO core_package (fullname, name, version, architecture, project_id, store_id) VALUES (%s, %s, %s, %s, %s, %s)",
-                                                (
-                                                    fullname,
-                                                    name,
-                                                    version,
-                                                    arch,
-                                                    project_id,
-                                                    t_store_id,
-                                                ),
-                                            )
-                                            conn.commit()
-                                            packages_created += 1
-                except Exception as ex:
-                    logger.error(f"Error importing packages from {packages_file}: {ex}")
+                # C2. Register package in core_package database table
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT id FROM core_store WHERE project_id = %s AND LOWER(slug) = LOWER(%s)",
+                            (project_id, store_slug),
+                        )
+                        store_row = cur.fetchone()
+                        if store_row:
+                            t_store_id = store_row[0]
+                            cur.execute(
+                                "SELECT id FROM core_package WHERE project_id = %s AND store_id = %s AND fullname = %s",
+                                (project_id, t_store_id, fullname),
+                            )
+                            pkg_row = cur.fetchone()
+                            if not pkg_row:
+                                logger.info(
+                                    f"Registering package {fullname} in DB for project {project_id}"
+                                )
+                                cur.execute(
+                                    "INSERT INTO core_package (fullname, name, version, architecture, project_id, store_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                                    (
+                                        fullname,
+                                        name,
+                                        version,
+                                        arch,
+                                        project_id,
+                                        t_store_id,
+                                    ),
+                                )
+                                conn.commit()
+                                packages_created += 1
 
-            # D. Import Applications from applications.yml if not already provided in the payload
-            if not applications:
+        # D. Import Applications from applications.yml if not already provided in the payload
+        if not applications:
+            apps_data = None
+            if template_dir and template_dir.exists():
                 apps_file = template_dir / "applications.yml"
                 if apps_file.exists() and apps_file.is_file():
                     try:
                         apps_data = yaml.safe_load(
                             apps_file.read_text(encoding="utf-8")
                         )
-                        if isinstance(apps_data, dict) and "applications" in apps_data:
-                            applications = apps_data["applications"]
-                            logger.info(
-                                f"Loaded applications from template {apps_file}"
-                            )
                     except Exception as ex:
                         logger.error(
                             f"Error importing applications from {apps_file}: {ex}"
                         )
+            elif origin == "remote" and (template_path or target_slug):
+                from core.config import MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL
+                template_name = template_path if template_path else target_slug
+                for base_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
+                    if not base_url:
+                        continue
+                    try:
+                        url = f"{base_url.rstrip('/')}/{template_name}/applications.yml"
+                        content = await _fetch_text(url)
+                        if content:
+                            apps_data = yaml.safe_load(content)
+                            break
+                    except Exception:
+                        continue
+
+            if isinstance(apps_data, dict) and "applications" in apps_data:
+                applications = apps_data["applications"]
+                logger.info("Loaded applications from template metadata")
     except Exception as ex:
         logger.error(
             f"Error during stores, packages, and applications resolution: {ex}"
@@ -1596,6 +1713,27 @@ async def import_deployments(
                             logger.error(f"Error resolving attribute {attr}: {e}")
 
             excluded_ids = []
+            excluded_attrs = dep.get("excluded_attributes", [])
+            if isinstance(excluded_attrs, list):
+                for attr in excluded_attrs:
+                    if isinstance(attr, str) and "-" in attr:
+                        prefix, val = attr.split("-", 1)
+                        try:
+                            with get_db_connection() as conn:
+                                with conn.cursor() as cur:
+                                    cur.execute(
+                                        """
+                                        SELECT a.id FROM core_attribute a
+                                        JOIN core_property p ON a.property_att_id = p.id
+                                        WHERE LOWER(p.prefix) = LOWER(%s) AND LOWER(a.value) = LOWER(%s)
+                                    """,
+                                        (prefix.strip(), val.strip()),
+                                    )
+                                    row = cur.fetchone()
+                                    if row:
+                                        excluded_ids.append(row[0])
+                        except Exception as e:
+                            logger.error(f"Error resolving excluded attribute {attr}: {e}")
 
             # B. Resolve available packages & package sets (for internal deployments)
             available_packages_ids = []
@@ -1774,6 +1912,24 @@ async def import_deployments(
             logger.error(
                 f"Failed to trigger metadata regeneration for project deployments: {ex}"
             )
+
+    # Set ownership for the public stack directory recursively to 890:890
+    try:
+        from core.config import PATH_DATASHARES, STACK
+        import subprocess
+        public_dir = PATH_DATASHARES / STACK / "public"
+        if public_dir.exists():
+            subprocess.run(
+                ["chown", "-R", "890:890", str(public_dir)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            logger.info(f"Ownership set to 890:890 recursively on public directory {public_dir}")
+    except Exception as own_err:
+        logger.error(
+            f"Failed to set ownership recursively on public directory: {own_err}"
+        )
 
     import json
 
