@@ -52,14 +52,20 @@ class AgentRegister(BaseModel):
 async def register_agent(
     agent: AgentRegister, request: Request, r: redis.Redis = Depends(get_redis)
 ):
-    # Verify Client Certificate CN is in COMPUTERS OU
+    # Verify Client Certificate CN if present (mTLS mode)
+    # When mTLS is not configured, the CN header will be empty and
+    # registration is allowed without certificate validation.
     client_cn = request.headers.get("X-SSL-Client-CN", "")
-    if "OU=COMPUTERS" not in client_cn:
+    if client_cn and "OU=COMPUTERS" not in client_cn:
         logger.warning(
             f"Registration rejected for agent {agent.id}: Invalid CN '{client_cn}'"
         )
         raise HTTPException(
             status_code=403, detail="Forbidden: Invalid Client Certificate"
+        )
+    if not client_cn:
+        logger.info(
+            f"Agent {agent.id} registered without mTLS certificate (non-mTLS mode)"
         )
 
     # Determine Relay URL
