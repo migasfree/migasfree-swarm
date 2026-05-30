@@ -183,6 +183,12 @@ migasfree_init() {
     fi
 
     create_superuser
+
+    # Ensure RSA and GPG repository keys exist on the shared volume.
+    # PMS workers (pms-apt, pms-yum, ...) don't have Django and cannot
+    # generate keys on demand, so they must be pre-created here.
+    send_message "ensuring server keys"
+    run_as_www_data "python3 -c 'from migasfree.secure import create_server_keys; create_server_keys()'"
 }
 
 
