@@ -68,7 +68,7 @@ When the Primary node becomes unavailable:
 3. **Redeploy**: Run the deployment command from the Manager node:
 
     ```bash
-    ./migasfree-swarm deploy
+    migasfree-swarm deploy
     ```
 
 ### 2. The Auto-Promotion Process

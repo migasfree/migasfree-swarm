@@ -329,7 +329,7 @@ class ContextLoader:
 #     beyond standard credential checks.
 #     The default value is 'False', meaning client certificates are not required.
 #     Related commands:
-#         ./migasfree-swarm url-admin-certificate
+#         migasfree-swarm url-admin-certificate
 # {line}
 """,
             "POSTGRES_HOST": f"""# {line}
@@ -531,8 +531,8 @@ class ContextLoader:
         lines = [
             "# ENVIRONMENT\n"
             "# To apply changes to these variables, run:\n"
-            "#     ./migasfree-swarm undeploy\n"
-            "#     ./migasfree-swarm deploy\n\n"
+            "#     migasfree-swarm undeploy\n"
+            "#     migasfree-swarm deploy\n\n"
         ]
         for k, v in self.context.items():
             lines.append(f"{self.comment(k)}{k}='{v}'\n\n")

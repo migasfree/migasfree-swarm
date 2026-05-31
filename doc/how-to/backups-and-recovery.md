@@ -24,7 +24,7 @@ If you encounter catastrophic data loss, follow these steps to restore from your
 1. **Stop the Stack**:
 
     ```bash
-    ./migasfree-swarm undeploy
+    migasfree-swarm undeploy
     ```
 
 2. **Clean Volumes**: Remove existing (corrupted) database and datastore volumes:
@@ -36,7 +36,7 @@ If you encounter catastrophic data loss, follow these steps to restore from your
 3. **Redeploy**: Start the stack with empty databases:
 
     ```bash
-    ./migasfree-swarm deploy
+    migasfree-swarm deploy
     ```
 
 4. **Execute Restore**: Access the shell of the `database` and `datastore` containers via Portainer or `docker exec`, and run:

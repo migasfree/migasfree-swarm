@@ -17,7 +17,7 @@ Requires port 80 accessibility to handle ACME challenges.
 
 1. Open the **Datashare Console**.
 2. Set `HTTPSMODE = 'auto'` in `stack.conf`.
-3. Redeploy: `./migasfree-swarm redeploy`
+3. Redeploy: `migasfree-swarm redeploy`
 
 ## 3. Manual Replacement
 
@@ -32,7 +32,7 @@ For organizations providing their own trusted CA certificates.
 # Combine chain and key
 cat cert.pem intermediate.pem key.key > /path/to/shared/volume/server/${FQDN}.pem
 chmod 600 /path/to/shared/volume/server/${FQDN}.pem
-./migasfree-swarm redeploy_all
+migasfree-swarm redeploy_all
 ```
 
 ---
@@ -44,7 +44,7 @@ mTLS adds a layer of identity verification for administrative consoles and secur
 **To Enable**:
 
 1. Set `MTLS = 'True'` in `stack.conf`.
-2. Redeploy: `./migasfree-swarm redeploy`
+2. Redeploy: `migasfree-swarm redeploy`
 
 ### Generating Certificates
 
@@ -53,7 +53,7 @@ mTLS adds a layer of identity verification for administrative consoles and secur
 Generating a one-time URL allows an administrator to create their own certificate securely from their browser.
 
 ```bash
-./migasfree-swarm url-admin-certificate
+migasfree-swarm url-admin-certificate
 ```
 
 #### 2. Manual Generation (Advanced/Computers)
@@ -83,4 +83,4 @@ The resulting `.tar` bundle will be available in `/mnt/cluster/certificates/<STA
 If your network uses a proxy that inspects HTTPS traffic via a private Root CA:
 
 1. Copy your corporate Root CA to the `ca-certificates` folder in the **Datashare Console**.
-2. Redeploy: `./migasfree-swarm redeploy`
+2. Redeploy: `migasfree-swarm redeploy`

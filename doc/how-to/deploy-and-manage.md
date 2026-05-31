@@ -5,18 +5,18 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 ## Service Lifecycle
 
 * **Update Configuration**: Edit `stack.conf` and run `migasfree-swarm deploy`.
-* **Update Code/Images**: Run `./migasfree-swarm pull` followed by `./migasfree-swarm deploy`.
+* **Update Code/Images**: Run `migasfree-swarm pull` followed by `migasfree-swarm deploy`.
 * **Targeted Deployment/Redeployment**: To force an update on specific services (useful after a local image build), specify the service names. This works with `deploy`, `redeploy`, and `undeploy`:
 
     ```bash
-    ./migasfree-swarm deploy console         # Updates console without downtime
-    ./migasfree-swarm redeploy console core  # Recreates console and core
-    ./migasfree-swarm undeploy pms-apk       # Only stops the pms-apk service
+    migasfree-swarm deploy console         # Updates console without downtime
+    migasfree-swarm redeploy console core  # Recreates console and core
+    migasfree-swarm undeploy pms-apk       # Only stops the pms-apk service
     ```
 
-* **Clean Up Images**: Run `./migasfree-swarm prune` to remove dangling `<none>` images.
-* **Check Status**: Run `./migasfree-swarm info` to see the cluster and stacks overview.
-* **Stop Infrastructure**: Run `./migasfree-swarm undeploy` (removes the entire stack).
+* **Clean Up Images**: Run `migasfree-swarm prune` to remove dangling `<none>` images.
+* **Check Status**: Run `migasfree-swarm info` to see the cluster and stacks overview.
+* **Stop Infrastructure**: Run `migasfree-swarm undeploy` (removes the entire stack).
 
 ## Console Management
 
@@ -27,7 +27,7 @@ Migasfree provides several consoles for development and production.
 Enable all consoles (Database, Datastore, Worker, Datashare):
 
 ```bash
-./migasfree-swarm consoles-dev
+migasfree-swarm consoles-dev
 ```
 
 ### Production Mode
@@ -35,7 +35,7 @@ Enable all consoles (Database, Datastore, Worker, Datashare):
 Disable sensitive consoles (Database, Datastore, Worker) while keeping the public status and core services:
 
 ```bash
-./migasfree-swarm consoles-pro
+migasfree-swarm consoles-pro
 ```
 
 ### Remote Access Security
@@ -50,7 +50,7 @@ NETWORK_MNG = '192.168.1.0/24'  # Restrict access to your local network
 Then redeploy the stack:
 
 ```bash
-./migasfree-swarm deploy
+migasfree-swarm deploy
 ```
 
 ## Scaling the Cluster
@@ -60,7 +60,7 @@ Then redeploy the stack:
 Run this on the **Manager** node:
 
 ```bash
-./migasfree-swarm join-worker
+migasfree-swarm join-worker
 ```
 
 Copy and paste the resulting command onto your worker nodes.
@@ -70,7 +70,7 @@ Copy and paste the resulting command onto your worker nodes.
 To gracefully remove a node from the cluster without deleting local volumes:
 
 ```bash
-./migasfree-swarm leave
+migasfree-swarm leave
 ```
 
 ## Monitoring the Cluster
@@ -78,7 +78,7 @@ To gracefully remove a node from the cluster without deleting local volumes:
 To get a comprehensive overview of your Swarm cluster status, including nodes and deployed stacks:
 
 ```bash
-./migasfree-swarm info
+migasfree-swarm info
 ```
 
 This command provides:
@@ -109,7 +109,7 @@ bash build.sh core database manager
 Docker builds and pulls can leave "dangling" images (tagged as `<none>`) that consume disk space. To safely remove them:
 
 ```bash
-./migasfree-swarm prune
+migasfree-swarm prune
 ```
 
 > [!NOTE]

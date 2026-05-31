@@ -90,7 +90,7 @@ If you started with a single-node cluster using `DATASHARE_FS='local'` and now w
 2. **Run Deployment**: Execute the deploy command:
 
     ```bash
-    ./migasfree-swarm deploy
+    migasfree-swarm deploy
     ```
 
 3. **Automatic Detection**: The script will detect the change in `DATASHARE_FS` and prompt you:

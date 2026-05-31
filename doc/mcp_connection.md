@@ -24,7 +24,7 @@ NETWORK_MCP='YOUR_IP_OR_RANGE'
 After changing this value, you must redeploy to apply the changes to the proxy (HAProxy):
 
 ```bash
-./migasfree-swarm deploy
+migasfree-swarm deploy
 ```
 
 ## 2. Client Connection (Antigravity)

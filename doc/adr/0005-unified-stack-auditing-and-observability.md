@@ -21,7 +21,7 @@ We decided to implement a **Unified Auditing CLI Tool** (`info`) that provides a
 1. **Technology Choice**: Python + `docker` SDK (Official).
    * Provides consistent, structured access to Swarm metadata without parsing variable shell output.
 2. **Integration**: Embedded in the `swarm` management image.
-   * Accessible via `./migasfree-swarm info`.
+   * Accessible via `migasfree-swarm info`.
 3. **Output Structure**:
    * **Cluster Level**: Node count, manager role, and readiness.
    * **Stack Level**: Correlation between `FQDN` (from `stack.conf`) and actual service replicas.

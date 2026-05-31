@@ -56,7 +56,7 @@ If **mTLS** is enabled (`MTLS = 'True'` in `stack.conf`), your browser on Window
 1. Generate your administrative certificate via the command:
 
    ```bash
-   ./migasfree-swarm url-admin-certificate
+   migasfree-swarm url-admin-certificate
    ```
 
 2. Navigate to the returned one-time URL and download the `.p12` (PKCS#12) certificate file.
@@ -85,5 +85,5 @@ NETWORK_MNG = '192.168.1.0/24'  # Allow Windows client network access
 Apply the changes by redeploying the service:
 
 ```bash
-./migasfree-swarm deploy
+migasfree-swarm deploy
 ```
