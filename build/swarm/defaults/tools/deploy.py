@@ -47,7 +47,7 @@ def wait_url_available(url, timeout=60):
     start_time = time.time()
     while True:
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=5, verify=False)
             if response.status_code < 500:
                 return True
         except (requests.RequestException, http.client.RemoteDisconnected):
@@ -297,6 +297,12 @@ def create_network_internal(network_name):
 
 def connect_network(client, network, hostname):
     try:
+        # Preemptively disconnect any stale or existing network endpoint to avoid Docker Swarm 409 Conflict bug
+        try:
+            client.networks.get(network).disconnect(hostname, force=True)
+        except Exception:
+            pass
+        # Connect container to the network
         client.networks.get(network).connect(hostname)
     except Exception as e:
         print(f"Could not connect to network {network}: {e}")
@@ -375,12 +381,29 @@ def config_portainer(client, context):
         print(f"Error accessing Portainer wizard: {e}")
 
     token_file = _PATH_CREDENTIALS / "portainer-token"
+    token = None
     if token_file.exists():
         token = token_file.read_text().strip()
-    else:
+        # Verify if the existing token is actually valid against the active Portainer instance
+        try:
+            test_response = requests.get(
+                "http://portainer:9000/api/settings",
+                headers={"X-API-Key": token},
+                timeout=5,
+                verify=False
+            )
+            if test_response.status_code != 200:
+                print("Stale or invalid Portainer token detected. Regenerating...")
+                token = None
+        except Exception:
+            token = None
+
+    if not token:
+        token_file.unlink(missing_ok=True)
         token = create_token("deploy", user, password)
-        token_file.write_text(token)
-        os.chmod(token_file, 0o600)
+        if token:
+            token_file.write_text(token)
+            os.chmod(token_file, 0o600)
 
     if not token:
         token_file.unlink(missing_ok=True)
@@ -545,8 +568,6 @@ def main():
         shutil.rmtree(cache_path)
     except Exception:
         pass
-
-    wait_url_available(f"https://{context['FQDN']}/status")
 
     logo = """
 
