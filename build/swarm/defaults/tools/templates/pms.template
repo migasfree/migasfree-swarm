@@ -1,6 +1,7 @@
 
     {{PMS}}:
         image: migasfree/{{PMS}}:{{TAG}}
+        stop_grace_period: 2s
         hostname: '{{TASK}}'
         environment:
             - TZ={{TZ}}

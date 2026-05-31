@@ -3,6 +3,7 @@ services:
 
     manager:
         image: migasfree/manager:{{TAG}}
+        stop_grace_period: 2s
         healthcheck:
             test: ["CMD", "/usr/bin/healthcheck.sh"]
             interval: 10s
@@ -59,6 +60,7 @@ services:
 
     proxy:
         image: migasfree/proxy:{{TAG}}
+        stop_grace_period: 2s
         ports:
             - published: {{PORT_HTTP}}
               target: {{PORT_HTTP}}
@@ -121,6 +123,7 @@ services:
 
     public:
         image: migasfree/public:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -151,6 +154,7 @@ services:
 
     console:
         image: migasfree/console:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}:{{PORT_HTTPS}}
@@ -178,6 +182,7 @@ services:
 
     core:
         image: migasfree/core:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ=UTC
             - FQDN={{FQDN}}
@@ -220,6 +225,7 @@ services:
 
     worker:
         image: migasfree/core:{{TAG}}
+        stop_grace_period: 2s
         hostname: '{{TASK}}'
         environment:
             - TZ=UTC
@@ -260,6 +266,7 @@ services:
 
     beat:
         image: migasfree/core:{{TAG}}
+        stop_grace_period: 2s
         healthcheck:
             test: ["CMD", "/usr/bin/healthcheck.sh"]
             interval: 10s
@@ -300,6 +307,7 @@ services:
 {% if POSTGRES_HOST == "database" or POSTGRES_HOST == "pgpool" %}
     database:
         image: migasfree/database:{{TAG}}
+        stop_grace_period: 5s
         environment:
             - TZ=UTC
             - FQDN={{FQDN}}
@@ -360,6 +368,7 @@ services:
 {% if POSTGRES_HOST == "pgpool" %}
     pgpool:
         image: migasfree/pgpool:{{TAG}}
+        stop_grace_period: 5s
         environment:
             - TZ=UTC
             - FQDN={{FQDN}}
@@ -397,6 +406,7 @@ services:
 
     datastore:
         image: migasfree/datastore:{{TAG}}
+        stop_grace_period: 2s
         healthcheck:
             test: ["CMD", "/usr/bin/healthcheck.sh"]
             interval: 10s
@@ -455,6 +465,7 @@ services:
 
     database_console:
         image: migasfree/database_console:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - STACK={{STACK}}
@@ -485,6 +496,7 @@ services:
 
     datastore_console:
         image: migasfree/datastore_console:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -509,6 +521,7 @@ services:
 
     datashare_console:
         image: migasfree/datashare_console:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -543,6 +556,7 @@ services:
 
     worker_console:
         image: migasfree/worker_console:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -567,6 +581,7 @@ services:
 
     tunnel:
         image: migasfree/tunnel:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
@@ -596,6 +611,7 @@ services:
 
     mcp-server:
         image: migasfree/mcp-server:{{TAG}}
+        stop_grace_period: 2s
         healthcheck:
             test: ["CMD", "/usr/bin/healthcheck.sh"]
             interval: 10s
@@ -637,6 +653,7 @@ services:
 {% if HTTPSMODE == "auto" %}
     certbot:
         image: migasfree/certbot:{{TAG}}
+        stop_grace_period: 2s
         environment:
             - TZ={{TZ}}
             - FQDN={{FQDN}}
