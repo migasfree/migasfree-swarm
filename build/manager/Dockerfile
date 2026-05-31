@@ -16,7 +16,7 @@ RUN apk add --no-cache openssl curl cronie socat openssh-client libpq tzdata mus
     pip install --no-cache-dir --upgrade -r /usr/share/manager/requirements.txt && \
     find /usr/local/lib/python*/site-packages -name "__pycache__" -type d -exec rm -rf {} + && \
     apk del .build-deps && \
-    apk add --no-cache qemu-img e2fsprogs e2fsprogs-extra dosfstools util-linux docker-cli qemu-system-x86_64 nbd skopeo umoci
+    apk add --no-cache qemu-img e2fsprogs e2fsprogs-extra dosfstools util-linux docker-cli docker-cli-buildx qemu-system-x86_64 nbd skopeo umoci
 
 COPY ./defaults/ /
 
