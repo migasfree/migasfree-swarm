@@ -23,6 +23,10 @@ from core.config import (
     MGI_PREFIX,
     CORE_TOKEN_URL,
     PATH_DATASHARES,
+    get_dns_servers,
+    HTTP_PROXY,
+    HTTPS_PROXY,
+    NO_PROXY,
 )
 
 SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
@@ -379,13 +383,59 @@ def build_docker_image(
     progress_cb: Callable[[int, str], None] | None = None,
     task_id: str | None = None,
 ) -> None:
+
     cmd = [
         "docker",
         "build",
         "--no-cache",
     ]
-    if FQDN_IP:
-        cmd += ["--add-host", f"{FQDN}:{FQDN_IP}"]
+
+    if HTTP_PROXY:
+        cmd += ["--build-arg", f"http_proxy={HTTP_PROXY}", "--build-arg", f"HTTP_PROXY={HTTP_PROXY}"]
+    if HTTPS_PROXY:
+        cmd += ["--build-arg", f"https_proxy={HTTPS_PROXY}", "--build-arg", f"HTTPS_PROXY={HTTPS_PROXY}"]
+    if NO_PROXY:
+        cmd += ["--build-arg", f"no_proxy={NO_PROXY}", "--build-arg", f"NO_PROXY={NO_PROXY}"]
+
+    fqdn_ip = FQDN_IP
+    if not fqdn_ip:
+        import socket
+        try:
+            fqdn_ip = socket.gethostbyname(FQDN)
+        except Exception:
+            pass
+
+    if not fqdn_ip or fqdn_ip.startswith("127."):
+        # Try to query the local Docker Swarm node IP directly via the Docker SDK
+        try:
+            import docker
+            client = docker.from_env()
+            node_info = client.info()
+            node_id = node_info.get("Swarm", {}).get("NodeID")
+            if node_id:
+                node = client.nodes.get(node_id)
+                addr = node.attrs.get("Status", {}).get("Addr")
+                if addr:
+                    fqdn_ip = addr
+        except Exception:
+            pass
+
+    if not fqdn_ip or fqdn_ip.startswith("127."):
+        # Dynamic interface fallback (offline-friendly)
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Try to connect to a local/corporate DNS server first if detected
+            dns_servers = get_dns_servers()
+            target_ip = dns_servers[0] if dns_servers else "8.8.8.8"
+            s.connect((target_ip, 53 if dns_servers else 80))
+            fqdn_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            pass
+
+    if fqdn_ip:
+        cmd += ["--add-host", f"{FQDN}:{fqdn_ip}"]
 
     cmd += [
         "--build-arg",
@@ -863,7 +913,11 @@ def _mgi_worker():
             build_mgi_image(task_id, release_id)
         except Exception as e:
             logger.error(f"MGI worker error: {e}")
-            time.sleep(1)
+            time.sleep(5)
+            try:
+                con = get_redis_connection()
+            except Exception:
+                pass
 
 
 def start_mgi_worker():
