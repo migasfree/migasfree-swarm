@@ -6,7 +6,6 @@ import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from core.redis import get_redis_connection
 from core.config import (
@@ -14,9 +13,12 @@ from core.config import (
     FQDN_IP,
     STACK,
     PATH_DATASHARES,
-    MCS_POOL_DIR,
     HOST_VOLUME_BASE,
     HOST_STACK_DIR,
+    get_dns_servers,
+    HTTP_PROXY,
+    HTTPS_PROXY,
+    NO_PROXY,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,12 +68,37 @@ def build_mcs_iso(task_id: str, server_url: str | None, server_ip: str | None, k
     build_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+
+        dns_list = get_dns_servers()
+        dns_flags = " ".join([f"--dns {d}" for d in dns_list])
+
+        proxy_build_args = ""
+        proxy_env_args = ""
+        if HTTP_PROXY:
+            proxy_build_args += f" --build-arg http_proxy={HTTP_PROXY} --build-arg HTTP_PROXY={HTTP_PROXY}"
+            proxy_env_args += f" -e http_proxy={HTTP_PROXY} -e HTTP_PROXY={HTTP_PROXY}"
+        if HTTPS_PROXY:
+            proxy_build_args += f" --build-arg https_proxy={HTTPS_PROXY} --build-arg HTTPS_PROXY={HTTPS_PROXY}"
+            proxy_env_args += f" -e https_proxy={HTTPS_PROXY} -e HTTPS_PROXY={HTTPS_PROXY}"
+        if NO_PROXY:
+            proxy_build_args += f" --build-arg no_proxy={NO_PROXY} --build-arg NO_PROXY={NO_PROXY}"
+            proxy_env_args += f" -e no_proxy={NO_PROXY} -e NO_PROXY={NO_PROXY}"
+
+        patch_cmds = ""
+        if dns_flags:
+            patch_cmds += f"sed -i 's/docker run /docker run {dns_flags} /g' scripts/build.sh && "
+        if proxy_build_args:
+            patch_cmds += f"sed -i 's/docker build /docker build {proxy_build_args} /g' scripts/build.sh && "
+        if proxy_env_args:
+            patch_cmds += f"sed -i 's/docker run /docker run {proxy_env_args} /g' scripts/build.sh && "
+
         # Construct dynamic sibling container shell commands
         shell_cmd = (
             f"apk add --no-cache git make parted bash rsync docker-cli sudo e2fsprogs dosfstools && "
             f"git clone https://github.com/migasfree/migasfree-clone-system.git . && "
             f"sed -i 's/docker run -ti/docker run/g' scripts/build.sh && "
             f"sed -i 's/losetup -D/losetup -d/g' scripts/build.sh && "
+            f"{patch_cmds}"
             f"echo 'SERVER_URL=\"{url}\"' > mcs.conf && "
             f"echo 'SERVER_IP=\"{ip}\"' >> mcs.conf && "
             f"echo 'KEYMAP=\"{kmap}\"' >> mcs.conf && "
@@ -89,6 +116,19 @@ def build_mcs_iso(task_id: str, server_url: str | None, server_ip: str | None, k
             "run",
             "--rm",
             "--privileged",
+        ]
+
+        for dns in dns_list:
+            docker_cmd += ["--dns", dns]
+
+        if HTTP_PROXY:
+            docker_cmd += ["-e", f"http_proxy={HTTP_PROXY}", "-e", f"HTTP_PROXY={HTTP_PROXY}"]
+        if HTTPS_PROXY:
+            docker_cmd += ["-e", f"https_proxy={HTTPS_PROXY}", "-e", f"HTTPS_PROXY={HTTPS_PROXY}"]
+        if NO_PROXY:
+            docker_cmd += ["-e", f"no_proxy={NO_PROXY}", "-e", f"NO_PROXY={NO_PROXY}"]
+
+        docker_cmd += [
             "-v",
             "/var/run/docker.sock:/var/run/docker.sock",
             "-v",
@@ -188,7 +228,11 @@ def _mcs_worker():
             build_mcs_iso(task_id, server_url, server_ip, keymap)
         except Exception as e:
             logger.error(f"MCS worker error: {e}")
-            time.sleep(1)
+            time.sleep(5)
+            try:
+                con = get_redis_connection()
+            except Exception:
+                pass
 
 
 def start_mcs_worker():
