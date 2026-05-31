@@ -13,7 +13,7 @@ This tutorial guides you through the process of deploying Migasfree Swarm for th
 Extract the unified CLI tool from the Docker container to install it system-wide:
 
 ```bash
-docker run --rm --entrypoint cat migasfree/swarm:5.0-beta17 /tools/migasfree-swarm > /usr/bin/migasfree-swarm && chmod +x /usr/bin/migasfree-swarm
+docker run --rm --entrypoint cat migasfree/swarm:5.0-beta18 /tools/migasfree-swarm > /usr/bin/migasfree-swarm && chmod +x /usr/bin/migasfree-swarm
 ```
 
 Now the `migasfree-swarm` command is globally available!
