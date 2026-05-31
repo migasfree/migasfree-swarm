@@ -1,7 +1,9 @@
+from pathlib import Path
 import json
 import logging
 import re
 import shutil
+import socket
 import subprocess
 import time
 import uuid
@@ -50,11 +52,37 @@ def _is_safe_string(val: str | None) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9_.-]*$", val))
 
 
+def _get_host_keymap() -> str:
+    try:
+        path = Path("/etc/default/keyboard")
+        if path.exists():
+            for line in path.read_text().splitlines():
+                if line.strip().startswith("XKBLAYOUT="):
+                    parts = line.split("=")
+                    if len(parts) > 1:
+                        val = parts[1].strip().strip('"').strip("'")
+                        val = re.sub(r'[^a-zA-Z0-9_-]', '', val)
+                        if val:
+                            return val
+    except Exception as e:
+        logger.warning(f"Failed to read /etc/default/keyboard: {e}")
+    return "es"
+
+
 def build_mcs_iso(task_id: str, server_url: str | None, server_ip: str | None, keymap: str | None):
     # Fallback to configured FQDN and FQDN_IP if not explicitly provided
     url = server_url if server_url else FQDN
+    
+    # Try to resolve IP if not explicitly provided and FQDN_IP is empty/not present
     ip = server_ip if server_ip else FQDN_IP
-    kmap = keymap if keymap else "es"
+    if not ip:
+        try:
+            ip = socket.gethostbyname(url)
+        except Exception as e:
+            logger.warning(f"Failed to resolve IP for FQDN {url}: {e}")
+            ip = ""
+
+    kmap = keymap if keymap else _get_host_keymap()
 
     # Security validation to avoid shell injection
     if not (_is_safe_string(url) and _is_safe_string(ip) and _is_safe_string(kmap)):
