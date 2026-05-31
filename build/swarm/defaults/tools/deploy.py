@@ -204,6 +204,10 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
 
         all_ok = True
         service_statuses = []
+        has_proxy = False
+        has_manager = False
+        proxy_ok = False
+        manager_ok = False
 
         for service in services:
             # Skip services with 0 replicas desired
@@ -233,10 +237,25 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
                         healthy += 1
 
             service_name = service.name.replace(stack_name + "_", "")
-            status_char = "🟢" if healthy >= desired else "🟡"
+            is_healthy = healthy >= desired
+            status_char = "🟢" if is_healthy else "🟡"
             service_statuses.append(f"    {status_char} {service_name} ({healthy}/{desired})")
-            if healthy < desired:
+            
+            if service_name == "proxy":
+                has_proxy = True
+                if is_healthy:
+                    proxy_ok = True
+            elif service_name == "manager":
+                has_manager = True
+                if is_healthy:
+                    manager_ok = True
+
+            if not is_healthy:
                 all_ok = False
+
+        # Early exit optimization: if proxy and manager are both healthy, we can continue
+        if stack_name != "infra" and has_proxy and has_manager and proxy_ok and manager_ok:
+            all_ok = True
 
         if num_lines_printed > 0:
             sys.stdout.write(f"\033[{num_lines_printed}A")
@@ -248,7 +267,10 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
         num_lines_printed = len(service_statuses)
 
         if all_ok:
-            print(f"  Stack '{stack_name}' is healthy!")
+            # Erase all printed status lines and the header
+            total_lines_to_clear = num_lines_printed + 1
+            sys.stdout.write(f"\033[{total_lines_to_clear}A\033[J")
+            sys.stdout.flush()
             return True
 
         time.sleep(2)
@@ -274,6 +296,26 @@ def create_network_overlay(network_name):
         ],
         stderr=subprocess.DEVNULL,
     )
+
+
+def ensure_clean_network(client, network_name):
+    # 1. Disconnect ourselves from the network if we are connected
+    hostname = socket.gethostname()
+    try:
+        net = client.networks.get(network_name)
+        try:
+            net.disconnect(hostname, force=True)
+        except Exception:
+            pass
+        # 2. Try to remove the network to clear any Swarm stale/RPC issues.
+        # This will only succeed if no other services are using it.
+        try:
+            net.remove()
+        except Exception:
+            pass
+    except Exception:
+        # Network doesn't exist, which is perfect
+        pass
 
 
 def create_network_internal(network_name):
@@ -545,6 +587,7 @@ def main():
     create_secret(client, f"{context['STACK']}_mcp_ro_pass", ro_password.encode())
 
     create_labels(client)
+    ensure_clean_network(client, "infra_network")
     create_network_overlay("infra_network")
     connect_network(client, "infra_network", socket.gethostname())
 
