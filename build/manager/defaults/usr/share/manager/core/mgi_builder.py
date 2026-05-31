@@ -20,7 +20,6 @@ from core.config import (
     STACK,
     MGI_POOL_DIR,
     MGI_TEMP_DIR,
-    MGI_PREFIX,
     CORE_TOKEN_URL,
     PATH_DATASHARES,
     get_dns_servers,
@@ -313,7 +312,7 @@ def _update_task_status(task_id: str, status: str, progress: int = 0, message: s
     con.expire(key, 86400)
 
 
-def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dict, build_dir: Path) -> Path:
+def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dict, release_data: dict, build_dir: Path) -> Path:
     template = Template(config_data["dockerfile"])
     base_os = config_data.get("base_os", "")
     if not base_os:
@@ -325,7 +324,8 @@ def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dic
         project_id=project_data.get("id"),
         project_slug=project_data.get("slug", ""),
         project_name=project_data.get("name", ""),
-        prefix=MGI_PREFIX,
+        flavour_name=flavour_data.get("name", "Unknown"),
+        release_name=release_data.get("name", "Unknown") if release_data else "Unknown",
         user=flavour_data.get("user", "mgi"),
         password=flavour_data.get("password", "mgi"),
         keymap=flavour_data.get("keymap", "us"),
@@ -779,7 +779,7 @@ def build_mgi_image(task_id: str, release_id: int):
                 logger.error(f"Task {task_id}: Failed to ensure or inject builder certificates: {e}")
                 raise
 
-            generate_dockerfile(project_data, config_data, flavour, build_dir)
+            generate_dockerfile(project_data, config_data, flavour, release_data, build_dir)
 
             # Copy certificate to build context
             cert_name = f"ca-{FQDN}.crt"

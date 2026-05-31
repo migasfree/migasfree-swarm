@@ -68,7 +68,6 @@ CORE_AUTH_URL = f"{CORE_URL}/token-auth/"
 # MGI (Migasfree Golden Image) build config
 MGI_POOL_DIR = PATH_DATASHARES / os.environ["STACK"] / "pool" / "mgi"
 MGI_TEMP_DIR = Path("/tmp/mgi-build")
-MGI_PREFIX = os.environ.get("MGI_PREFIX", "mgi")
 local_templates_dir = PATH_DATASHARES / STACK / "pool" / "project-templates"
 
 MGI_TEMPLATES_GITHUB_URL = "https://raw.githubusercontent.com/migasfree/project-templates/main"
