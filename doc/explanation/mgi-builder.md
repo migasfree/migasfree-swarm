@@ -242,6 +242,36 @@ Both endpoints are registered under the internal manager router and require **su
 
 ---
 
+## 🆔 MGI Identity File (`/etc/migasfree-golden-image.json`)
+
+To standardize the identification of Migasfree-generated system images, each compiled MGI embeds a static identity JSON file located at `/etc/migasfree-golden-image.json`.
+
+### Build-Time Properties
+
+During the Docker compilation phase (governed by the `dockerfile.j2` template in `project-templates`), the builder injects the following properties into the JSON structure:
+
+```json
+{
+  "server": "{{ server }}",
+  "project_slug": "{{ project_slug }}",
+  "project_name": "{{ project_name }}",
+  "flavour": "{{ flavour_name }}",
+  "release": "{{ release_name }}",
+  "base_os": "{{ base_os }}",
+  "build_date": "YYYY-MM-DDTHH:MM:SSZ",
+  "tags": "{{ tags }}"
+}
+```
+
+* **`server`**: The FQDN of the Migasfree server.
+* **`project_slug` / `project_name`**: Identifiers of the target project.
+* **`flavour`**: The MGI flavour compilation profile name.
+* **`release`**: The MGI release name (e.g. `v5.0`).
+* **`build_date`**: The UTC timestamp of the compilation run.
+* **`tags`**: Initial package tags to communicate during client setup.
+
+---
+
 ## ⚡ Redis Task Integration
 
 Tasks are managed in Redis via two principal data keys:
