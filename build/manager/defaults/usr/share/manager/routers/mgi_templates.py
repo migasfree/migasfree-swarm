@@ -221,6 +221,7 @@ async def export_deployments(
         )
 
     deployments = []
+    prefixes = set()
 
     # 2. Query all deployments of this project
     try:
@@ -258,7 +259,10 @@ async def export_deployments(
                         (dep_id,),
                     )
                     attrs = cur.fetchall()
-                    included_attrs = [f"{r[0]}-{r[1]}" for r in attrs]
+                    included_attrs = []
+                    for r in attrs:
+                        included_attrs.append(f"{r[0]}-{r[1]}")
+                        prefixes.add(r[0])
 
                     # A.2 Fetch prefix-value excluded attributes linked to this deployment
                     cur.execute(
@@ -272,7 +276,10 @@ async def export_deployments(
                         (dep_id,),
                     )
                     exattrs = cur.fetchall()
-                    excluded_attrs = [f"{r[0]}-{r[1]}" for r in exattrs]
+                    excluded_attrs = []
+                    for r in exattrs:
+                        excluded_attrs.append(f"{r[0]}-{r[1]}")
+                        prefixes.add(r[0])
 
                     # B. Build deployment dict according to source type (Internal vs External)
                     d = {"name": dep["name"], "enabled": dep["enabled"]}
@@ -453,7 +460,10 @@ async def export_deployments(
                         (app_id,),
                     )
                     attrs = cur.fetchall()
-                    available_attrs = [f"{r[0]}-{r[1]}" for r in attrs]
+                    available_attrs = []
+                    for r in attrs:
+                        available_attrs.append(f"{r[0]}-{r[1]}")
+                        prefixes.add(r[0])
 
                     # Package fields as clean lists of strings
                     packages_list = (
@@ -485,15 +495,72 @@ async def export_deployments(
             detail=f"Database error during applications export: {str(e)}",
         )
 
-    # Wrap deployments and applications in a standard dict/YAML envelope (for HTTP response)
-    export_data = {"deployments": deployments, "applications": applications}
+    # 3b. Query all unique properties (categories) matching tracked prefixes to export their types/metadata
+    properties = []
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                if prefixes:
+                    cur.execute(
+                        """
+                        SELECT id, prefix, name, enabled, kind, sort, auto_add, language, code
+                        FROM core_property
+                        WHERE prefix IN %s
+                        ORDER BY prefix ASC
+                        """,
+                        (tuple(prefixes),),
+                    )
+                    prop_rows = cur.fetchall()
+                    for prop_row in prop_rows:
+                        prop_id = prop_row[0]
+                        # Fetch attributes associated with this property
+                        cur.execute(
+                            """
+                            SELECT value, description
+                            FROM core_attribute
+                            WHERE property_att_id = %s
+                            ORDER BY value ASC
+                            """,
+                            (prop_id,),
+                        )
+                        attr_rows = cur.fetchall()
+                        attrs_list = []
+                        for attr_row in attr_rows:
+                            attrs_list.append(
+                                {
+                                    "value": attr_row[0],
+                                    "description": attr_row[1] or "",
+                                }
+                            )
+                        properties.append(
+                            {
+                                "prefix": prop_row[1],
+                                "name": prop_row[2],
+                                "enabled": prop_row[3],
+                                "kind": prop_row[4],
+                                "sort": prop_row[5],
+                                "auto_add": prop_row[6],
+                                "language": prop_row[7],
+                                "code": prop_row[8] or "",
+                                "attributes": attrs_list,
+                            }
+                        )
+    except Exception as e:
+        logger.error(f"Error querying properties for project {project_id} export: {e}")
+
+    # Wrap deployments, applications and properties in a standard dict/YAML envelope (for HTTP response)
+    export_data = {
+        "deployments": deployments,
+        "applications": applications,
+        "properties": properties,
+    }
     yaml_content = yaml.safe_dump(
         export_data, default_flow_style=False, sort_keys=False, allow_unicode=True
     )
 
-    # Build separate YAML content for the deployments.yml file (without applications)
+    # Build separate YAML content for the deployments.yml file (without applications but including properties)
     deployments_yaml = yaml.safe_dump(
-        {"deployments": deployments},
+        {"deployments": deployments, "properties": properties},
         default_flow_style=False,
         sort_keys=False,
         allow_unicode=True,
@@ -953,11 +1020,14 @@ async def import_deployments(
     # Support both wrapped dict and flat list formats
     deployments = []
     applications = []
+    properties = []
     if isinstance(payload, dict):
         if "deployments" in payload:
             deployments = payload["deployments"]
         if "applications" in payload:
             applications = payload["applications"]
+        if "properties" in payload:
+            properties = payload["properties"]
     elif isinstance(payload, list):
         deployments = payload
     else:
@@ -965,6 +1035,100 @@ async def import_deployments(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid structure: expected a list of deployments or a dictionary with a 'deployments' key.",
         )
+
+    # 2a. If properties metadata is defined in template, pre-import it into core_property table
+    if properties and isinstance(properties, list):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    for prop in properties:
+                        if not isinstance(prop, dict) or "prefix" not in prop:
+                            continue
+                        prefix = prop["prefix"].strip().upper()
+                        name = prop.get("name", prefix).strip()
+                        enabled = prop.get("enabled", True)
+                        kind = prop.get("kind", "N")
+                        sort = prop.get("sort", "server")
+                        auto_add = prop.get("auto_add", False)
+                        language = prop.get("language", 0)
+                        code = prop.get("code", "")
+
+                        # Check if property already exists in database
+                        cur.execute(
+                            "SELECT id FROM core_property WHERE prefix = %s",
+                            (prefix,),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            # Update existing property definition
+                            cur.execute(
+                                """
+                                UPDATE core_property
+                                SET name = %s, enabled = %s, kind = %s, sort = %s, auto_add = %s, language = %s, code = %s
+                                WHERE id = %s
+                                """,
+                                (name, enabled, kind, sort, auto_add, language, code, row[0]),
+                            )
+                            logger.info(f"Import: Updated Property Category '{prefix}' (ID: {row[0]}) from template properties section.")
+                            prop_id = row[0]
+                        else:
+                            # Insert new property category definition
+                            cur.execute(
+                                """
+                                INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language, code)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                                """,
+                                (prefix, name, enabled, kind, sort, auto_add, language, code),
+                            )
+                            prop_id = cur.fetchone()[0]
+                            logger.info(f"Import: Created Property Category '{prefix}' (ID: {prop_id}) from template properties section.")
+
+                        # Pre-import attributes and their descriptions
+                        attrs = prop.get("attributes", [])
+                        if isinstance(attrs, list):
+                            for attr in attrs:
+                                if not isinstance(attr, dict) or "value" not in attr:
+                                    continue
+                                val = attr["value"].strip()
+                                desc = attr.get("description", "").strip()
+
+                                # Check if attribute already exists for this property
+                                cur.execute(
+                                    "SELECT id FROM core_attribute WHERE property_att_id = %s AND LOWER(value) = LOWER(%s)",
+                                    (prop_id, val.lower()),
+                                )
+                                attr_row = cur.fetchone()
+                                if attr_row:
+                                    cur.execute(
+                                        "UPDATE core_attribute SET description = %s WHERE id = %s",
+                                        (desc, attr_row[0]),
+                                    )
+                                else:
+                                    cur.execute(
+                                        "INSERT INTO core_attribute (value, description, property_att_id) VALUES (%s, %s, %s)",
+                                        (val, desc, prop_id),
+                                    )
+
+                                # If the property prefix is 'SET', also ensure the corresponding core_attributeset is updated/inserted
+                                if prefix == "SET":
+                                    cur.execute(
+                                        "SELECT id FROM core_attributeset WHERE LOWER(name) = LOWER(%s)",
+                                        (val.lower(),),
+                                    )
+                                    aset_row = cur.fetchone()
+                                    if aset_row:
+                                        cur.execute(
+                                            "UPDATE core_attributeset SET description = %s WHERE id = %s",
+                                            (desc, aset_row[0]),
+                                        )
+                                    else:
+                                        cur.execute(
+                                            "INSERT INTO core_attributeset (name, description, enabled) VALUES (%s, %s, %s)",
+                                            (val, desc, True),
+                                        )
+                    conn.commit()
+        except Exception as prop_ex:
+            logger.error(f"Error pre-importing template properties: {prop_ex}")
 
     # 2b. Verify project exists
     try:
@@ -1709,6 +1873,72 @@ async def import_deployments(
                                     row = cur.fetchone()
                                     if row:
                                         included_ids.append(row[0])
+                                    else:
+                                        # Dynamically create the property, attributeset and attribute if they do not exist
+                                        if prefix.strip().upper() == "SET":
+                                            # Ensure the AttributeSet row exists in core_attributeset
+                                            cur.execute(
+                                                "SELECT id FROM core_attributeset WHERE LOWER(name) = LOWER(%s)",
+                                                (val.strip(),),
+                                            )
+                                            set_row = cur.fetchone()
+                                            if not set_row:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_attributeset (name, description, enabled)
+                                                    VALUES (%s, %s, %s) RETURNING id
+                                                    """,
+                                                    (val.strip(), "Dynamically created during template import", True),
+                                                )
+                                                set_id = cur.fetchone()[0]
+                                                logger.info(f"Created Attribute Set '{val.strip()}' (ID: {set_id}) dynamically.")
+                                            
+                                            # Now ensure the SET property exists in core_property
+                                            cur.execute(
+                                                "SELECT id FROM core_property WHERE prefix = 'SET'",
+                                            )
+                                            p_row = cur.fetchone()
+                                            if p_row:
+                                                p_id = p_row[0]
+                                            else:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language)
+                                                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                                                    """,
+                                                    ("SET", "SET", True, 'C', 'basic', False, 0),
+                                                )
+                                                p_id = cur.fetchone()[0]
+                                        else:
+                                            # Standard property resolution
+                                            cur.execute(
+                                                "SELECT id FROM core_property WHERE LOWER(prefix) = LOWER(%s)",
+                                                (prefix.strip(),),
+                                            )
+                                            p_row = cur.fetchone()
+                                            if p_row:
+                                                p_id = p_row[0]
+                                            else:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language)
+                                                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                                                    """,
+                                                    (prefix.strip().upper(), prefix.strip().upper(), True, 'C', 'server', False, 0),
+                                                )
+                                                p_id = cur.fetchone()[0]
+
+                                        cur.execute(
+                                            """
+                                            INSERT INTO core_attribute (value, description, property_att_id)
+                                            VALUES (%s, %s, %s) RETURNING id
+                                            """,
+                                            (val.strip(), "Dynamically created during template import", p_id),
+                                        )
+                                        new_attr_id = cur.fetchone()[0]
+                                        included_ids.append(new_attr_id)
+                                        conn.commit()
+                                        logger.info(f"Created property '{prefix.strip().upper()}' and/or attribute '{val.strip()}' (ID: {new_attr_id}) dynamically.")
                         except Exception as e:
                             logger.error(f"Error resolving attribute {attr}: {e}")
 
@@ -1732,6 +1962,72 @@ async def import_deployments(
                                     row = cur.fetchone()
                                     if row:
                                         excluded_ids.append(row[0])
+                                    else:
+                                        # Dynamically create the property, attributeset and attribute if they do not exist
+                                        if prefix.strip().upper() == "SET":
+                                            # Ensure the AttributeSet row exists in core_attributeset
+                                            cur.execute(
+                                                "SELECT id FROM core_attributeset WHERE LOWER(name) = LOWER(%s)",
+                                                (val.strip(),),
+                                            )
+                                            set_row = cur.fetchone()
+                                            if not set_row:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_attributeset (name, description, enabled)
+                                                    VALUES (%s, %s, %s) RETURNING id
+                                                    """,
+                                                    (val.strip(), "Dynamically created during template import", True),
+                                                )
+                                                set_id = cur.fetchone()[0]
+                                                logger.info(f"Created Attribute Set '{val.strip()}' (ID: {set_id}) dynamically.")
+                                            
+                                            # Now ensure the SET property exists in core_property
+                                            cur.execute(
+                                                "SELECT id FROM core_property WHERE prefix = 'SET'",
+                                            )
+                                            p_row = cur.fetchone()
+                                            if p_row:
+                                                p_id = p_row[0]
+                                            else:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language)
+                                                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                                                    """,
+                                                    ("SET", "SET", True, 'C', 'basic', False, 0),
+                                                )
+                                                p_id = cur.fetchone()[0]
+                                        else:
+                                            # Standard property resolution
+                                            cur.execute(
+                                                "SELECT id FROM core_property WHERE LOWER(prefix) = LOWER(%s)",
+                                                (prefix.strip(),),
+                                            )
+                                            p_row = cur.fetchone()
+                                            if p_row:
+                                                p_id = p_row[0]
+                                            else:
+                                                cur.execute(
+                                                    """
+                                                    INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language)
+                                                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                                                    """,
+                                                    (prefix.strip().upper(), prefix.strip().upper(), True, 'C', 'server', False, 0),
+                                                )
+                                                p_id = cur.fetchone()[0]
+
+                                        cur.execute(
+                                            """
+                                            INSERT INTO core_attribute (value, description, property_att_id)
+                                            VALUES (%s, %s, %s) RETURNING id
+                                            """,
+                                            (val.strip(), "Dynamically created during template import", p_id),
+                                        )
+                                        new_attr_id = cur.fetchone()[0]
+                                        excluded_ids.append(new_attr_id)
+                                        conn.commit()
+                                        logger.info(f"Created property '{prefix.strip().upper()}' and/or attribute '{val.strip()}' (ID: {new_attr_id}) dynamically.")
                         except Exception as e:
                             logger.error(f"Error resolving excluded attribute {attr}: {e}")
 
@@ -1857,6 +2153,37 @@ async def import_deployments(
                         errors.append(f"Failed to update '{name}': {response.text}")
                     else:
                         updated_count += 1
+                        # Save attributes directly to database to bypass API/DRF many-to-many write limitations
+                        dep_id = existing_id
+                        try:
+                            with get_db_connection() as conn:
+                                with conn.cursor() as cur:
+                                    cur.execute(
+                                        "DELETE FROM core_deployment_included_attributes WHERE deployment_id = %s",
+                                        (dep_id,),
+                                    )
+                                    cur.execute(
+                                        "DELETE FROM core_deployment_excluded_attributes WHERE deployment_id = %s",
+                                        (dep_id,),
+                                    )
+                                    for attr_id in included_ids:
+                                        cur.execute(
+                                            "INSERT INTO core_deployment_included_attributes (deployment_id, attribute_id) VALUES (%s, %s)",
+                                            (dep_id, attr_id),
+                                        )
+                                    for attr_id in excluded_ids:
+                                        cur.execute(
+                                            "INSERT INTO core_deployment_excluded_attributes (deployment_id, attribute_id) VALUES (%s, %s)",
+                                            (dep_id, attr_id),
+                                        )
+                                    conn.commit()
+                            logger.info(
+                                f"Successfully imported {len(included_ids)} included and {len(excluded_ids)} excluded attributes directly for deployment '{name}' (ID: {dep_id})"
+                            )
+                        except Exception as attr_db_ex:
+                            logger.error(
+                                f"Failed to save deployment attributes directly to DB for '{name}': {attr_db_ex}"
+                            )
                 else:
                     # Create deployment (POST)
                     url = f"{CORE_TOKEN_URL}/deployments/"
@@ -1873,6 +2200,52 @@ async def import_deployments(
                         errors.append(f"Failed to create '{name}': {response.text}")
                     else:
                         created_count += 1
+                        # Resolve the newly created deployment ID from the DB
+                        dep_id = None
+                        try:
+                            with get_db_connection() as conn:
+                                with conn.cursor() as cur:
+                                    cur.execute(
+                                        "SELECT id FROM core_deployment WHERE project_id = %s AND LOWER(name) = LOWER(%s)",
+                                        (project_id, name),
+                                    )
+                                    row = cur.fetchone()
+                                    if row:
+                                        dep_id = row[0]
+                        except Exception as db_ex:
+                            logger.error(f"Error querying deployment ID for '{name}': {db_ex}")
+
+                        if dep_id:
+                            # Save attributes directly to database to bypass API/DRF many-to-many write limitations
+                            try:
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as cur:
+                                        cur.execute(
+                                            "DELETE FROM core_deployment_included_attributes WHERE deployment_id = %s",
+                                            (dep_id,),
+                                        )
+                                        cur.execute(
+                                            "DELETE FROM core_deployment_excluded_attributes WHERE deployment_id = %s",
+                                            (dep_id,),
+                                        )
+                                        for attr_id in included_ids:
+                                            cur.execute(
+                                                "INSERT INTO core_deployment_included_attributes (deployment_id, attribute_id) VALUES (%s, %s)",
+                                                (dep_id, attr_id),
+                                            )
+                                        for attr_id in excluded_ids:
+                                            cur.execute(
+                                                "INSERT INTO core_deployment_excluded_attributes (deployment_id, attribute_id) VALUES (%s, %s)",
+                                                (dep_id, attr_id),
+                                            )
+                                        conn.commit()
+                                logger.info(
+                                    f"Successfully imported {len(included_ids)} included and {len(excluded_ids)} excluded attributes directly for deployment '{name}' (ID: {dep_id})"
+                                )
+                            except Exception as attr_db_ex:
+                                logger.error(
+                                    f"Failed to save deployment attributes directly to DB for '{name}': {attr_db_ex}"
+                                )
             except Exception as e:
                 logger.error(f"HTTP communication error for '{name}': {e}")
                 errors.append(f"Communication error for '{name}': {str(e)}")
