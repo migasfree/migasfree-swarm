@@ -30,6 +30,8 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
+logging.getLogger("redis.connection").setLevel(logging.WARNING)
+logging.getLogger("redis.client").setLevel(logging.WARNING)
 
 
 class HealthCheckFilter(logging.Filter):
