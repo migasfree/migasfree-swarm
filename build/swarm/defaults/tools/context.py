@@ -2,6 +2,7 @@ import os
 import sys
 import importlib.util
 import subprocess
+from importlib.machinery import SourceFileLoader
 
 from pathlib import Path
 
@@ -17,9 +18,6 @@ def get_stacks():
     path = base / "datashares"
 
     return [d.name for d in Path(path).iterdir() if d.is_dir()]
-
-
-from importlib.machinery import SourceFileLoader
 
 
 def import_source_file(filename):
@@ -113,7 +111,23 @@ class ContextLoader:
         # Minimal context
         # ===============
         self.prompt("FQDN", "migasfree.acme.com")
-        self.context["FQDN_IP"] = os.getenv("FQDN_IP", "")
+
+        detected_ip = ""
+        import socket
+
+        try:
+            detected_ip = socket.gethostbyname(self.context["FQDN"])
+        except Exception:
+            pass
+        if not detected_ip or detected_ip.startswith("127."):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                detected_ip = s.getsockname()[0]
+                s.close()
+            except Exception:
+                pass
+        self.context["FQDN_IP"] = os.getenv("FQDN_IP", detected_ip)
         self.default("TZ", "Europe/Madrid")
 
         # Network Management
@@ -193,6 +207,12 @@ class ContextLoader:
         # BACKUP
         # ======
         self.default("BACKUP_CRON", "00 00 * * *")
+
+        # Proxy settings for builders
+        # ===========================
+        self.default("HTTP_PROXY", os.getenv("HTTP_PROXY", ""))
+        self.default("HTTPS_PROXY", os.getenv("HTTPS_PROXY", ""))
+        self.default("NO_PROXY", os.getenv("NO_PROXY", ""))
 
         # SYNC SATURATION STRATEGY
         # ========================
@@ -479,6 +499,25 @@ class ContextLoader:
 # METRICS_RETENTION_LIMIT
 #    Duration (seconds) to keep metrics history.
 #    Default: 14400 (4 hours)
+# {line}
+""",
+
+            "HTTP_PROXY": f"""# {line}
+# HTTP_PROXY
+#     HTTP proxy URL used for outbound connections during image and ISO builds.
+#     Example: 'http://proxy.acme.com:8080'
+# {line}
+""",
+            "HTTPS_PROXY": f"""# {line}
+# HTTPS_PROXY
+#     HTTPS proxy URL used for outbound connections during image and ISO builds.
+#     Example: 'http://proxy.acme.com:8080'
+# {line}
+""",
+            "NO_PROXY": f"""# {line}
+# NO_PROXY
+#     Comma-separated list of hostnames or IP addresses that should bypass the proxy.
+#     Example: 'localhost,127.0.0.1,.acme.com'
 # {line}
 """,
         }

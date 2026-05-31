@@ -31,6 +31,12 @@ services:
             - SYNC_MAX_CONCURRENCY={{SYNC_MAX_CONCURRENCY}}
             - METRICS_RECORDING_INTERVAL={{METRICS_RECORDING_INTERVAL}}
             - METRICS_RETENTION_LIMIT={{METRICS_RETENTION_LIMIT}}
+            - HTTP_PROXY={{HTTP_PROXY}}
+            - HTTPS_PROXY={{HTTPS_PROXY}}
+            - NO_PROXY={{NO_PROXY}}
+            - http_proxy={{HTTP_PROXY}}
+            - https_proxy={{HTTPS_PROXY}}
+            - no_proxy={{NO_PROXY}}
         deploy:
             replicas: 1
             restart_policy:
