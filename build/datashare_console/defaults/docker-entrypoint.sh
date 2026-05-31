@@ -64,8 +64,8 @@ init_datashare() {
 # Run as root
 
 # The public certificate from the certification authority is required.
-wget --no-check-certificate -O /usr/local/share/ca-certificates/ca-${FQDN}.crt https://${FQDN}/pool/install/ca-${FQDN}.crt
-update-ca-certificates --fresh
+wget --no-check-certificate -O /usr/local/share/ca-certificates/ca-${FQDN}.crt https://${FQDN}/manager/v1/public/ca
+/sbin/update-ca-certificates --fresh
 
 # Install migasfree-client:
 wget -O - https://migasfree.org/pub/install-client | bash
