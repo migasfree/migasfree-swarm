@@ -94,6 +94,7 @@ async def get_mgi_template(
             dockerfile = None
             partition = None
             deployments = None
+            provision_script = None
             base_os = None
             platform = None
             pms = None
@@ -117,6 +118,19 @@ async def get_mgi_template(
                 )
             except Exception:
                 pass
+            try:
+                provision_script = local_dir.joinpath("provision.sh.j2").read_text(
+                    encoding="utf-8"
+                )
+            except Exception:
+                pass
+            if not provision_script:
+                try:
+                    provision_script = local_dir.joinpath("provision-migasfree.ps1.j2").read_text(
+                        encoding="utf-8"
+                    )
+                except Exception:
+                    pass
             try:
                 catalog_file = local_templates_dir / "catalog.yml"
                 if catalog_file.exists() and catalog_file.is_file():
@@ -144,6 +158,7 @@ async def get_mgi_template(
                 "dockerfile": dockerfile,
                 "partition": partition,
                 "deployments": deployments,
+                "provision_script": provision_script,
             }
 
     # 2. Fallback: try GitHub registry (skip proxy — only local filesystem or canonical source)
@@ -170,6 +185,16 @@ async def get_mgi_template(
                         deployments = await _fetch_text(f"{base_path}/deployments.yml")
                     except Exception:
                         pass
+                    provision_script = None
+                    try:
+                        provision_script = await _fetch_text(f"{base_path}/provision.sh.j2")
+                    except Exception:
+                        pass
+                    if not provision_script:
+                        try:
+                            provision_script = await _fetch_text(f"{base_path}/provision-migasfree.ps1.j2")
+                        except Exception:
+                            pass
                     return {
                         "id": template_id,
                         "base_os": template_info.get("base_os"),
@@ -180,6 +205,7 @@ async def get_mgi_template(
                         "dockerfile": dockerfile,
                         "partition": partition,
                         "deployments": deployments,
+                        "provision_script": provision_script,
                     }
         except Exception as e:
             logger.exception(f"Failed to fetch remote template '{template_id}' from GitHub: {e}")
@@ -195,6 +221,7 @@ async def get_mgi_template(
         "dockerfile": None,
         "partition": None,
         "deployments": None,
+        "provision_script": None,
     }
 
 
@@ -621,10 +648,15 @@ async def export_deployments(
             dest_file.write_text(deployments_yaml, encoding="utf-8")
             logger.info(f"Exported deployments saved to {dest_file}")
 
-            if build_type == "docker" and dockerfile_content:
-                dockerfile_file = dest_dir / "dockerfile.j2"
-                dockerfile_file.write_text(dockerfile_content, encoding="utf-8")
-                logger.info(f"Exported dockerfile.j2 saved to {dockerfile_file}")
+            if build_type == "docker":
+                if dockerfile_content:
+                    dockerfile_file = dest_dir / "dockerfile.j2"
+                    dockerfile_file.write_text(dockerfile_content, encoding="utf-8")
+                    logger.info(f"Exported dockerfile.j2 saved to {dockerfile_file}")
+                if provision_script:
+                    provision_file = dest_dir / "provision.sh.j2"
+                    provision_file.write_text(provision_script, encoding="utf-8")
+                    logger.info(f"Exported provision.sh.j2 saved to {provision_file}")
             elif build_type == "qemu_win":
                 autounattend_content = config_data.get("autounattend_template")
                 setupcomplete_content = config_data.get("setupcomplete_template")
@@ -1462,6 +1494,10 @@ async def import_deployments(
                 dfile = template_dir_mgi / "dockerfile.j2"
                 if dfile.exists() and dfile.is_file():
                     dockerfile_content = dfile.read_text(encoding="utf-8")
+            if not provision_content and build_type == "docker":
+                p_sh_file = template_dir_mgi / "provision.sh.j2"
+                if p_sh_file.exists() and p_sh_file.is_file():
+                    provision_content = p_sh_file.read_text(encoding="utf-8")
             if not partition_content:
                 pfile = template_dir_mgi / "partition.yml"
                 if pfile.exists() and pfile.is_file():
@@ -1507,6 +1543,17 @@ async def import_deployments(
                         url = f"{base_url}/{resolved_template_id}/partition.yml"
                         partition_content = await _fetch_text(url)
                         if partition_content:
+                            break
+                    except Exception:
+                        continue
+
+            # Fetch provision_script from remote
+            if not provision_content and build_type == "docker":
+                for base_url in urls_to_try:
+                    try:
+                        url = f"{base_url}/{resolved_template_id}/provision.sh.j2"
+                        provision_content = await _fetch_text(url)
+                        if provision_content:
                             break
                     except Exception:
                         continue
