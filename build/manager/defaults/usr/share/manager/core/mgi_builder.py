@@ -42,10 +42,7 @@ def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, project_id FROM client_computer WHERE uuid = %s;",
-                (SYSTEM_UUID.upper(),)
-            )
+            cur.execute("SELECT id, project_id FROM client_computer WHERE uuid = %s;", (SYSTEM_UUID.upper(),))
             row = cur.fetchone()
             if row:
                 existing_id, existing_project_id = row
@@ -53,7 +50,7 @@ def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
                     logger.info(f"Updating builder computer {SYSTEM_UUID} project assignment to {project_id}...")
                     cur.execute(
                         "UPDATE client_computer SET project_id = %s, updated_at = NOW() WHERE id = %s;",
-                        (project_id, existing_id)
+                        (project_id, existing_id),
                     )
                 computer_id = existing_id
             else:
@@ -66,37 +63,30 @@ def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
                         %s, 'intended', 'mgi-builder', 'mgi-builder', NOW(), NOW(), 'P', %s
                     ) RETURNING id;
                     """,
-                    (SYSTEM_UUID.upper(), project_id)
+                    (SYSTEM_UUID.upper(), project_id),
                 )
                 computer_id = cur.fetchone()[0]
 
             # Sync flavour tags to client_computer_tags for this computer
             if flavour_id is not None:
                 logger.info(f"Syncing tags for flavour {flavour_id} to builder computer {computer_id}...")
-                
+
                 # Fetch flavour tag attributes
-                cur.execute(
-                    "SELECT serverattribute_id FROM mgi_flavour_tags WHERE flavour_id = %s;",
-                    (flavour_id,)
-                )
+                cur.execute("SELECT serverattribute_id FROM mgi_flavour_tags WHERE flavour_id = %s;", (flavour_id,))
                 tag_ids = [r[0] for r in cur.fetchall()]
-                
+
                 # Delete existing tags for the builder computer
-                cur.execute(
-                    "DELETE FROM client_computer_tags WHERE computer_id = %s;",
-                    (computer_id,)
-                )
-                
+                cur.execute("DELETE FROM client_computer_tags WHERE computer_id = %s;", (computer_id,))
+
                 # Insert the new flavour tags
                 for tag_id in tag_ids:
                     cur.execute(
                         "INSERT INTO client_computer_tags (computer_id, serverattribute_id) VALUES (%s, %s);",
-                        (computer_id, tag_id)
+                        (computer_id, tag_id),
                     )
 
             conn.commit()
             logger.info("Builder computer pre-registered and tags synchronized successfully")
-
 
 
 def _ensure_builder_certificate(project_id: int) -> tuple[Path, Path]:
@@ -127,7 +117,7 @@ def _ensure_builder_certificate(project_id: int) -> tuple[Path, Path]:
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        
+
         success = loop.run_until_complete(
             create_computer_cert(
                 fqdn=FQDN,
@@ -144,12 +134,7 @@ def _ensure_builder_certificate(project_id: int) -> tuple[Path, Path]:
 
     if not decrypted_key_path.exists():
         logger.info(f"Decrypting builder private key for CN {common_name}...")
-        cmd = [
-            "openssl", "rsa",
-            "-in", str(key_path),
-            "-passin", f"pass:{password}",
-            "-out", str(decrypted_key_path)
-        ]
+        cmd = ["openssl", "rsa", "-in", str(key_path), "-passin", f"pass:{password}", "-out", str(decrypted_key_path)]
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             raise RuntimeError(f"Failed to decrypt builder private key: {res.stderr}")
@@ -312,7 +297,9 @@ def _update_task_status(task_id: str, status: str, progress: int = 0, message: s
     con.expire(key, 86400)
 
 
-def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dict, release_data: dict, build_dir: Path) -> Path:
+def generate_dockerfile(
+    project_data: dict, config_data: dict, flavour_data: dict, release_data: dict, build_dir: Path
+) -> Path:
     template = Template(config_data["dockerfile"])
     base_os = config_data.get("base_os", "")
     if not base_os:
@@ -359,7 +346,7 @@ def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dic
             f"RUN mkdir -p /var/migasfree-client/mtls/{FQDN}",
             f"RUN cp /etc/migasfree/keys/computer.crt /var/migasfree-client/mtls/{FQDN}/cert.pem",
             f"RUN cp /etc/migasfree/keys/computer.key /var/migasfree-client/mtls/{FQDN}/key.pem",
-            f"RUN cp /etc/migasfree/keys/ca.crt /var/migasfree-client/mtls/{FQDN}/ca.pem"
+            f"RUN cp /etc/migasfree/keys/ca.crt /var/migasfree-client/mtls/{FQDN}/ca.pem",
         ]
         for cmd in reversed(mtls_setup_cmds):
             lines.insert(run_idx + 1, cmd)
@@ -367,10 +354,7 @@ def generate_dockerfile(project_data: dict, config_data: dict, flavour_data: dic
 
     # Reassemble and replace registration with true bypass
     dockerfile_content = "\n".join(lines)
-    dockerfile_content = dockerfile_content.replace(
-        'echo "y" | USER=root migasfree register',
-        'true'
-    )
+    dockerfile_content = dockerfile_content.replace('echo "y" | USER=root migasfree register', "true")
 
     dockerfile_path = build_dir / "Dockerfile"
     dockerfile_path.write_text(dockerfile_content)
@@ -383,7 +367,6 @@ def build_docker_image(
     progress_cb: Callable[[int, str], None] | None = None,
     task_id: str | None = None,
 ) -> None:
-
     cmd = [
         "docker",
         "build",
@@ -400,6 +383,7 @@ def build_docker_image(
     fqdn_ip = FQDN_IP
     if not fqdn_ip:
         import socket
+
         try:
             fqdn_ip = socket.gethostbyname(FQDN)
         except Exception:
@@ -409,6 +393,7 @@ def build_docker_image(
         # Try to query the local Docker Swarm node IP directly via the Docker SDK
         try:
             import docker
+
             client = docker.from_env()
             node_info = client.info()
             node_id = node_info.get("Swarm", {}).get("NodeID")
@@ -424,6 +409,7 @@ def build_docker_image(
         # Dynamic interface fallback (offline-friendly)
         try:
             import socket
+
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # Try to connect to a local/corporate DNS server first if detected
             dns_servers = get_dns_servers()
@@ -618,6 +604,8 @@ def generate_checksums(output_dir: Path, config_data: dict) -> Path:
     excluded = {"BIOS", "EFI", "SWAP"}
     files = [f"{p['name']}.raw" for p in partition_def.get("partitions", []) if p["name"] not in excluded]
     files.append("partition.yml")
+    if (output_dir / "provision.sh.j2").exists():
+        files.append("provision.sh.j2")
 
     lines = []
     for fname in files:
@@ -769,7 +757,7 @@ def build_mgi_image(task_id: str, release_id: int):
             try:
                 _ensure_builder_computer_in_db(project_id, flavour["id"])
                 cert_path, decrypted_key_path = _ensure_builder_certificate(project_id)
-                
+
                 keys_dest = build_dir / "keys"
                 keys_dest.mkdir(parents=True, exist_ok=True)
                 shutil.copy(cert_path, keys_dest / "computer.crt")
@@ -789,11 +777,25 @@ def build_mgi_image(task_id: str, release_id: int):
                 dest_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src_cert, dest_dir / cert_name)
                 logger.info(f"Copied {src_cert} to {dest_dir}")
-                
+
                 # Also copy CA to keys/ for local validation if needed
                 shutil.copy(src_cert, build_dir / "keys" / "ca.crt")
             else:
                 logger.warning(f"Certificate {src_cert} not found")
+
+            # Export and copy repository GPG public key to build context
+            try:
+                keys_gnupg = PATH_DATASHARES / STACK / "keys" / ".gnupg"
+                gpg_dest_dir = build_dir / "pool" / "install"
+                gpg_dest_dir.mkdir(parents=True, exist_ok=True)
+                gpg_dest_file = gpg_dest_dir / f"{FQDN}.gpg"
+                logger.info(f"Exporting repository GPG key to {gpg_dest_file}...")
+                gpg_cmd = ["gpg", "--homedir", str(keys_gnupg), "--export", "migasfree-repository"]
+                with open(gpg_dest_file, "wb") as f:
+                    subprocess.run(gpg_cmd, stdout=f, check=True)
+            except Exception as e:
+                logger.error(f"Task {task_id}: Failed to export repository GPG key: {e}")
+                raise
 
             _flavour_progress(15, "Building Docker image")
             build_docker_image(build_dir, image_tag, progress_cb=_flavour_progress, task_id=task_id)
@@ -837,6 +839,34 @@ def build_mgi_image(task_id: str, release_id: int):
 
             _flavour_progress(80, "Generating metadata")
             generate_partition_yml(build_dir, config_data)
+
+            # Retrieve provision_script from config_data or DB
+            provision_script = config_data.get("provision_script")
+            if not provision_script:
+                try:
+                    from core.database import get_db_connection
+
+                    with get_db_connection() as conn:
+                        with conn.cursor() as cur:
+                            if config_id:
+                                cur.execute("SELECT provision_script FROM mgi_config WHERE id = %s", (config_id,))
+                                row = cur.fetchone()
+                                if row:
+                                    provision_script = row[0]
+                            if not provision_script and project_id:
+                                cur.execute(
+                                    "SELECT provision_script FROM mgi_config WHERE project_id = %s", (project_id,)
+                                )
+                                row = cur.fetchone()
+                                if row:
+                                    provision_script = row[0]
+                except Exception as dbe:
+                    logger.error(f"Failed to fetch provision_script from DB: {dbe}")
+
+            if provision_script and provision_script.strip():
+                (build_dir / "provision.sh.j2").write_text(provision_script, encoding="utf-8")
+                logger.info("Generated provision.sh.j2 in build directory")
+
             generate_checksums(build_dir, config_data)
 
             _flavour_progress(90, "Moving files to pool directory")
@@ -846,7 +876,7 @@ def build_mgi_image(task_id: str, release_id: int):
                 fpath = build_dir / f
                 if fpath.exists():
                     shutil.move(str(fpath), str(pool_dir / f))
-            for f in ["partition.yml", "checksums.sha256"]:
+            for f in ["partition.yml", "checksums.sha256", "provision.sh.j2"]:
                 fpath = build_dir / f
                 if fpath.exists():
                     shutil.move(str(fpath), str(pool_dir / f))
