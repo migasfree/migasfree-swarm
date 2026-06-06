@@ -140,6 +140,10 @@ class ContextLoader:
         self.default("PORT_HTTP", "80")
         self.default("PORT_HTTPS", "443")
 
+        # Rate Limit
+        # ==========
+        self.default("RATE_LIMIT", "100")
+
         # Postgres (database)
         # ===================
         self.default("POSTGRES_HOST", "pgpool")
@@ -518,6 +522,13 @@ class ContextLoader:
 # NO_PROXY
 #     Comma-separated list of hostnames or IP addresses that should bypass the proxy.
 #     Example: 'localhost,127.0.0.1,.acme.com'
+# {line}
+""",
+            "RATE_LIMIT": f"""# {line}
+# RATE_LIMIT
+#     Maximum request rate per 10 seconds for a single IP and URL to prevent DDoS.
+#     Requests exceeding this limit will receive a 429 Too Many Requests response.
+#     Default value: '100'
 # {line}
 """,
         }

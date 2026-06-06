@@ -37,6 +37,7 @@ These variables customize the behavior of a specific Migasfree stack.
 | `PORT_HTTPS` | Port where the cluster serves HTTPS traffic. | `443` |
 | `NETWORK_MNG` | Networks/hosts allowed to access administrative consoles. Space-separated List. | `127.0.0.1` |
 | `NETWORK_MCP` | Networks/hosts allowed to access the MCP server (Model Context Protocol). | `127.0.0.1` |
+| `RATE_LIMIT` | Max request rate per 10s from a single IP and URL to prevent DDoS. | `100` |
 
 ### 🔒 SSL/TLS & Authentication
 

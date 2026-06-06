@@ -152,7 +152,7 @@ frontend http
 
     # DDOS
     http-request track-sc0 url32+src table per_ip_and_url_rates
-    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt {{RATE_LIMIT}} }
 
     http-request set-var(txn.path) path  # for services_cache
 

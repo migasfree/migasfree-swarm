@@ -18,6 +18,7 @@ HTTPSMODE = os.environ["HTTPSMODE"]
 MTLS = os.environ["MTLS"]
 NETWORK_MNG = os.environ["NETWORK_MNG"]
 NETWORK_MCP = os.environ.get("NETWORK_MCP", "127.0.0.1")
+RATE_LIMIT = os.environ.get("RATE_LIMIT", "100")
 
 
 def userlist_stack() -> str:
@@ -47,6 +48,7 @@ def config_haproxy():
         "NETWORK_MNG": NETWORK_MNG,
         "NETWORK_MCP": NETWORK_MCP,
         "MTLS": MTLS == "True",
+        "RATE_LIMIT": RATE_LIMIT,
     }
 
     payload = {"haproxy.cfg": Template(HAPROXY_TEMPLATE).render(context)}
