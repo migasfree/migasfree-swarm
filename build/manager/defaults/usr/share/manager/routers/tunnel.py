@@ -592,11 +592,20 @@ async def service_websocket(
                                             }
                                         )
                                     elif msg_type == "exec_complete":
-                                        await websocket.send_json(
-                                            {
-                                                "type": "command_complete",
-                                            }
-                                        )
+                                        exit_code = msg_json.get("exit_code", 0)
+                                        if exit_code == 0:
+                                            await websocket.send_json(
+                                                {
+                                                    "type": "command_complete",
+                                                }
+                                            )
+                                        else:
+                                            await websocket.send_json(
+                                                {
+                                                    "type": "command_error",
+                                                    "error": f"Command exited with status {exit_code}",
+                                                }
+                                            )
                                     elif msg_type == "exec_error":
                                         await websocket.send_json(
                                             {
