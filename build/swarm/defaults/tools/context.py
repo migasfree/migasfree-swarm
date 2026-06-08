@@ -556,5 +556,9 @@ class ContextLoader:
     def save_stack(self):
         path_stack = Path("/mnt/cluster/datashares") / self.context["STACK"]
         path_stack.mkdir(parents=True, exist_ok=True)
+        os.chown(path_stack, 890, 890)
 
-        (path_stack / "stack.conf").write_text(self.environment())
+        file_stack_vars = path_stack / "stack.conf"
+        file_stack_vars.write_text(self.environment())
+        os.chown(file_stack_vars, 890, 890)
+
