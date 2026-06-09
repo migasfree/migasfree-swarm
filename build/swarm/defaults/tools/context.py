@@ -112,22 +112,19 @@ class ContextLoader:
         # ===============
         self.prompt("FQDN", "migasfree.acme.com")
 
-        detected_ip = ""
-        import socket
-
-        try:
-            detected_ip = socket.gethostbyname(self.context["FQDN"])
-        except Exception:
-            pass
-        if not detected_ip or detected_ip.startswith("127."):
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                detected_ip = s.getsockname()[0]
-                s.close()
-            except Exception:
-                pass
-        self.context["FQDN_IP"] = os.getenv("FQDN_IP", detected_ip)
+        # FQDN_IP resolution priority:
+        # 1. FQDN_IP env var (passed from migasfree-swarm bash script via /etc/hosts detection)
+        # 2. Value already saved in stack.conf (via module attribute, only if non-empty)
+        # 3. Empty — standard DNS resolution will be used at runtime
+        # NOTE: Do NOT auto-detect via socket.gethostbyname() here. Inside the container,
+        # DNS may resolve to a public IP, which is wrong for local /etc/hosts setups.
+        env_fqdn_ip = os.getenv("FQDN_IP", "")
+        if env_fqdn_ip:
+            self.context["FQDN_IP"] = env_fqdn_ip
+        else:
+            # Check if stack.conf already has a non-empty value
+            module_val = self._getval("FQDN_IP", None)
+            self.context["FQDN_IP"] = module_val if module_val else ""
         self.default("TZ", "Europe/Madrid")
 
         # Network Management

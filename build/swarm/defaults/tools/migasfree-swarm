@@ -227,6 +227,14 @@ then
             "$_IMAGE" "config"
     fi
     . "${_CONF_FILE}"
+    # Also source stack.conf to get FQDN (not present in cluster.conf)
+    # If STACK is unknown (no running services), discover from existing stack directories
+    if [ -z "$STACK" ] && [ -d "${PATH_STACKS}" ]; then
+        STACK=$(find "${PATH_STACKS}" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; 2>/dev/null | head -n 1)
+    fi
+    if [ -n "$STACK" ] && [ -f "${PATH_STACKS}/${STACK}/stack.conf" ]; then
+        . "${PATH_STACKS}/${STACK}/stack.conf"
+    fi
     if [ -z "$FQDN_IP" ] && [ -n "$FQDN" ]; then
         CLEAN_FQDN=$(echo "$FQDN" | tr -d '\r' | sed 's/[^[:print:]]//g' | xargs | tr '[:upper:]' '[:lower:]')
         DETECTED_IP=$(grep -i "$CLEAN_FQDN" /etc/hosts | grep -vE "^#|127.0.0.1|::1" | awk '{print $1}' | head -n 1)
