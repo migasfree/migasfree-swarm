@@ -1208,7 +1208,7 @@ async def import_deployments(
 
         # B. Import Stores
         stores_data = None
-        if template_dir and template_dir.exists():
+        if origin != "remote" and template_dir and template_dir.exists():
             stores_file = template_dir / "stores.yml"
             if stores_file.exists() and stores_file.is_file():
                 try:
@@ -1257,7 +1257,7 @@ async def import_deployments(
 
         # C. Import Packages from packages.yml and copy physical .deb files or download them
         packages_data = None
-        if template_dir and template_dir.exists():
+        if origin != "remote" and template_dir and template_dir.exists():
             packages_file = template_dir / "packages.yml"
             if packages_file.exists() and packages_file.is_file():
                 try:
@@ -1295,7 +1295,7 @@ async def import_deployments(
                     continue
 
                 # C1. Physical copy or download of .deb file to destination public store folder
-                src_pkg = template_dir / "stores" / store_slug / fullname if template_dir and template_dir.exists() else None
+                src_pkg = template_dir / "stores" / store_slug / fullname if origin != "remote" and template_dir and template_dir.exists() else None
                 if src_pkg and src_pkg.exists() and src_pkg.is_file():
                     dest_pkg_dir = (
                         PATH_DATASHARES
@@ -1398,7 +1398,7 @@ async def import_deployments(
         # D. Import Applications from applications.yml if not already provided in the payload
         if not applications:
             apps_data = None
-            if template_dir and template_dir.exists():
+            if origin != "remote" and template_dir and template_dir.exists():
                 apps_file = template_dir / "applications.yml"
                 if apps_file.exists() and apps_file.is_file():
                     try:
