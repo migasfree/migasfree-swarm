@@ -8,7 +8,7 @@ import subprocess
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from core.config import API_VERSION, MGI_POOL_DIR, CORE_TOKEN_URL
-from core.models import BuildMGImageRequest, BuildMGImageResponse, BuildTaskStatus
+from core.models import BuildMGImageRequest, BuildMGImageResponse, BuildTaskStatus, BuildTaskLogsResponse
 from core.core_client import get_current_superuser, get_cached_token
 from core.redis import get_redis_connection
 
@@ -75,6 +75,28 @@ async def get_build_status(task_id: str):
         created_at=data.get("created_at"),
         updated_at=data.get("updated_at"),
     )
+
+
+@router.get("/build/{task_id}/logs", response_model=BuildTaskLogsResponse)
+async def get_build_logs(task_id: str, start: int = 0):
+    con = get_redis_connection()
+    task_key = f"{MGI_TASK_PREFIX}{task_id}"
+
+    if not con.exists(task_key):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+
+    logs_key = f"{task_key}:logs"
+    logs = con.lrange(logs_key, start, -1)
+
+    return BuildTaskLogsResponse(
+        task_id=task_id,
+        logs=logs,
+        next_start=start + len(logs),
+    )
+
 
 
 async def _get_mpi_name_from_build(build_id: str) -> str:

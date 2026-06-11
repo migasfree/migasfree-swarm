@@ -67,6 +67,12 @@ class BuildTaskStatus(BaseModel):
     updated_at: str | None = None
 
 
+class BuildTaskLogsResponse(BaseModel):
+    task_id: str
+    logs: list[str]
+    next_start: int
+
+
 # Force explicit rebuild. Important!
 TokenCreateRequest.model_rebuild()
 TokenComputerRequest.model_rebuild()
@@ -77,4 +83,6 @@ BuildMGImageResponse.model_rebuild()
 BuildMCSISORequest.model_rebuild()
 BuildMCSISOResponse.model_rebuild()
 BuildTaskStatus.model_rebuild()
+BuildTaskLogsResponse.model_rebuild()
+
 

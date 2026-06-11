@@ -13,7 +13,7 @@ import httpx
 import yaml
 from jinja2 import Template
 
-from core.redis import get_redis_connection
+from core.redis import get_redis_connection, append_task_log
 from core.config import (
     FQDN,
     FQDN_IP,
@@ -295,6 +295,9 @@ def _update_task_status(task_id: str, status: str, progress: int = 0, message: s
         },
     )
     con.expire(key, 86400)
+    if message:
+        append_task_log(MGI_TASK_PREFIX, task_id, f"[STATUS] {status} ({progress}%): {message}")
+
 
 
 def generate_dockerfile(
@@ -441,12 +444,20 @@ def build_docker_image(
     )
     last_step = ""
     errors = []
+    con = None
+    if task_id:
+        try:
+            con = get_redis_connection()
+        except Exception:
+            pass
+
     for line in iter(proc.stdout.readline, ""):
         line = line.rstrip()
         if not line:
             continue
         if task_id:
             logger.info(f"Task {task_id} log: {line}")
+            append_task_log(MGI_TASK_PREFIX, task_id, line, con=con)
         else:
             logger.info(f"  {line}")
         if line.startswith("Step ") and "/" in line:
