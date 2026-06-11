@@ -33,16 +33,6 @@ SYSTEM_UUID = "71656d75-a1b2-c3d4-e5f6-7890abcdef02"
 logger = logging.getLogger(__name__)
 
 
-def _extract_id(value) -> int:
-    """
-    Extract an integer ID from a DRF field that may be either a plain int
-    or a nested serializer dict containing an 'id' key.
-    """
-    if isinstance(value, dict):
-        return value["id"]
-    return int(value)
-
-
 def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
     """
     Ensure the builder computer identity (UUID = '71656d75-a1b2-c3d4-e5f6-7890abcdef02')
@@ -709,9 +699,9 @@ def build_mgi_image(task_id: str, release_id: int):
     try:
         # mgi_release → mgi_config → core_project
         release_data = _get_release_from_core(release_id)
-        config_id = _extract_id(release_data.get("config"))
+        config_id = release_data.get("config")
         config_data = _get_config_from_core(config_id)
-        project_id = _extract_id(config_data.get("project"))
+        project_id = config_data.get("project")
         project_data = _get_project_from_core(project_id)
 
         # In DRF, list endpoints usually return a dict with a "results" array if paginated

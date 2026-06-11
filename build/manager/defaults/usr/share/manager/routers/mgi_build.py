@@ -127,8 +127,6 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
 
         # 3. Fetch config to get project_id
         config_id = release_data.get("config")
-        if isinstance(config_id, dict):
-            config_id = config_id["id"]
         config_resp = await client.get(
             f"{core_api_url}/token/mgi/config/{config_id}/",
             headers=headers,
@@ -143,8 +141,6 @@ async def _get_mpi_name_from_build(build_id: str) -> str:
 
         # 4. Fetch project
         project_id = config_data.get("project")
-        if isinstance(project_id, dict):
-            project_id = project_id["id"]
         project_resp = await client.get(
             f"{core_api_url}/token/projects/{project_id}/",
             headers=headers,
