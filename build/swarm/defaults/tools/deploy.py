@@ -60,7 +60,6 @@ def wait_url_available(url, timeout=60):
         time.sleep(2)
 
 
-
 def download_resource(url, output_path):
     try:
         response = requests.get(url, timeout=30)
@@ -240,7 +239,7 @@ def wait_for_stack_healthy(client, stack_name, timeout=300):
             is_healthy = healthy >= desired
             status_char = "🟢" if is_healthy else "🟡"
             service_statuses.append(f"    {status_char} {service_name} ({healthy}/{desired})")
-            
+
             if service_name == "proxy":
                 has_proxy = True
                 if is_healthy:
@@ -429,10 +428,7 @@ def config_portainer(client, context):
         # Verify if the existing token is actually valid against the active Portainer instance
         try:
             test_response = requests.get(
-                "http://portainer:9000/api/settings",
-                headers={"X-API-Key": token},
-                timeout=5,
-                verify=False
+                "http://portainer:9000/api/settings", headers={"X-API-Key": token}, timeout=5, verify=False
             )
             if test_response.status_code != 200:
                 print("Stale or invalid Portainer token detected. Regenerating...")
@@ -612,18 +608,19 @@ def main():
     except Exception:
         pass
 
-    logo = """
+    logo = r"""
 
-                   █                          ██
-                                             █
-         ███ ██    █    ██     ███     ███  ████  ███  ███    ███
-        █   █  █   █   █  █       █   █      █   █    █   █  █   █
-        █   █  █   █   █  █    ████    ██    █   █    ████   ████
-        █   █  █   █   █  █   █   █      █   █   █    █      █
-        █   █  █   █    ███    ███    ███    █   █     ███    ███
-                          █
-        we love change  ██
+        _____________________________________________________
+                                          __
+          _ __ ___  (_) __ _  __ _  ___  / _/____ ___  ___
+         | '_ ` _ \ | |/ _` |/ _` |/ __|| |_|  _// _ \/ _ \
+         | | | | | || | (_| | (_| |\__ \|  /| | /  __/  __/
+         |_| |_| |_||_|\__, |\__,_||___/|_| |_|  \___|\___|
+                       |___/                               
+                              w e   l o v e   c h a n g e
+        _____________________________________________________
 
+        
 """
 
     print(logo)
