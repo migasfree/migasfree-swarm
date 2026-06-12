@@ -4,7 +4,7 @@ services:
 
 
     agent:
-        image: portainer/agent:2.39.2
+        image: portainer/agent:2.39.3
         environment:
             - AGENT_CLUSTER_ADDR=tasks.agent
         volumes:
@@ -18,7 +18,7 @@ services:
                 constraints: [node.platform.os == linux]
 
     portainer:
-        image: portainer/portainer-ce:2.39.2
+        image: portainer/portainer-ce:2.39.3
         command: -H tcp://tasks.agent:9001 --tlsskipverify
         depends_on:
             - proxy
