@@ -349,7 +349,7 @@ async def get_prompt(
 # ==============================================================================
 # SSE Transport (legacy clients)
 # ==============================================================================
-sse = SseServerTransport("/messages")
+sse = SseServerTransport("/mcp/messages")
 
 
 def _get_init_options():
