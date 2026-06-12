@@ -352,8 +352,8 @@ footer {
 }
 
 .status-dot {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     background-color: #c4b5b0;
     border-radius: 50%;
     display: inline-block;

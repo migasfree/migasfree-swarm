@@ -42,3 +42,4 @@
 .mdi-microsoft-windows::before      { content: "\F05B3"; }
 .mdi-content-copy::before           { content: "\F018F"; }
 .mdi-download::before               { content: "\F01DA"; }
+.mdi-folder::before                 { content: "\F024B"; }

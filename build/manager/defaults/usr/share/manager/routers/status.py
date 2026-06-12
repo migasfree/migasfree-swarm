@@ -175,6 +175,9 @@ async def service_stream(request: Request):
 
 
 
+            # Send init event to signal initial load is complete
+            yield {"event": "status", "data": json.dumps({"init": True})}
+
             logger.info(
                 f"Client {client_id}: Initial state sent, starting event stream"
             )

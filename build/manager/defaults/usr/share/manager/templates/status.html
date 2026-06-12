@@ -54,7 +54,7 @@
 
     .services-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 0.75rem;
       flex: 1;
     }
@@ -114,8 +114,8 @@
     }
 
     .service-indicator {
-      width: 14px;
-      height: 14px;
+      width: 21px;
+      height: 21px;
       border-radius: 50%;
       background-color: lightgray;
       display: none;
@@ -147,8 +147,8 @@
     }
 
     .status-dot {
-      width: 16px;
-      height: 16px;
+      width: 24px;
+      height: 24px;
       background-color: #10b981;
       border-radius: 50%;
       display: inline-block;
@@ -215,6 +215,11 @@
       color: var(--brand-tertiary);
       opacity: 1;
     }
+    @media (max-width: 1400px) {
+      .services-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
 
     @media (max-width: 1200px) {
       .services-grid {
@@ -277,16 +282,13 @@
     </div>
     <nav class="tabs-nav" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; backdrop-filter: none; display: flex; gap: 0.75rem;">
       <button id="btn-status" class="tab-btn active" onclick="location.href='/manager/v1/private/status'">
-        <span class="status-dot" id="status-dot"></span> Status
+        <span class="status-dot" id="status-dot"></span> Services
       </button>
       <button id="btn-sync" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=sync'">
-        <span class="mdi mdi-sync"></span> Synchronizations
+        <span class="status-dot" id="sync-dot"></span> Synchronizations
       </button>
       <button id="btn-db" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=db'">
-        <span class="mdi mdi-database"></span> Database Cluster
-      </button>
-      <button id="btn-pool" class="tab-btn" onclick="location.href='/pool/'">
-        <span class="mdi mdi-package-variant-closed"></span> Pool
+        <span class="status-dot" id="db-dot"></span> Database
       </button>
     </nav>
   </div>
@@ -294,6 +296,7 @@
   <!-- Services Section -->
   <div class="services-section panel">
     <div class="services-grid">
+      <!-- Row 1 -->
       <div class="service-card">
         <div class="service-icon-wrap">
           <img src="/manager/static/img/portainer.svg" alt="" />
@@ -304,52 +307,6 @@
           <span class="service-count" id="nodes_portainer"></span>
         </div>
         <a id="portainer_link_parent" target="_blank" class="service-link" title="Portainer Console"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/console.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="console"></span>
-          <span class="service-name">console</span>
-          <span class="service-count" id="nodes_console"></span>
-        </div>
-        <a id="console_link_parent" target="_blank" class="service-link" title="Migasfree Console"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/beat.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="beat"></span>
-          <span class="service-name">beat</span>
-          <span class="service-count" id="nodes_beat"></span>
-        </div>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/database.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="database"></span>
-          <span class="service-name">database</span>
-          <span class="service-count" id="nodes_database"></span>
-        </div>
-        <a id="database_link_parent" target="_blank" class="service-link" title="Database Console"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/certbot.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="certbot"></span>
-          <span class="service-name">certbot</span>
-          <span class="service-count" id="nodes_certbot"></span>
-        </div>
       </div>
 
       <div class="service-card">
@@ -366,53 +323,6 @@
 
       <div class="service-card">
         <div class="service-icon-wrap">
-          <img src="/manager/static/img/public.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="public"></span>
-          <span class="service-name">public</span>
-          <span class="service-count" id="nodes_public"></span>
-        </div>
-        <a id="public_link" class="service-link" title="Public Files"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/core.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="core"></span>
-          <span class="service-name">core</span>
-          <span class="service-count" id="nodes_core"></span>
-        </div>
-        <a id="core_link_parent" target="_blank" class="service-link" title="Migasfree API"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/datastore.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="datastore"></span>
-          <span class="service-name">datastore</span>
-          <span class="service-count" id="nodes_datastore"></span>
-        </div>
-        <a id="datastore_link_parent" target="_blank" class="service-link" title="Datastore Console"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/tunnel.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="tunnel"></span>
-          <span class="service-name">tunnel</span>
-          <span class="service-count" id="nodes_tunnel"></span>
-        </div>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
           <img src="/manager/static/img/manager.svg" alt="" />
         </div>
         <div class="service-footer">
@@ -421,6 +331,53 @@
           <span class="service-count" id="nodes_manager"></span>
         </div>
         <a id="manager_link_parent" target="_blank" class="service-link" title="Manager API"></a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/mcp-server.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="mcp-server"></span>
+          <span class="service-name">mcp server</span>
+          <span class="service-count" id="nodes_mcp-server"></span>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/console.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="console"></span>
+          <span class="service-name">console</span>
+          <span class="service-count" id="nodes_console"></span>
+        </div>
+        <a id="console_link_parent" target="_blank" class="service-link" title="Migasfree Console"></a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/certbot.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="certbot"></span>
+          <span class="service-name">certbot</span>
+          <span class="service-count" id="nodes_certbot"></span>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/public.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="public"></span>
+          <span class="service-name">public</span>
+          <span class="service-count" id="nodes_public"></span>
+        </div>
+        <a id="public_link" class="service-link" title="Public Files"></a>
       </div>
 
       <div class="service-card">
@@ -448,6 +405,76 @@
 
       <div class="service-card">
         <div class="service-icon-wrap">
+          <img src="/manager/static/img/beat.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="beat"></span>
+          <span class="service-name">beat</span>
+          <span class="service-count" id="nodes_beat"></span>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/core.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="core"></span>
+          <span class="service-name">core</span>
+          <span class="service-count" id="nodes_core"></span>
+        </div>
+        <a id="core_link_parent" target="_blank" class="service-link" title="Migasfree API"></a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/tunnel.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="tunnel"></span>
+          <span class="service-name">tunnel</span>
+          <span class="service-count" id="nodes_tunnel"></span>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/database.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="database"></span>
+          <span class="service-name">database</span>
+          <span class="service-count" id="nodes_database"></span>
+        </div>
+        <a id="database_link_parent" target="_blank" class="service-link" title="Database Console"></a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/pgpool.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="pgpool"></span>
+          <span class="service-name">pgpool</span>
+          <span class="service-count" id="nodes_pgpool"></span>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/datastore.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="datastore"></span>
+          <span class="service-name">datastore</span>
+          <span class="service-count" id="nodes_datastore"></span>
+        </div>
+        <a id="datastore_link_parent" target="_blank" class="service-link" title="Datastore Console"></a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
           <img src="/manager/static/img/datashare.svg" alt="" />
         </div>
         <div class="service-footer">
@@ -456,17 +483,6 @@
           <span class="service-count" id="nodes_datashare_console"></span>
         </div>
         <a id="datashare_console_link_parent" target="_blank" class="service-link" title="Datashare Console"></a>
-      </div>
-
-      <div class="service-card">
-        <div class="service-icon-wrap">
-          <img src="/manager/static/img/mcp-server.svg" alt="" />
-        </div>
-        <div class="service-footer">
-          <span class="service-indicator" id="mcp-server"></span>
-          <span class="service-name">mcp server</span>
-          <span class="service-count" id="nodes_mcp-server"></span>
-        </div>
       </div>
     </div>
   </div>
@@ -482,11 +498,9 @@
         reconnectDelay: 5000,
         waitingThreshold: 5000,
         serviceList: [
-          'portainer', 'proxy', 'manager',
-          'console', 'public', 'pms',
-          'beat', 'core', 'worker',
-          'database', 'datastore', 'datashare_console',
-          'certbot', 'mcp-server', 'tunnel'
+          'portainer', 'proxy', 'manager', 'mcp-server', 'console', 'certbot',
+          'public', 'pms', 'worker', 'beat', 'core', 'tunnel',
+          'database', 'pgpool', 'datastore', 'datashare_console'
         ],
         consoleServices: [
           'portainer', 'proxy', 'manager',
@@ -504,7 +518,8 @@
         pmsServices: {},
         waiting: true,
         wasDisconnected: false,
-        allHealthy: false
+        allHealthy: false,
+        saturated: false
       };
 
       // DOM Cache
@@ -559,6 +574,46 @@
         } catch (error) {
           console.error('Failed to load info:', error);
           return null;
+        }
+      }
+
+      async function fetchMetricsStatus() {
+        try {
+          const response = await fetch('/manager/v1/private/metrics/json');
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.current) {
+              state.saturated = !!data.current.saturated;
+              updateSyncDot();
+            }
+
+            // Update DB dot
+            const dbDotEl = document.getElementById('db-dot');
+            if (dbDotEl && data.current) {
+              const curDb = data.current.db_latency !== undefined ? data.current.db_latency : data.current.db;
+              const dbLimit = data.limits ? data.limits.db_latency : 0;
+              const isDbHigh = curDb > dbLimit;
+              const nodes = data.current.cluster_nodes || [];
+              const anyNodeDown = nodes.some(node => node.status === 3 || (typeof node.status === 'string' && node.status.toLowerCase().includes('down')));
+              const hasNoNodes = nodes.length === 0;
+
+              if (isDbHigh || anyNodeDown || hasNoNodes) {
+                dbDotEl.style.backgroundColor = '#dc2626';
+                dbDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+              } else {
+                dbDotEl.style.backgroundColor = '#10b981';
+                dbDotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load metrics status:', error);
+          const dbDotEl = document.getElementById('db-dot');
+          if (dbDotEl) {
+            dbDotEl.style.backgroundColor = '#dc2626';
+            dbDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+          }
         }
       }
 
@@ -741,16 +796,41 @@
         }
       }
 
+      function updateSyncDot() {
+        const syncDotEl = document.getElementById('sync-dot');
+        if (!syncDotEl) return;
+
+        const proxyUp = state.waiting || (state.serviceStates['proxy'] && state.serviceStates['proxy'].running >= 1);
+        const managerUp = state.waiting || (state.serviceStates['manager'] && state.serviceStates['manager'].running >= 1);
+        const publicUp = state.waiting || (state.serviceStates['public'] && state.serviceStates['public'].running >= 1);
+        const coreUp = state.waiting || (state.serviceStates['core'] && state.serviceStates['core'].running >= 1);
+        
+        const allRequiredUp = proxyUp && managerUp && publicUp && coreUp;
+
+        if (state.saturated || !allRequiredUp) {
+          syncDotEl.style.backgroundColor = '#dc2626';
+          syncDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+        } else {
+          syncDotEl.style.backgroundColor = '#10b981';
+          syncDotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
+        }
+      }
+
       function handleStatusSSEMessage(event) {
         try {
-          state.waiting = false;
           state.lastUpdate = Date.now();
 
           console.debug('event.data', event.data);
           const data = JSON.parse(event.data);
           console.debug('Status SSE event received:', data);
 
-          if (!data.service || !data.status) {
+          if (data.init) {
+            state.waiting = false;
+            updateSyncDot();
+            return;
+          }
+
+          if (!data.service) {
             console.warn('Invalid Status SSE data:', data);
             return;
           }
@@ -758,6 +838,19 @@
           const fullServiceName = data.service;
           const serviceName = getServiceName(fullServiceName);
           console.debug('handleStatusSSEMessage', serviceName, data.status);
+
+          if (data.status === null) {
+            if (serviceName.startsWith('pms-')) {
+              delete state.pmsServices[serviceName];
+              updatePMSNode();
+            } else {
+              updateServiceNode(serviceName, {status: 'down', running: 0});
+            }
+            updateStatusDot();
+            updateSyncDot();
+            state.wasDisconnected = false;
+            return;
+          }
 
           if (serviceName.startsWith('pms-')) {
             state.pmsServices[serviceName] = data.status;
@@ -767,6 +860,7 @@
           }
 
           updateStatusDot();
+          updateSyncDot();
           state.wasDisconnected = false;
         } catch (error) {
           console.error('Status SSE parse error:', error);
@@ -815,11 +909,14 @@
           if (link) link.style.display = 'none';
         });
 
-        const dotEl = document.getElementById('status-dot');
-        if (dotEl) {
-          dotEl.style.backgroundColor = '#dc2626';
-          dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
-        }
+        const dots = ['status-dot', 'sync-dot', 'db-dot'];
+        dots.forEach(id => {
+          const dotEl = document.getElementById(id);
+          if (dotEl) {
+            dotEl.style.backgroundColor = '#dc2626';
+            dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+          }
+        });
       }
 
       function checkConnection() {
@@ -853,6 +950,8 @@
 
         if (CONFIG.infoData) {
           initSSE();
+          fetchMetricsStatus();
+          setInterval(fetchMetricsStatus, 10000);
         }
 
         setInterval(checkConnection, 2000);

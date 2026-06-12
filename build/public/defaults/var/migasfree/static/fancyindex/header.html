@@ -17,10 +17,11 @@
                 if (isPublicRepo) {
                     document.title = 'Migasfree Public Repository';
                     footerEl.text('migasfree public files');
-                    $('#btn-pool').html('<span class="mdi mdi-package-variant-closed"></span> Public Files');
+                    $('#btn-public').addClass('active');
                 } else {
                     document.title = 'Migasfree Public Pool';
                     footerEl.text('migasfree pool files');
+                    $('#btn-pool').addClass('active');
                 }
 
                 async function fetchInfo() {
@@ -28,47 +29,22 @@
                         const response = await fetch('/manager/v1/private/info');
                         if (response.ok) {
                             const info = await response.json();
-                            $('#organization').text(info.organization || '');
-                            $('#stack').text(info.stack || '');
-                            $('#tag').text(info.tag || '');
+                            if (info.organization) {
+                                $('#organization').text(info.organization).closest('.split-badge').show();
+                            }
+                            if (info.stack) {
+                                $('#stack').text(info.stack).closest('.split-badge').show();
+                            }
+                            if (info.tag) {
+                                $('#tag').text(info.tag).closest('.split-badge').show();
+                            }
                         }
                     } catch (error) {
                         console.error('Failed to load info:', error);
                     }
                 }
 
-                async function fetchStatus() {
-                    try {
-                        const response = await fetch('/manager/v1/private/status/json');
-                        if (response.ok) {
-                            const servicesData = await response.json();
-                            const services = Object.values(servicesData);
-                            const total = services.length;
-                            const downCount = services.filter(s => s.status === 'down').length;
-                            const healthyCount = services.filter(s => s.status === 'healthy').length;
-                            const allHealthy = healthyCount === total && total > 0;
-
-                            const dotEl = document.getElementById('status-dot');
-                            if (dotEl) {
-                                if (total === 0 || downCount === total) {
-                                    dotEl.style.backgroundColor = '#dc2626';
-                                    dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
-                                } else if (allHealthy) {
-                                    dotEl.style.backgroundColor = '#10b981';
-                                    dotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
-                                } else {
-                                    dotEl.style.backgroundColor = '#eab308';
-                                    dotEl.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Failed to load status:', error);
-                    }
-                }
-
                 fetchInfo();
-                fetchStatus();
             });
         </script>
     </head>
@@ -77,31 +53,25 @@
     <div class="info-panel panel">
         <div class="info-content">
             <img class="info-logo" src="/static/fancyindex/logo.svg" alt="Migasfree" />
-            <span class="split-badge">
+            <span class="split-badge" style="display: none;">
                 <span class="badge-key">Organization</span>
                 <span class="badge-value" id="organization"></span>
             </span>
-            <span class="split-badge">
+            <span class="split-badge" style="display: none;">
                 <span class="badge-key">Stack</span>
                 <span class="badge-value" id="stack"></span>
             </span>
-            <span class="split-badge">
+            <span class="split-badge" style="display: none;">
                 <span class="badge-key">Tag</span>
                 <span class="badge-value" id="tag"></span>
             </span>
         </div>
         <nav class="tabs-nav">
-            <button id="btn-status" class="tab-btn" onclick="location.href='/manager/v1/private/status'">
-                <span class="status-dot" id="status-dot"></span> Status
+            <button id="btn-public" class="tab-btn" onclick="location.href='/public/'">
+                <span class="mdi mdi-package-variant-closed"></span> Public
             </button>
-            <button id="btn-sync" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=sync'">
-                <span class="mdi mdi-sync"></span> Synchronizations
-            </button>
-            <button id="btn-db" class="tab-btn" onclick="location.href='/manager/v1/private/metrics/dashboard?tab=db'">
-                <span class="mdi mdi-database"></span> Database Cluster
-            </button>
-            <button id="btn-pool" class="tab-btn active" onclick="location.href='/pool/'">
-                <span class="mdi mdi-package-variant-closed"></span> Pool
+            <button id="btn-pool" class="tab-btn" onclick="location.href='/pool/'">
+                <span class="mdi mdi-folder"></span> Pool
             </button>
         </nav>
     </div>

@@ -43,8 +43,8 @@
         }
 
         .status-dot {
-            width: 16px;
-            height: 16px;
+            width: 24px;
+            height: 24px;
             background-color: #10b981;
             border-radius: 50%;
             display: inline-block;
@@ -294,16 +294,13 @@
             </div>
             <nav class="tabs-nav" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; backdrop-filter: none;">
                 <button id="btn-status" class="tab-btn" onclick="location.href='/manager/v1/private/status'">
-                    <span class="status-dot" id="status-dot"></span> Status
+                    <span class="status-dot" id="status-dot"></span> Services
                 </button>
                 <button id="btn-sync" class="tab-btn active" onclick="switchTab('sync')">
-                    <span class="mdi mdi-sync"></span> Synchronizations
+                    <span class="status-dot" id="sync-dot"></span> Synchronizations
                 </button>
                 <button id="btn-db" class="tab-btn" onclick="switchTab('db')">
-                    <span class="mdi mdi-database"></span> Database Cluster
-                </button>
-                <button id="btn-pool" class="tab-btn" onclick="location.href='/pool/'">
-                    <span class="mdi mdi-package-variant-closed"></span> Pool
+                    <span class="status-dot" id="db-dot"></span> Database
                 </button>
             </nav>
         </div>
@@ -339,7 +336,7 @@
             </div>
         </div>
 
-        <!-- Tab: Database Cluster -->
+        <!-- Tab: Database -->
         <div id="tab-db" class="tab-content">
             <div class="metrics-summary">
                 <div class="metric-card panel">
@@ -727,6 +724,17 @@
             }
         });
 
+        function getServiceName(fullName) {
+            const stack = document.getElementById('stack').textContent;
+            if (fullName.startsWith('infra_')) {
+                return fullName.replace('infra_', '');
+            }
+            if (stack && fullName.startsWith(stack + '_')) {
+                return fullName.replace(stack + '_', '');
+            }
+            return fullName;
+        }
+
         async function fetchData() {
             try {
                 const response = await fetch("{{ request.url_for('metrics_json').path }}");
@@ -737,6 +745,11 @@
                 let downCount = 0;
                 let healthyCount = 0;
                 let allHealthy = false;
+                let proxyUp = false;
+                let managerUp = false;
+                let publicUp = false;
+                let coreUp = false;
+
                 try {
                     const statusRes = await fetch("/manager/v1/private/status/json");
                     if (statusRes.ok) {
@@ -746,6 +759,15 @@
                         downCount = services.filter(s => s.status === 'down').length;
                         healthyCount = services.filter(s => s.status === 'healthy').length;
                         allHealthy = healthyCount === total && total > 0;
+
+                        for (const [fullName, s] of Object.entries(statusData)) {
+                            const name = getServiceName(fullName);
+                            const running = s.nodes || 0;
+                            if (name === 'proxy' && running >= 1) proxyUp = true;
+                            if (name === 'manager' && running >= 1) managerUp = true;
+                            if (name === 'public' && running >= 1) publicUp = true;
+                            if (name === 'core' && running >= 1) coreUp = true;
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching service status:", err);
@@ -814,8 +836,17 @@
                     document.getElementById('current-db-cpu').innerText = (data.current.db_cpu || 0).toFixed(1) + ' %';
 
                     const statusEl = document.getElementById('current-status');
-                    statusEl.innerText = data.current.saturated ? "SATURATED" : "HEALTHY";
-                    statusEl.style.color = data.current.saturated ? "#dc2626" : "#10b981";
+                    const allRequiredUp = proxyUp && managerUp && publicUp && coreUp;
+                    if (data.current.saturated) {
+                        statusEl.innerText = "SATURATED";
+                        statusEl.style.color = "#dc2626";
+                    } else if (!allRequiredUp) {
+                        statusEl.innerText = "DEGRADED";
+                        statusEl.style.color = "#dc2626";
+                    } else {
+                        statusEl.innerText = "HEALTHY";
+                        statusEl.style.color = "#10b981";
+                    }
 
                     const dotEl = document.getElementById('status-dot');
                     if (dotEl) {
@@ -828,6 +859,35 @@
                         } else {
                             dotEl.style.backgroundColor = '#eab308';
                             dotEl.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
+                        }
+                    }
+
+                    const syncDotEl = document.getElementById('sync-dot');
+                    if (syncDotEl) {
+                        const allRequiredUp = proxyUp && managerUp && publicUp && coreUp;
+                        if (data.current.saturated || !allRequiredUp) {
+                            syncDotEl.style.backgroundColor = '#dc2626';
+                            syncDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+                        } else {
+                            syncDotEl.style.backgroundColor = '#10b981';
+                            syncDotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
+                        }
+                    }
+
+                    const dbDotEl = document.getElementById('db-dot');
+                    if (dbDotEl) {
+                        const dbLimit = data.limits ? data.limits.db_latency : 0;
+                        const isDbHigh = curDb > dbLimit;
+                        const nodes = data.current.cluster_nodes || [];
+                        const anyNodeDown = nodes.some(node => node.status === 3 || (typeof node.status === 'string' && node.status.toLowerCase().includes('down')));
+                        const hasNoNodes = nodes.length === 0;
+
+                        if (isDbHigh || anyNodeDown || hasNoNodes) {
+                            dbDotEl.style.backgroundColor = '#dc2626';
+                            dbDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+                        } else {
+                            dbDotEl.style.backgroundColor = '#10b981';
+                            dbDotEl.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
                         }
                     }
 
@@ -936,6 +996,16 @@
                 if (dotEl) {
                     dotEl.style.backgroundColor = '#dc2626';
                     dotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+                }
+                const syncDotEl = document.getElementById('sync-dot');
+                if (syncDotEl) {
+                    syncDotEl.style.backgroundColor = '#dc2626';
+                    syncDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
+                }
+                const dbDotEl = document.getElementById('db-dot');
+                if (dbDotEl) {
+                    dbDotEl.style.backgroundColor = '#dc2626';
+                    dbDotEl.style.boxShadow = '0 0 8px rgba(220, 38, 38, 0.6)';
                 }
             }
         }
