@@ -522,6 +522,79 @@ async def export_deployments(
             detail=f"Database error during applications export: {str(e)}",
         )
 
+    # 3c. Query all flavours of this project
+    flavours = []
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT f.id, f.name, f.description, f.enabled, f.user, f.password, 
+                           f.keymap, f.keyboard_model, f.charmap, f.codeset, f.timezone, f.hostname
+                    FROM mgi_flavour f
+                    JOIN mgi_config c ON f.config_id = c.id
+                    WHERE c.project_id = %s
+                    ORDER BY f.id ASC
+                """,
+                    (project_id,),
+                )
+                flavour_rows = cur.fetchall()
+                for f_row in flavour_rows:
+                    (
+                        f_id,
+                        f_name,
+                        f_desc,
+                        f_enabled,
+                        f_user,
+                        f_password,
+                        f_keymap,
+                        f_kbd,
+                        f_charmap,
+                        f_codeset,
+                        f_tz,
+                        f_hostname,
+                    ) = f_row
+
+                    # Fetch tags/attributes linked to this flavour
+                    cur.execute(
+                        """
+                        SELECT p.prefix, a.value
+                        FROM mgi_flavour_tags ft
+                        JOIN core_attribute a ON ft.serverattribute_id = a.id
+                        JOIN core_property p ON a.property_att_id = p.id
+                        WHERE ft.flavour_id = %s
+                    """,
+                        (f_id,),
+                    )
+                    tags = cur.fetchall()
+                    tags_list = []
+                    for r in tags:
+                        tags_list.append(f"{r[0]}-{r[1]}")
+                        prefixes.add(r[0])
+
+                    flavours.append(
+                        {
+                            "name": f_name,
+                            "description": f_desc,
+                            "enabled": f_enabled,
+                            "user": f_user,
+                            "password": f_password,
+                            "keymap": f_keymap,
+                            "keyboard_model": f_kbd,
+                            "charmap": f_charmap,
+                            "codeset": f_codeset,
+                            "timezone": f_tz,
+                            "hostname": f_hostname,
+                            "tags": tags_list,
+                        }
+                    )
+    except Exception as e:
+        logger.error(f"Error exporting flavours for project {project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error during flavours export: {str(e)}",
+        )
+
     # 3b. Query all unique properties (categories) matching tracked prefixes to export their types/metadata
     properties = []
     try:
@@ -580,6 +653,7 @@ async def export_deployments(
         "deployments": deployments,
         "applications": applications,
         "properties": properties,
+        "flavours": flavours,
     }
     yaml_content = yaml.safe_dump(
         export_data, default_flow_style=False, sort_keys=False, allow_unicode=True
@@ -771,6 +845,19 @@ async def export_deployments(
                 encoding="utf-8",
             )
             logger.info(f"Exported applications metadata saved to {apps_file}")
+
+            # D2. Export Flavours to flavours.yml
+            flavours_file = dest_dir / "flavours.yml"
+            flavours_file.write_text(
+                yaml.safe_dump(
+                    {"flavours": flavours},
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                ),
+                encoding="utf-8",
+            )
+            logger.info(f"Exported flavours metadata saved to {flavours_file}")
 
             # E. Download and save physical package files via API
             for pkg in packages:
@@ -1038,6 +1125,29 @@ async def import_deployments(
                 except Exception as e:
                     logger.error(f"Error loading applications from {apps_file}: {e}")
 
+            # E.2 Load flavours.yml from the same template directory and merge into payload
+            flavours_file = None
+            if template_path and origin != "remote":
+                flavours_file = local_templates_dir / template_path / "flavours.yml"
+            if (not flavours_file or not flavours_file.exists()) and origin != "remote":
+                try:
+                    proj = await get_project_by_id(project_id)
+                    flavours_file = (
+                        local_templates_dir / proj.get("slug", "") / "flavours.yml"
+                    )
+                except Exception:
+                    pass
+            if flavours_file and flavours_file.exists() and flavours_file.is_file():
+                try:
+                    flavours_data = yaml.safe_load(flavours_file.read_text(encoding="utf-8"))
+                    if isinstance(flavours_data, dict) and "flavours" in flavours_data:
+                        if payload is None:
+                            payload = {}
+                        payload.setdefault("flavours", flavours_data["flavours"])
+                        logger.info(f"Loaded flavours from {flavours_file}")
+                except Exception as e:
+                    logger.error(f"Error loading flavours from {flavours_file}: {e}")
+
         except Exception as e:
             logger.error(
                 f"Error resolving template deployments for project {project_id}: {e}"
@@ -1053,6 +1163,7 @@ async def import_deployments(
     deployments = []
     applications = []
     properties = []
+    flavours = []
     if isinstance(payload, dict):
         if "deployments" in payload:
             deployments = payload["deployments"]
@@ -1060,6 +1171,8 @@ async def import_deployments(
             applications = payload["applications"]
         if "properties" in payload:
             properties = payload["properties"]
+        if "flavours" in payload:
+            flavours = payload["flavours"]
     elif isinstance(payload, list):
         deployments = payload
     else:
@@ -1427,6 +1540,39 @@ async def import_deployments(
             if isinstance(apps_data, dict) and "applications" in apps_data:
                 applications = apps_data["applications"]
                 logger.info("Loaded applications from template metadata")
+
+        # D2. Import Flavours from flavours.yml if not already provided in the payload
+        if not flavours:
+            flavours_data = None
+            if origin != "remote" and template_dir and template_dir.exists():
+                flavours_file = template_dir / "flavours.yml"
+                if flavours_file.exists() and flavours_file.is_file():
+                    try:
+                        flavours_data = yaml.safe_load(
+                            flavours_file.read_text(encoding="utf-8")
+                        )
+                    except Exception as ex:
+                        logger.error(
+                            f"Error importing flavours from {flavours_file}: {ex}"
+                        )
+            elif origin == "remote" and (template_path or target_slug):
+                from core.config import MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL
+                template_name = template_path if template_path else target_slug
+                for base_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
+                    if not base_url:
+                        continue
+                    try:
+                        url = f"{base_url.rstrip('/')}/{template_name}/flavours.yml"
+                        content = await _fetch_text(url)
+                        if content:
+                            flavours_data = yaml.safe_load(content)
+                            break
+                    except Exception:
+                        continue
+
+            if isinstance(flavours_data, dict) and "flavours" in flavours_data:
+                flavours = flavours_data["flavours"]
+                logger.info("Loaded flavours from template metadata")
     except Exception as ex:
         logger.error(
             f"Error during stores, packages, and applications resolution: {ex}"
@@ -1653,6 +1799,171 @@ async def import_deployments(
                     logger.info(f"Created mgi_config for project {project_id}")
     except Exception as ex:
         logger.error(f"Error updating mgi_config for project {project_id}: {ex}")
+
+    # 3c. Process Flavours Import
+    flavours_created_count = 0
+    flavours_updated_count = 0
+    
+    # Resolve config_id from mgi_config for this project_id
+    config_id = None
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM mgi_config WHERE project_id = %s", (project_id,))
+                row = cur.fetchone()
+                if row:
+                    config_id = row[0]
+    except Exception as ex:
+        logger.error(f"Error resolving config_id for project {project_id}: {ex}")
+        errors.append(f"Failed to resolve config_id: {str(ex)}")
+
+    if config_id and flavours:
+        for idx, f in enumerate(flavours):
+            if not isinstance(f, dict):
+                errors.append(f"Flavour at index {idx} is not a valid dictionary.")
+                continue
+
+            f_name = f.get("name")
+            if not f_name:
+                errors.append(f"Flavour at index {idx} is missing the required 'name' field.")
+                continue
+
+            try:
+                # A. Resolve flavour tags
+                tag_ids = []
+                f_tags = f.get("tags", [])
+                if isinstance(f_tags, list):
+                    for tag in f_tags:
+                        if isinstance(tag, str) and "-" in tag:
+                            prefix, val = tag.split("-", 1)
+                            prefix = prefix.strip()
+                            val = val.strip()
+                            try:
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as cur:
+                                        cur.execute(
+                                            """
+                                            SELECT a.id FROM core_attribute a
+                                            JOIN core_property p ON a.property_att_id = p.id
+                                            WHERE LOWER(p.prefix) = LOWER(%s) AND LOWER(a.value) = LOWER(%s)
+                                            """,
+                                            (prefix, val),
+                                        )
+                                        row = cur.fetchone()
+                                        if row:
+                                            tag_ids.append(row[0])
+                                        else:
+                                            # Dynamically create the property, attributeset and attribute
+                                            if prefix.upper() == "SET":
+                                                cur.execute(
+                                                    "SELECT id FROM core_attributeset WHERE LOWER(name) = LOWER(%s)",
+                                                    (val,),
+                                                )
+                                                set_row = cur.fetchone()
+                                                if not set_row:
+                                                    cur.execute(
+                                                        "INSERT INTO core_attributeset (name, description, enabled) VALUES (%s, %s, %s) RETURNING id",
+                                                        (val, "Dynamically created during template import", True),
+                                                    )
+                                                    set_id = cur.fetchone()[0]
+                                                cur.execute("SELECT id FROM core_property WHERE prefix = 'SET'")
+                                                p_row = cur.fetchone()
+                                                if p_row:
+                                                    p_id = p_row[0]
+                                                else:
+                                                    cur.execute(
+                                                        "INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                                                        ("SET", "SET", True, "C", "basic", False, 0),
+                                                    )
+                                                    p_id = cur.fetchone()[0]
+                                            else:
+                                                cur.execute("SELECT id FROM core_property WHERE LOWER(prefix) = LOWER(%s)", (prefix,))
+                                                p_row = cur.fetchone()
+                                                if p_row:
+                                                    p_id = p_row[0]
+                                                else:
+                                                    cur.execute(
+                                                        "INSERT INTO core_property (prefix, name, enabled, kind, sort, auto_add, language) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                                                        (prefix.upper(), prefix.upper(), True, "C", "server", False, 0),
+                                                    )
+                                                    p_id = cur.fetchone()[0]
+                                            cur.execute(
+                                                "INSERT INTO core_attribute (value, description, property_att_id) VALUES (%s, %s, %s) RETURNING id",
+                                                (val, "Dynamically created during template import", p_id),
+                                            )
+                                            new_attr_id = cur.fetchone()[0]
+                                            tag_ids.append(new_attr_id)
+                                            conn.commit()
+                            except Exception as e:
+                                logger.error(f"Error resolving tag {tag} for flavour {f_name}: {e}")
+
+                # B. Create or update flavour
+                f_desc = f.get("description", "") or ""
+                f_enabled = f.get("enabled", True)
+                f_user = f.get("user", "migasfree") or "migasfree"
+                f_password = f.get("password", "migasfree") or "migasfree"
+                f_keymap = f.get("keymap", "us") or "us"
+                f_kbd = f.get("keyboard_model", "pc105") or "pc105"
+                f_charmap = f.get("charmap", "UTF-8") or "UTF-8"
+                f_codeset = f.get("codeset", "guess") or "guess"
+                f_tz = f.get("timezone", "Europe/Madrid") or "Europe/Madrid"
+                f_hostname = f.get("hostname", f_name) or f_name
+
+                flavour_id = None
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT id FROM mgi_flavour WHERE config_id = %s AND LOWER(name) = LOWER(%s)",
+                            (config_id, f_name),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            flavour_id = row[0]
+                            logger.info(f"Updating flavour '{f_name}' (ID: {flavour_id})")
+                            cur.execute(
+                                """
+                                UPDATE mgi_flavour
+                                SET description = %s, enabled = %s, "user" = %s, password = %s,
+                                    keymap = %s, keyboard_model = %s, charmap = %s, codeset = %s,
+                                    timezone = %s, hostname = %s
+                                WHERE id = %s
+                                """,
+                                (f_desc, f_enabled, f_user, f_password, f_keymap, f_kbd, f_charmap, f_codeset, f_tz, f_hostname, flavour_id),
+                            )
+                            flavours_updated_count += 1
+                        else:
+                            logger.info(f"Creating flavour '{f_name}'")
+                            cur.execute(
+                                """
+                                INSERT INTO mgi_flavour (name, description, enabled, "user", password,
+                                                        keymap, keyboard_model, charmap, codeset,
+                                                        timezone, hostname, config_id)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                RETURNING id
+                                """,
+                                (f_name, f_desc, f_enabled, f_user, f_password, f_keymap, f_kbd, f_charmap, f_codeset, f_tz, f_hostname, config_id),
+                            )
+                            flavour_id = cur.fetchone()[0]
+                            flavours_created_count += 1
+                        conn.commit()
+
+                # C. Associate flavour tags
+                if flavour_id:
+                    with get_db_connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "DELETE FROM mgi_flavour_tags WHERE flavour_id = %s",
+                                (flavour_id,),
+                            )
+                            for attr_id in tag_ids:
+                                cur.execute(
+                                    "INSERT INTO mgi_flavour_tags (flavour_id, serverattribute_id) VALUES (%s, %s)",
+                                    (flavour_id, attr_id),
+                                )
+                            conn.commit()
+
+            except Exception as e:
+                errors.append(f"Failed to import flavour '{f_name}': {str(e)}")
 
     # 4. Process Applications Import
     for idx, app in enumerate(applications):
@@ -2361,6 +2672,8 @@ async def import_deployments(
         "packages_created": packages_created,
         "applications_created": app_created_count,
         "applications_updated": app_updated_count,
+        "flavours_created": flavours_created_count,
+        "flavours_updated": flavours_updated_count,
         "errors": errors,
     }
     http_status = status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS
