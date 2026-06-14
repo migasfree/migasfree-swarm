@@ -1183,6 +1183,25 @@ async def import_deployments(
             detail="Invalid structure: expected a list of deployments or a dictionary with a 'deployments' key.",
         )
 
+    # Ensure template_id and template_path are resolved
+    if not template_id:
+        if isinstance(payload, dict):
+            template_id = payload.get("template_id")
+        if not template_id:
+            try:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT template_id FROM mgi_config WHERE project_id = %s",
+                            (project_id,),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            template_id = row[0]
+            except Exception:
+                pass
+    template_path = template_id
+
     # 2a. If properties metadata is defined in template, pre-import it into core_property table
     if properties and isinstance(properties, list):
         try:
@@ -2100,6 +2119,8 @@ async def import_deployments(
                         except Exception:
                             pass
 
+                    icon_copied = False
+                    new_icon_relpath = None
                     if icon_src and icon_src.exists():
                         # Determine new icon path: catalog_icons/app_{app_id}{ext}
                         _, ext = _os.path.splitext(icon_filename)
@@ -2110,15 +2131,76 @@ async def import_deployments(
                             PATH_DATASHARES / STACK / "public" / "catalog_icons"
                         )
                         icon_dest_dir.mkdir(parents=True, exist_ok=True)
+                        try:
+                            _os.chown(icon_dest_dir, 890, 890)
+                        except Exception as chown_ex:
+                            logger.warning(f"Could not set owner of directory {icon_dest_dir}: {chown_ex}")
+
                         icon_dest = icon_dest_dir / f"app_{app_id}{ext}"
 
                         import shutil as _shutil
 
                         _shutil.copy2(icon_src, icon_dest)
+                        try:
+                            _os.chown(icon_dest, 890, 890)
+                        except Exception as chown_ex:
+                            logger.warning(f"Could not set owner of icon file {icon_dest}: {chown_ex}")
+
                         logger.info(
                             f"Restored icon for application '{name}' to {icon_dest}"
                         )
+                        icon_copied = True
 
+                    if not icon_copied:
+                        # Attempt to download from remote templates URL
+                        from core.config import MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL
+                        try:
+                            proj = await get_project_by_id(project_id)
+                            target_slug = proj.get("slug", "")
+                        except Exception:
+                            target_slug = ""
+                        template_name = template_path if template_path else target_slug
+
+                        # We build URLs to try
+                        urls_to_try = []
+                        for base_url in [MGI_TEMPLATES_GITHUB_URL, MGI_TEMPLATES_URL]:
+                            if base_url:
+                                urls_to_try.append(f"{base_url.rstrip('/')}/{template_name}/icons/{icon_filename}")
+
+                        for download_url in urls_to_try:
+                            logger.info(f"Attempting to download application icon from {download_url}")
+                            try:
+                                async with httpx.AsyncClient(verify=False) as client:
+                                    response = await client.get(download_url, timeout=30.0)
+                                    if response.status_code == 200:
+                                        _, ext = _os.path.splitext(icon_filename)
+                                        new_icon_relpath = f"catalog_icons/app_{app_id}{ext}"
+
+                                        # Copy to public directory
+                                        icon_dest_dir = (
+                                            PATH_DATASHARES / STACK / "public" / "catalog_icons"
+                                        )
+                                        icon_dest_dir.mkdir(parents=True, exist_ok=True)
+                                        try:
+                                            _os.chown(icon_dest_dir, 890, 890)
+                                        except Exception as chown_ex:
+                                            logger.warning(f"Could not set owner of directory {icon_dest_dir}: {chown_ex}")
+
+                                        icon_dest = icon_dest_dir / f"app_{app_id}{ext}"
+                                        icon_dest.write_bytes(response.content)
+                                        try:
+                                            _os.chown(icon_dest, 890, 890)
+                                        except Exception as chown_ex:
+                                            logger.warning(f"Could not set owner of icon file {icon_dest}: {chown_ex}")
+
+                                        logger.info(f"Successfully downloaded icon for application '{name}' to {icon_dest}")
+                                        icon_copied = True
+                                        break
+                            except Exception as dl_ex:
+                                logger.warning(f"Failed to download icon from {download_url}: {dl_ex}")
+                                continue
+
+                    if icon_copied:
                         # Update icon field in DB
                         with get_db_connection() as conn:
                             with conn.cursor() as cur:
@@ -2129,7 +2211,7 @@ async def import_deployments(
                                 conn.commit()
                     else:
                         logger.warning(
-                            f"Icon file not found in template for application '{name}': {icon_src}"
+                            f"Icon file not found locally or remotely for application '{name}'"
                         )
                 except Exception as icon_ex:
                     logger.error(
