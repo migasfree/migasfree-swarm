@@ -311,6 +311,26 @@ async def export_deployments(
                     # B. Build deployment dict according to source type (Internal vs External)
                     d = {"name": dep["name"], "enabled": dep["enabled"]}
 
+                    # Package fields as clean lists of strings
+                    packages_to_install = (
+                        [
+                            p.strip()
+                            for p in dep["packages_to_install"].split("\n")
+                            if p.strip()
+                        ]
+                        if dep["packages_to_install"]
+                        else []
+                    )
+                    packages_to_remove = (
+                        [
+                            p.strip()
+                            for p in dep["packages_to_remove"].split("\n")
+                            if p.strip()
+                        ]
+                        if dep["packages_to_remove"]
+                        else []
+                    )
+
                     if source == "E":
                         # External Deployment Schema
                         d.update(
@@ -320,6 +340,8 @@ async def export_deployments(
                                 "components": dep["components"],
                                 "options": dep["options"],
                                 "frozen": dep["frozen"],
+                                "packages_to_install": packages_to_install,
+                                "packages_to_remove": packages_to_remove,
                                 "included_attributes": included_attrs,
                                 "excluded_attributes": excluded_attrs,
                                 "source": "E",
@@ -362,26 +384,6 @@ async def export_deployments(
                             ]  # List of package names
                         else:
                             available_packages = []
-
-                        # Package fields as clean lists of strings
-                        packages_to_install = (
-                            [
-                                p.strip()
-                                for p in dep["packages_to_install"].split("\n")
-                                if p.strip()
-                            ]
-                            if dep["packages_to_install"]
-                            else []
-                        )
-                        packages_to_remove = (
-                            [
-                                p.strip()
-                                for p in dep["packages_to_remove"].split("\n")
-                                if p.strip()
-                            ]
-                            if dep["packages_to_remove"]
-                            else []
-                        )
 
                         # Resolve store: check store of packageset / package first, fallback to first store in project
                         store_slug = "thirds"
@@ -2451,9 +2453,12 @@ async def import_deployments(
                         "components": dep.get("components"),
                         "frozen": dep.get("frozen", True),
                         "expire": dep.get("expire", 1440),
-                        # Set empty lists for internal fields
-                        "packages_to_install": [],
-                        "packages_to_remove": [],
+                        "packages_to_install": parse_packages_list(
+                            dep.get("packages_to_install")
+                        ),
+                        "packages_to_remove": parse_packages_list(
+                            dep.get("packages_to_remove")
+                        ),
                         "default_preincluded_packages": [],
                         "default_included_packages": [],
                         "default_excluded_packages": [],
