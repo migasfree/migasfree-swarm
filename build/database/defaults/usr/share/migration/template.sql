@@ -1512,6 +1512,10 @@ SELECT setval(
     (SELECT MAX(id) FROM ONLY public.client_synchronization)
 );
 
+\echo 'Update intended status to assigned'
+UPDATE client_computer SET status = 'assigned' WHERE status = 'intended';
+UPDATE client_statuslog SET status = 'assigned' WHERE status = 'intended';
+
 SET session_replication_role TO 'origin';
 \echo 'Reindex Database'
 REINDEX DATABASE migasfree;
