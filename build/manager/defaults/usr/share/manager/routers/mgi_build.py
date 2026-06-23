@@ -3,6 +3,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 import httpx
+import shutil
 import subprocess
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -242,31 +243,84 @@ def _update_catalog_status(mpi_name: str, enabled: bool, build_id: int = None) -
         )
 
 
-@router.post("/builds/{build_id}/promote")
-async def promote_mgi_build(
+@router.post("/builds/{build_id}/publish")
+async def publish_mgi_build(
     build_id: str,
     _: dict = Depends(get_current_superuser),
 ):
     """
-    Promote an MGI image by setting 'enabled': True in the catalog.json
+    Publish an MGI image by setting 'enabled': True in the catalog.json
     based on its completed Core build_id.
     """
     mpi_name = await _get_mpi_name_from_build(build_id)
     _update_catalog_status(mpi_name, enabled=True, build_id=int(build_id))
-    logger.info(f"Successfully promoted build {build_id} (image: {mpi_name})")
-    return {"status": "success", "message": f"Image '{mpi_name}' promoted successfully"}
+    logger.info(f"Successfully published build {build_id} (image: {mpi_name})")
+    return {"status": "success", "message": f"Image '{mpi_name}' published successfully"}
 
 
-@router.post("/builds/{build_id}/demote")
-async def demote_mgi_build(
+@router.post("/builds/{build_id}/unpublish")
+async def unpublish_mgi_build(
     build_id: str,
     _: dict = Depends(get_current_superuser),
 ):
     """
-    Demote an MGI image by setting 'enabled': False in the catalog.json
+    Unpublish an MGI image by setting 'enabled': False in the catalog.json
     based on its completed Core build_id.
     """
     mpi_name = await _get_mpi_name_from_build(build_id)
     _update_catalog_status(mpi_name, enabled=False, build_id=int(build_id))
-    logger.info(f"Successfully demoted build {build_id} (image: {mpi_name})")
-    return {"status": "success", "message": f"Image '{mpi_name}' demoted successfully"}
+    logger.info(f"Successfully unpublished build {build_id} (image: {mpi_name})")
+    return {"status": "success", "message": f"Image '{mpi_name}' unpublished successfully"}
+
+
+@router.delete("/builds/{build_id}")
+async def delete_mgi_build(
+    build_id: str,
+    _: dict = Depends(get_current_superuser),
+):
+    """
+    Delete MGI build, cleaning up its files in the pool directory
+    and removing its entry from catalog.json.
+    """
+    try:
+        mpi_name = await _get_mpi_name_from_build(build_id)
+    except HTTPException as e:
+        # If the build doesn't exist or is not completed, there is no pool directory to clean up
+        logger.warning(f"Could not get image name for build {build_id} during deletion: {e.detail}")
+        return {"status": "success", "message": "No pool files to clean up (build status not completed or not found)"}
+    except Exception as e:
+        logger.warning(f"Error fetching build metadata during deletion: {e}")
+        return {"status": "success", "message": "No pool files to clean up"}
+
+    # 1. Delete pool directory
+    pool_dir = MGI_POOL_DIR / mpi_name
+    if pool_dir.exists() and pool_dir.is_dir():
+        try:
+            shutil.rmtree(pool_dir)
+            logger.info(f"Deleted pool directory: {pool_dir}")
+        except Exception as e:
+            logger.error(f"Failed to delete pool directory {pool_dir}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete build files: {e}",
+            )
+
+    # 2. Remove entry from catalog.json
+    catalog_path = MGI_POOL_DIR / "catalog.json"
+    if catalog_path.exists():
+        try:
+            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+            if isinstance(catalog, list):
+                new_catalog = [entry for entry in catalog if not (isinstance(entry, dict) and entry.get("name") == mpi_name)]
+                if len(new_catalog) < len(catalog):
+                    catalog_path.write_text(json.dumps(new_catalog, indent=2, ensure_ascii=False), encoding="utf-8")
+                    subprocess.run(["chown", "890:890", str(catalog_path)], check=True)
+                    logger.info(f"Removed '{mpi_name}' from catalog.json")
+        except Exception as e:
+            logger.error(f"Failed to update catalog.json: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update catalog file: {e}",
+            )
+
+    return {"status": "success", "message": f"Build {build_id} files and catalog entry cleaned up"}
