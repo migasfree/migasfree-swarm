@@ -460,13 +460,19 @@ def build_docker_image(
             append_task_log(MGI_TASK_PREFIX, task_id, line, con=con)
         else:
             logger.info(f"  {line}")
-        if line.startswith("Step ") and "/" in line:
-            step = line.split(" :")[0] if " :" in line else line
-            msg = f"Building image: {step}"
-            if msg != last_step:
-                last_step = msg
-                if progress_cb:
-                    progress_cb(0, msg)
+        import re
+
+        match = re.search(r'(?:Step\s+|\[)(\d+)\s*/\s*(\d+)', line)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            if total > 0:
+                docker_pct = 15 + int((current / total) * 20)
+                msg = f"Building image: step {current}/{total}"
+                if msg != last_step:
+                    last_step = msg
+                    if progress_cb:
+                        progress_cb(docker_pct, msg)
         if "failed" in line.lower() or "error:" in line.lower() or "non-zero" in line or line.startswith("E:"):
             errors.append(line)
             if len(errors) > 5:
