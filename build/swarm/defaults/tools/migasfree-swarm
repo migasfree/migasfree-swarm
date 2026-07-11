@@ -257,10 +257,16 @@ then
         _DETACH=true
     fi
 
+    HAS_KEYBOARD="false"
+    if [ -f /etc/default/keyboard ]; then
+        HAS_KEYBOARD="true"
+    fi
+
     docker run --name migasfree-swarm \
         --detach=${_DETACH} --rm -ti \
         --env STACK="${STACK}" \
         --env FQDN_IP="${FQDN_IP}" \
+        --env HAS_KEYBOARD="${HAS_KEYBOARD}" \
         -v "${_CONF_DIR}":"${_CONF_DIR}" \
         -v /usr/bin/migasfree-swarm:/usr/bin/migasfree-swarm \
         -v /var/run/docker.sock:/var/run/docker.sock \

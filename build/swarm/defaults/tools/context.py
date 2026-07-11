@@ -224,6 +224,8 @@ class ContextLoader:
         self.default("METRICS_RECORDING_INTERVAL", "15")
         self.default("METRICS_RETENTION_LIMIT", "14400")
 
+        self.context["HAS_KEYBOARD"] = os.getenv("HAS_KEYBOARD", "false")
+
         self.save_stack()
 
     def comment(self, key):
