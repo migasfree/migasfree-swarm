@@ -40,7 +40,7 @@ EOF
 start_message
 
 # Hacking environment variable MIGASFREE_SERVER for production
-grep -l __FQDN__ /usr/share/nginx/html/js/* | while read -r _FILE; do
+grep -rl __FQDN__ /usr/share/nginx/html/ | while read -r _FILE; do
     sed -i "s/__FQDN__/$FQDN/g" "$_FILE"
 done
 
