@@ -2,7 +2,10 @@ import requests
 import time
 import base64
 
-from requests.packages.urllib3.filepost import encode_multipart_formdata
+try:
+    from urllib3.filepost import encode_multipart_formdata
+except ImportError:
+    from requests.packages.urllib3.filepost import encode_multipart_formdata  # type: ignore[import-not-found]
 
 
 def token_exists(data, token_name):
@@ -19,6 +22,7 @@ def create_token(name, username, password):
     attempts = 0
     server_portainer = "http://portainer:9000"
 
+    response = None
     while attempts < 15:  # Prevent infinite loop
         session = requests.Session()
         session.headers = {"Content-Type": "application/json"}
@@ -36,58 +40,67 @@ def create_token(name, username, password):
             time.sleep(2 + (attempts * 0.5))  # Slight backoff
             attempts += 1
             continue
-
         else:
             if response.status_code != 200:
                 print(
                     f"    Portainer authentication failed. Status Code: {response.status_code}"
                 )
                 session.close()
-                if (
-                    response.status_code == 422
-                ):  # Invalid credentials in some versions or already init
+                if response.status_code in (401, 403, 422):
                     break
                 time.sleep(2)
                 attempts += 1
 
-    if response and "jwt" in response.json():
-        headers = session.headers
-        headers["Authorization"] = f"Bearer {response.json()['jwt']}"
-        session.headers = headers
+    userid = None
+    if response and response.status_code == 200:
+        try:
+            res_json = response.json()
+        except Exception:
+            res_json = {}
 
-        response = session.get(f"{server_portainer}/api/users/me", timeout=10)
-        headers = session.headers
-        headers["x-csrf-token"] = response.headers["x-csrf-token"]
-        session.headers = headers
-        if response and response.status_code == requests.codes.ok:
-            userid = response.json()["Id"]
-            response = session.get(
-                f"{server_portainer}/api/users/{userid}/tokens", timeout=10
-            )
+        if "jwt" in res_json:
+            headers = session.headers
+            headers["Authorization"] = f"Bearer {res_json['jwt']}"
+            session.headers = headers
+
+            response = session.get(f"{server_portainer}/api/users/me", timeout=10)
             if response and response.status_code == requests.codes.ok:
-                if not token_exists(response.json(), name):
-                    # create token
-                    payload = {"description": name, "password": password}
-                    response = session.post(
-                        f"{server_portainer}/api/users/{userid}/tokens",
-                        json=payload,
-                        timeout=10,
+                headers = session.headers
+                if "x-csrf-token" in response.headers:
+                    headers["x-csrf-token"] = response.headers["x-csrf-token"]
+                session.headers = headers
+                userid = response.json().get("Id")
+                if userid:
+                    response = session.get(
+                        f"{server_portainer}/api/users/{userid}/tokens", timeout=10
                     )
                     if response and response.status_code == requests.codes.ok:
-                        return response.json()["rawAPIKey"]
+                        if not token_exists(response.json(), name):
+                            # create token
+                            payload = {"description": name, "password": password}
+                            response = session.post(
+                                f"{server_portainer}/api/users/{userid}/tokens",
+                                json=payload,
+                                timeout=10,
+                            )
+                            if response and response.status_code == requests.codes.ok:
+                                return response.json().get("rawAPIKey", "")
 
-    # remove token
-    response = session.get(f"{server_portainer}/api/users/{userid}/tokens", timeout=10)
-    tokens = response.json()
-    token_id = None
-    for token in tokens:
-        if "description" in token:
-            if token["description"] == name:
-                token_id = token.get("id")
-                response = session.delete(
-                    f"{server_portainer}/api/users/{userid}/tokens/{token_id}",
-                    timeout=10,
-                )
+    # remove token if userid exists
+    if userid:
+        try:
+            response = session.get(f"{server_portainer}/api/users/{userid}/tokens", timeout=10)
+            if response and response.status_code == requests.codes.ok:
+                tokens = response.json()
+                for token in tokens:
+                    if isinstance(token, dict) and token.get("description") == name:
+                        token_id = token.get("id")
+                        session.delete(
+                            f"{server_portainer}/api/users/{userid}/tokens/{token_id}",
+                            timeout=10,
+                        )
+        except Exception:
+            pass
 
     return ""
 

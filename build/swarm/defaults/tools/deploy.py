@@ -404,7 +404,7 @@ def config_portainer(client, context):
                 json={"Username": user, "Password": password},
                 timeout=10,
             )
-            if response.status_code == 200 or response.status_code == 409:
+            if response.status_code in (200, 403, 409, 422):
                 break
             print(f"    Waiting for Portainer to be ready... (Status: {response.status_code})")
         except requests.RequestException as e:
