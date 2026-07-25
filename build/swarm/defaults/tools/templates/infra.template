@@ -19,7 +19,7 @@ services:
 
     portainer:
         image: portainer/portainer-ce:2.39.5
-        command: -H tcp://tasks.agent:9001 --tlsskipverify
+        command: -H tcp://tasks.agent:9001 --tlsskipverify --no-setup-token
         depends_on:
             - proxy
         volumes:
