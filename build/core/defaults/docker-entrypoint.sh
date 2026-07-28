@@ -214,7 +214,8 @@ ln -snf "${DATASHARE_MOUNT_PATH}/tmp" "${MIGASFREE_TMP_DIR}"
 export MIGASFREE_PLUGINS_DIR=/var/lib/migasfree-backend/plugins
 mkdir -p "$(dirname "${MIGASFREE_PLUGINS_DIR}")"
 ln -snf "${DATASHARE_MOUNT_PATH}/plugins" "${MIGASFREE_PLUGINS_DIR}"
-ln -snf "${DATASHARE_MOUNT_PATH}/plugins/"* /migasfree/core/pms/plugins/ 2>/dev/null || :
+rm -rf /migasfree/core/pms/plugins
+ln -snf "${DATASHARE_MOUNT_PATH}/plugins" /migasfree/core/pms/plugins
 
 # shellcheck source=/dev/null
 . /venv/bin/activate
