@@ -1,4 +1,4 @@
-FROM dpage/pgadmin4:9.15
+FROM dpage/pgadmin4:9.17
 LABEL maintainer="Alberto Gacías <alberto@migasfree.org>"
 
 # https://github.com/pgadmin-org/pgadmin4/blob/master/docs/en_US/container_deployment.rst
