@@ -1,4 +1,4 @@
-FROM filebrowser/filebrowser:v2.46.1 AS base
+FROM filebrowser/filebrowser:v2.63.23 AS base
 
 FROM alpine:3.22
 
