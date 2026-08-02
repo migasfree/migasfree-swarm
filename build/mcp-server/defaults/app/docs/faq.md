@@ -8,6 +8,7 @@ Welcome to the FAQ. Here you will find answers to the most common questions and 
   - [TLS Certificate Verification Error](#tls-certificate-verification-error)
   - [MCP Client Error: Method Not Allowed](#mcp-client-error-method-not-allowed)
   - [403 Forbidden on Dev Consoles or Bootstrap URLs](#403-forbidden-on-dev-consoles-or-bootstrap-urls)
+  - [Portainer Login Failure: Invalid Credentials](#portainer-login-failure-invalid-credentials)
 - [⚙️ Configuration](#configuration)
 - [🗄️ Database](#database)
 - [💻 Migasfree Client](#migasfree-client)
@@ -91,6 +92,36 @@ To resolve this and allow your network to access these consoles:
    ```bash
    migasfree-swarm deploy <STACK>
    ```
+
+### Portainer Login Failure: Invalid Credentials
+
+**Problem:**  
+When attempting to log in to Portainer using the credentials retrieved via `migasfree-swarm secret`, authentication fails with an `Invalid credentials` error.
+
+**Solution:**  
+This issue occurs when the persistent credential file (`/mnt/cluster/credentials/swarm-credential`) has been regenerated or updated while the Docker Swarm secret (`swarm-credential`) was not updated (since Docker Swarm secrets are immutable and are not overwritten during deployment if they already exist). Portainer initializes its database using the credentials from the disk file, whereas `migasfree-swarm secret` displays the stale Docker Swarm secret.
+
+To resolve this issue and synchronize the Docker Swarm secret with the disk credentials:
+
+1. **Undeploy the stack** (this releases the `swarm-credential` secret used by the proxy service):
+   ```bash
+   migasfree-swarm undeploy
+   ```
+
+2. **Remove the stale Docker secret**:
+   ```bash
+   docker secret rm swarm-credential
+   ```
+
+3. **Redeploy the stack** (this recreates the Swarm secret from disk and synchronizes everything):
+   ```bash
+   migasfree-swarm deploy
+   ```
+
+> **Note:** If you need immediate access to Portainer without redeploying the stack, you can read the active credentials directly from the host volume:
+> ```bash
+> docker run --rm -v migasfree-swarm:/mnt/cluster alpine cat /mnt/cluster/credentials/swarm-credential
+> ```
 
 ---
 
