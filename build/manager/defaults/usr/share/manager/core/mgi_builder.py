@@ -147,7 +147,6 @@ MGI_TASK_PREFIX = "mgi:task:"
 
 
 TEMPLATE_DIR = Path("/usr/share/manager/templates")
-MPI_TEMPLATE = "mpi.Dockerfile.j2"
 
 
 def _get_core_token():
@@ -751,7 +750,7 @@ def build_mgi_image(task_id: str, release_id: int):
 
             def _flavour_progress(pct, msg):
                 actual_pct = base_pct + int((pct / 100) * flavour_span)
-                _update_task_status(task_id, "building MPI", actual_pct, f"[{mpi_name}] {msg}")
+                _update_task_status(task_id, "building MGI", actual_pct, f"[{mpi_name}] {msg}")
 
             build_dir = MGI_TEMP_DIR / f"{mpi_name}-{task_id[:8]}"
             image_tag = f"mgi/{mpi_name}:{task_id[:8]}"
