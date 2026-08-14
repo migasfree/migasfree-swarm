@@ -16,6 +16,7 @@ Advanced operational guides for managing your Migasfree Swarm stack.
 
 * **Clean Up Images**: Run `migasfree-swarm prune` to remove dangling `<none>` images.
 * **Check Status**: Run `migasfree-swarm info` to see the cluster and stacks overview.
+* **Backups & Recovery**: Run `migasfree-swarm backup <stack>` and `migasfree-swarm restore <stack>` (see [Backups & Recovery](backups-and-recovery.md)).
 * **Stop Infrastructure**: Run `migasfree-swarm undeploy` (removes the entire stack).
 
 ## Console Management

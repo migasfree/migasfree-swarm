@@ -6,6 +6,10 @@ _LOG=/var/log/backup
     _PATH="${DATASHARE_MOUNT_PATH}/dump"
 
     DUMP_FILE="${1:-migasfree.sql}"
+    case "$DUMP_FILE" in
+        *.sql) ;;
+        *) DUMP_FILE="${DUMP_FILE}.sql" ;;
+    esac
 
     mkdir -p "$_PATH" || :
 

@@ -1,4 +1,13 @@
 #!/bin/sh
 
+DUMP_FILE="${1:-migasfree.rdb}"
+case "$DUMP_FILE" in
+    *.rdb) ;;
+    *) DUMP_FILE="${DUMP_FILE}.rdb" ;;
+esac
+
+mkdir -p "$DATASHARE_MOUNT_PATH/dump" || :
+
 redis-cli -a "$(cat "/run/secrets/${STACK}_superadmin_pass")" SAVE > /dev/null
-cp /data/dump.rdb "$DATASHARE_MOUNT_PATH/dump/"
+cp /data/dump.rdb "$DATASHARE_MOUNT_PATH/dump/$DUMP_FILE"
+

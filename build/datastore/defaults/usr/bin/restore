@@ -1,4 +1,20 @@
 #!/bin/sh
 
-cp "$DATASHARE_MOUNT_PATH/dump/dump.rdb" /data/dump.rdb
+DUMP_FILE="${1:-migasfree.rdb}"
+case "$DUMP_FILE" in
+    *.rdb) ;;
+    *) DUMP_FILE="${DUMP_FILE}.rdb" ;;
+esac
+
+_PATH="$DATASHARE_MOUNT_PATH/dump/$DUMP_FILE"
+
+if [ ! -f "$_PATH" ]; then
+    echo "ERROR: Backup file '$_PATH' not found!"
+    exit 1
+fi
+
+echo "Restoring Redis datastore from '$_PATH'..."
+cp "$_PATH" /data/dump.rdb
 redis-cli -a "$(cat "/run/secrets/${STACK}_superadmin_pass")" -h datastore SHUTDOWN SAVE
+echo "Done!"
+

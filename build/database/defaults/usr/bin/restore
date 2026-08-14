@@ -4,6 +4,10 @@ _PATH=${DATASHARE_MOUNT_PATH}/dump
 _LOG=/var/log/restore
 
 DUMP_FILE="${1:-migasfree.sql}"
+case "$DUMP_FILE" in
+    *.sql) ;;
+    *) DUMP_FILE="${DUMP_FILE}.sql" ;;
+esac
 
 {
     echo "Restore '$DUMP_FILE' dump."

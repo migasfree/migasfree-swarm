@@ -48,6 +48,8 @@ Available commands:
   url-admin-certificate  Generate a one-time URL to create a client certificate for administration console access
   join-worker            Add a worker node to the cluster
   leave                  Leave the Swarm cluster
+  backup                 Backup database (PostgreSQL) and datastore (Redis) dumps
+  restore                Restore database (PostgreSQL) and datastore (Redis) dumps
   prune                  Remove dangling images from the node
   info                   Show cluster and stack information
 EOF
@@ -64,6 +66,16 @@ case "$COMMAND" in
     deploy)
         shift
         python3 /tools/deploy.py "$@"
+    ;;
+
+    backup)
+        shift
+        run_manager "python3 /tools/backup.py $*"
+    ;;
+
+    restore)
+        shift
+        run_manager "python3 /tools/restore.py $*"
     ;;
 
     info)
