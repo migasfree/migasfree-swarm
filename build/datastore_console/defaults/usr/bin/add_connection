@@ -1,15 +1,66 @@
 #!/bin/sh
 
-MIGASFREE_SECRET_DIR=/var/run/secrets
+MIGASFREE_SECRET_DIR=${MIGASFREE_SECRET_DIR:-/var/run/secrets}
+REDIS_HOST=${REDIS_HOST:-datastore}
+REDIS_PORT=${REDIS_PORT:-6379}
+REDIS_DB=${REDIS_DB:-0}
 
-sleep 5
+# Wait for RedisInsight API to be ready
+# =====================================
+_MAX_RETRIES=60
+_COUNTER=0
 
-# add the connection to datastore if not exist
-# ============================================
-if ! curl -X GET -H "Content-Type: application/json" "http://127.0.0.1:5540/api/databases" | grep -q ',"name":"'"${STACK}"'","'
+while [ "$_COUNTER" -lt "$_MAX_RETRIES" ]
+do
+    if curl --fail --silent --head --request GET "http://127.0.0.1:5540/api/settings" > /dev/null 2>&1
+    then
+        break
+    fi
+    sleep 1
+    _COUNTER=$((_COUNTER + 1))
+done
+
+if [ "$_COUNTER" -ge "$_MAX_RETRIES" ]
 then
-    _PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
-    curl -X POST -H "Content-Type: application/json" \
-        -d "{\"host\": \"datastore\", \"port\": 6379, \"name\": \"${STACK}\", \"username\": \"default\", \"password\": \"${_PASS}\"}" \
-        "http://127.0.0.1:5540/api/databases"
+    exit 1
 fi
+
+# Accept EULA and disable encryption requirement
+# ==============================================
+curl -s -X PATCH -H "Content-Type: application/json" \
+    -d '{"agreements":{"eula":true,"analytics":false,"notifications":false,"encryption":false}}' \
+    "http://127.0.0.1:5540/api/settings" > /dev/null 2>&1 || :
+
+# Add the connection to datastore if it does not exist
+# ====================================================
+_COUNTER=0
+while [ "$_COUNTER" -lt 30 ]
+do
+    _DATABASES=$(curl -s -X GET -H "Content-Type: application/json" "http://127.0.0.1:5540/api/databases" 2>/dev/null)
+
+    if echo "$_DATABASES" | grep -q "\"name\":\"${STACK}\""
+    then
+        break
+    fi
+
+    _PASS=""
+    if [ -f "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass" ]
+    then
+        _PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+    fi
+
+    _RESP=$(curl -s -w "\n%{http_code}" -X POST -H "Content-Type: application/json" \
+        -d "{\"host\": \"${REDIS_HOST}\", \"port\": ${REDIS_PORT}, \"name\": \"${STACK}\", \"db\": ${REDIS_DB}, \"username\": \"default\", \"password\": \"${_PASS}\"}" \
+        "http://127.0.0.1:5540/api/databases" 2>/dev/null)
+
+    _STATUS=$(echo "$_RESP" | tail -n 1)
+
+    if [ "$_STATUS" = "201" ] || [ "$_STATUS" = "200" ]
+    then
+        break
+    fi
+
+    sleep 2
+    _COUNTER=$((_COUNTER + 1))
+done
+

@@ -508,6 +508,7 @@ services:
             - NODE={{NODE}}
             - SERVICE={{SERVICE}}
             - RI_APP_FOLDER_ABSOLUTE_PATH={{DATASHARE_MOUNT_PATH}}/consoles/datastore
+            - RI_ACCEPT_TERMS_AND_CONDITIONS=true
             - REDIS_HOST={{REDIS_HOST}}
             - REDIS_PORT={{REDIS_PORT}}
             - REDIS_DB={{REDIS_DB}}
