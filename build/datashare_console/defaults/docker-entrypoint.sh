@@ -15,11 +15,6 @@ init_datashare() {
     # conf
     mkdir -p ${_ROOT}/conf/ || :
 
-    if ! [ -f ${_ROOT}/conf/settings.py ]
-    then
-        cp /etc/migasfree/settings.py ${_ROOT}/conf/
-    fi
-
     #dump
     mkdir -p ${_ROOT}/dump || :
 
