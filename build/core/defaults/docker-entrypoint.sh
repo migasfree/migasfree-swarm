@@ -255,5 +255,5 @@ then
 else
     # CORE
     _WORKERS=$((2 * $(ncores) + 1))
-    exec su -c "uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $_WORKERS" www-data
+    exec su -c "uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $_WORKERS --ws-ping-interval 20 --ws-ping-timeout 20" www-data
 fi

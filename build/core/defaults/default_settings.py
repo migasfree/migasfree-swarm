@@ -88,7 +88,17 @@ CACHES = {
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [{"host": REDIS_HOST, "port": REDIS_PORT, "password": get_secret_pass()}]},
+        "CONFIG": {
+            "hosts": [
+                {
+                    "host": REDIS_HOST,
+                    "port": REDIS_PORT,
+                    "password": get_secret_pass(),
+                    "socket_timeout": None,
+                    "socket_connect_timeout": 5,
+                }
+            ]
+        },
     }
 }
 

@@ -10,6 +10,7 @@ global
     stats socket tcp@:9999 level admin expose-fd listeners
 
     tune.ssl.default-dh-param 2048
+    tune.ssl.cachesize 0
     ssl-server-verify none
 
     master-worker
@@ -89,7 +90,7 @@ frontend http
 {% if MTLS %}
     bind *:{{PORT_HTTPS}} ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem ca-file /mnt/cluster/certificates/{{STACK}}/ca/ca.crt verify optional ssl-min-ver TLSv1.2 ssl-max-ver TLSv1.3 alpn http/1.1 crl-file /mnt/cluster/certificates/{{STACK}}/crl.pem
 {% else %}
-    bind *:{{PORT_HTTPS}} ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem
+    bind *:{{PORT_HTTPS}} ssl crt /mnt/cluster/certificates/{{STACK}}/server/{{FQDN}}.pem alpn http/1.1
 {% endif %}
 
     # redirects
@@ -405,7 +406,10 @@ backend mf_core
     balance leastconn
     # For SWAGGER and REST-FRAMEWORK. It is also necessary "SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')" in settings.py
     http-request add-header X-Forwarded-Proto https
+    # Disable cookie insertion for WebSocket upgrades (prevents 1006 abnormal closures)
+    http-request set-var(txn.is_ws) str(true) if { hdr(Upgrade) -i websocket }
     cookie SRVNAME insert
+    http-response del-header Set-Cookie if { var(txn.is_ws) -m found }
         server-template core- 20 tasks.core:8080 resolvers docker check init-addr none
 
 

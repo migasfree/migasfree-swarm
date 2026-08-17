@@ -45,7 +45,7 @@ RUN . /venv/bin/activate && \
     rm -rf /migasfree-backend
 
 RUN . /venv/bin/activate && \
-    pip3 install --no-cache-dir uvicorn[standard]==0.22.0
+    pip3 install --no-cache-dir uvicorn[standard]==0.34.2
 
 RUN . /venv/bin/activate && \
     # Symbolic links to be copied from other containers && \
