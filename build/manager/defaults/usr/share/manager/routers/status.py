@@ -15,6 +15,7 @@ from core.config import API_VERSION
 from core.status import Message
 from core.utils import get_timestamp, get_organization
 from core.monitor import DockerSwarmMonitor
+from core.upgrade import start_version_checker, stop_version_checker
 from core.availability import (
     start_recording,
     stop_recording,
@@ -72,11 +73,13 @@ async def lifespan(app: FastAPI):
     start_recording()
     start_mgi_worker()
     start_mcs_worker()
+    start_version_checker()
     logger.info("Application started successfully")
     yield
     logger.info("Shutting down application...")
     if docker_monitor:
         await docker_monitor.stop()
+    stop_version_checker()
     await stop_recording()
 
 

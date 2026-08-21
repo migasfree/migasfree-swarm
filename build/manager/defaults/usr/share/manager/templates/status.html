@@ -275,9 +275,12 @@
         <span class="badge-key">Stack</span>
         <span class="badge-value" id="stack"></span>
       </span>
-      <span class="split-badge">
+      <span class="split-badge" id="tag-badge">
         <span class="badge-key">Tag</span>
-        <span class="badge-value" id="tag"></span>
+        <span class="badge-value" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span id="tag"></span>
+          <span id="tag-update-dot" style="display: none; width: 16px; height: 16px; background-color: #dc2626; border-radius: 50%; box-shadow: 0 0 10px rgba(220, 38, 38, 0.9); cursor: pointer; flex-shrink: 0; margin-left: 4px;" title="New version available. Click to download."></span>
+        </span>
       </span>
     </div>
     <nav class="tabs-nav" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none; backdrop-filter: none; display: flex; gap: 0.75rem;">
@@ -487,9 +490,216 @@
     </div>
   </div>
 
+
+  <!-- Upgrade Modal -->
+  <div id="upgrade-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--bg-body); padding: 2rem; border-radius: var(--rounded-glass); max-width: 720px; width: 92%; border: 1px solid var(--glass-border); box-shadow: var(--shadow);">
+      <h2 style="margin-top: 0; color: var(--brand-secondary);">Pre-download images on all nodes</h2>
+      <p style="margin-bottom: 1.5rem; color: var(--brand-primary);">
+        Current version: <strong id="modal-current-version"></strong><br>
+        New version: <strong id="modal-target-version"></strong>
+      </p>
+      
+      <div id="upgrade-form">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-secondary); margin: 0 0 1rem 0;">Portainer credentials</h3>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; font-weight: bold;">Username</label>
+          <input type="text" id="portainer-user" placeholder="Enter username" autocomplete="username" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; background: var(--glass-bg); color: var(--brand-primary);">
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; font-weight: bold;">Password</label>
+          <input type="password" id="portainer-pass" placeholder="Enter password" autocomplete="current-password" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; background: var(--glass-bg); color: var(--brand-primary);">
+        </div>
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button onclick="closeUpgradeModal()" class="tab-btn" style="background: transparent; border: 1px solid var(--glass-border);">Cancel</button>
+          <button onclick="startUpgrade()" class="tab-btn" style="background: var(--brand-primary); color: white;">Download version</button>
+        </div>
+      </div>
+
+      <div id="upgrade-progress" style="display: none;">
+        <div style="font-family: monospace; font-size: 0.85rem; background: #1a1a1a; color: #fff; padding: 1rem; border-radius: 6px; height: 280px; overflow-y: auto; margin-bottom: 1rem; white-space: pre-wrap;" id="upgrade-log"></div>
+        <div style="display: flex; justify-content: flex-end;">
+          <button id="btn-upgrade-close" onclick="closeUpgradeModal()" class="tab-btn" style="display: none; background: var(--brand-primary); color: white;">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       'use strict';
+
+      // --- Upgrade Logic ---
+    let latestVersion = "";
+    
+    async function checkVersion() {
+      try {
+        const resp = await fetch('/manager/v1/private/version/status');
+        if (resp.ok) {
+          const data = await resp.json();
+          const dot = document.getElementById('tag-update-dot');
+          const badge = document.getElementById('tag-badge');
+          
+          if (data.has_notification || data.has_update) {
+            latestVersion = data.latest_version;
+            document.getElementById('modal-current-version').innerText = data.current_version;
+            document.getElementById('modal-target-version').innerText = latestVersion;
+            
+            if (dot) {
+              dot.style.display = 'inline-block';
+            }
+            if (badge) {
+              badge.style.cursor = 'pointer';
+              badge.title = `New version v${latestVersion} available. Click to download images.`;
+              badge.onclick = window.openUpgradeModal;
+            }
+          } else {
+            if (dot) dot.style.display = 'none';
+            if (badge) {
+              badge.style.cursor = 'default';
+              badge.title = '';
+              badge.onclick = null;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error checking version", e);
+      }
+    }
+    
+    setInterval(checkVersion, 600000); // every 10 mins
+    setTimeout(checkVersion, 2000);
+    
+    window.openUpgradeModal = function() {
+      document.getElementById('upgrade-modal').style.display = 'flex';
+      document.getElementById('upgrade-form').style.display = 'block';
+      document.getElementById('upgrade-progress').style.display = 'none';
+      document.getElementById('upgrade-log').innerHTML = '';
+      document.getElementById('btn-upgrade-close').style.display = 'none';
+      document.getElementById('portainer-pass').value = '';
+    }
+    
+    window.closeUpgradeModal = function() {
+      document.getElementById('upgrade-modal').style.display = 'none';
+    }
+    
+    function logMsg(msg, color = 'white') {
+      const logEl = document.getElementById('upgrade-log');
+      logEl.innerHTML += `<div style="color: ${color}">${msg}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    
+    window.startUpgrade = async function() {
+      const user = document.getElementById('portainer-user').value.trim();
+      const pass = document.getElementById('portainer-pass').value;
+      if (!user) {
+        alert("Please enter the Portainer username");
+        return;
+      }
+      if (!pass) {
+        alert("Please enter the Portainer password");
+        return;
+      }
+      
+      document.getElementById('upgrade-form').style.display = 'none';
+      document.getElementById('upgrade-progress').style.display = 'block';
+      logMsg("Authenticating with Portainer and preparing download...", "#3b82f6");
+      
+      try {
+        const resp = await fetch('/manager/v1/private/images/pull', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username: user, password: pass, version: latestVersion})
+        });
+        
+        if (!resp.ok) {
+          let errMsg = resp.statusText;
+          try {
+            const err = await resp.json();
+            errMsg = err.detail || errMsg;
+          } catch (e) {
+            // Not a JSON response (maybe intercepted by proxy)
+            if (resp.status === 403 || resp.status === 401) {
+              errMsg = "Invalid username or password";
+            }
+          }
+          logMsg(`Error: ${errMsg}`, "#dc2626");
+          document.getElementById('btn-upgrade-close').style.display = 'block';
+          return;
+        }
+        
+        // Connect SSE
+        const sse = new EventSource('/manager/v1/private/images/pull/stream');
+        
+        sse.addEventListener("progress", (e) => {
+          const data = JSON.parse(e.data);
+          const nodeName = data.node || "cluster";
+          const imgName = (data.image || "").split(":")[0];
+          const lineId = "pull-" + (nodeName + "-" + imgName).replace(/[^a-zA-Z0-9_-]/g, "-");
+          
+          let lineEl = document.getElementById(lineId);
+          
+          if (data.status === "pulling") {
+            if (!lineEl) {
+              const logEl = document.getElementById('upgrade-log');
+              lineEl = document.createElement('div');
+              lineEl.id = lineId;
+              lineEl.style.color = '#feda00';
+              lineEl.innerText = `[${nodeName}] Downloading ${imgName}...`;
+              logEl.appendChild(lineEl);
+              logEl.scrollTop = logEl.scrollHeight;
+            }
+          } else if (data.status === "done" || data.status === "skipped") {
+            if (lineEl) {
+              lineEl.style.color = '#10b981';
+              lineEl.innerText = `[${nodeName}] Downloading ${imgName}... ✅`;
+            } else {
+              logMsg(`[${nodeName}] Downloading ${imgName}... ✅`, "#10b981");
+            }
+          } else if (data.status === "error") {
+            if (lineEl) {
+              lineEl.style.color = '#dc2626';
+              lineEl.innerText = `[${nodeName}] Downloading ${imgName}... ❌`;
+            } else {
+              logMsg(`[${nodeName}] Downloading ${imgName}... ❌`, "#dc2626");
+            }
+            if (data.detail) {
+              logMsg(`        ${data.detail}`, "#f87171");
+            }
+          }
+        });
+        
+        sse.addEventListener("complete", (e) => {
+          sse.close();
+          const data = JSON.parse(e.data);
+          if (data.all_ok) {
+            logMsg(`\n✅ All images for version ${latestVersion} are ready!`, "#10b981");
+            logMsg(`\nTo apply the update, execute on the Manager node:\n=============================================\nwget -O - http://migasfree.org/pub/install-swarm | bash\nmigasfree-swarm deploy\n=============================================`, "#3b82f6");
+          } else {
+            const failedCount = (data.results || []).filter(r => r.status === 'error').length;
+            logMsg(`\n⚠️ Finished with errors: ${failedCount} image(s) could not be downloaded.`, "#dc2626");
+          }
+          document.getElementById('btn-upgrade-close').style.display = 'block';
+        });
+        
+        sse.addEventListener("error", (e) => {
+          sse.close();
+          try {
+            const data = JSON.parse(e.data);
+            logMsg(`\n❌ Error: ${data.error}`, "#dc2626");
+          } catch (_) {
+            // Connection closed or interrupted
+          }
+          document.getElementById('btn-upgrade-close').style.display = 'block';
+        });
+        
+      } catch (e) {
+        logMsg(`Excepción: ${e.message}`, "#dc2626");
+        document.getElementById('btn-upgrade-close').style.display = 'block';
+      }
+    }
+    // --- End Upgrade Logic ---
 
       // Configuration
       const CONFIG = {
@@ -893,6 +1103,8 @@
         state.eventSource.onopen = () => {
           console.debug('SSE connected');
           state.wasDisconnected = false;
+          fetchInfo();
+          checkVersion();
         };
       }
 
@@ -945,6 +1157,7 @@
         cacheDOMElements();
         setupLinks();
         showWelcome();
+        checkVersion();
 
         CONFIG.infoData = await fetchInfo();
 
