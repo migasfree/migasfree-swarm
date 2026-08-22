@@ -20,6 +20,7 @@ RUN apk --no-cache upgrade && \
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
 COPY defaults/entrypoint.sh /entrypoint.sh
+COPY defaults/pgadmin4 /pgadmin4
 
 COPY defaults/usr/bin /usr/bin
 
