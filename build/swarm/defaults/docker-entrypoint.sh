@@ -107,11 +107,11 @@ case "$COMMAND" in
     ;;
 
     consoles-dev|consoles_dev)
-        run_manager "python3 /tools/consoles.py 'dev'"
+        run_manager "python3 /tools/consoles.py dev"
     ;;
 
     consoles-pro|consoles_pro)
-        run_manager "python3 /tools/consoles.py 'pro'"
+        run_manager "python3 /tools/consoles.py pro"
     ;;
 
     secret|secrets)

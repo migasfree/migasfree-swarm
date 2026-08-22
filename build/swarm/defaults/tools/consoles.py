@@ -25,7 +25,7 @@ def main():
         print(f"Usage: {sys.argv[0]} [pro|dev]")
         sys.exit(1)
 
-    mode = sys.argv[1].lower()
+    mode = sys.argv[1].lower().strip("'\"")
     replicas = 0 if mode == 'pro' else 1
 
     cl = ContextLoader()

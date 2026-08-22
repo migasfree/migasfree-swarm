@@ -712,12 +712,18 @@
           'public', 'pms', 'worker', 'beat', 'core', 'tunnel',
           'database', 'pgpool', 'datastore', 'datashare_console'
         ],
-        consoleServices: [
-          'portainer', 'proxy', 'manager',
-          'console',
-          'core', 'worker',
-          'database', 'datastore', 'datashare_console'
-        ],
+        consoleLinks: {
+          'portainer': 'portainer_link_parent',
+          'proxy': 'proxy_link_parent',
+          'manager': 'manager_link_parent',
+          'console': 'console_link_parent',
+          'core': 'core_link_parent',
+          'worker_console': 'worker_link_parent',
+          'database_console': 'database_link_parent',
+          'datastore_console': 'datastore_link_parent',
+          'datashare_console': 'datashare_console_link_parent',
+          'public': 'public_link'
+        },
         infoData: null,
       };
 
@@ -759,16 +765,10 @@
         }
 
         // Cache console links
-        CONFIG.consoleServices.forEach(service => {
-          const linkParent = document.getElementById(`${service}_link_parent`);
-          const link = document.getElementById(`${service}_link`);
-          if (linkParent) dom.links[service] = linkParent;
-          else if (link) dom.links[service] = link;
+        Object.entries(CONFIG.consoleLinks).forEach(([service, linkId]) => {
+          const el = document.getElementById(linkId);
+          if (el) dom.links[service] = el;
         });
-
-        // Special case for public link
-        const publicLink = document.getElementById('public_link');
-        if (publicLink) dom.links.public = publicLink;
       }
 
       async function fetchInfo() {
@@ -883,44 +883,41 @@
       }
 
       function updateServiceNode(serviceName, statusInfo) {
-        const node = dom.nodes[serviceName];
-        if (!node) {
-          console.warn(`Node not found for service: ${serviceName}`);
-          return;
-        }
-
-        console.debug(`${serviceName} statusInfo:`, statusInfo);
+        state.serviceStates[serviceName] = statusInfo;
 
         const isDisabled = CONFIG.infoData?.disabled?.includes(serviceName);
 
-        let color;
-        if (isDisabled) {
-          color = 'lightgray';
-        } else {
-          color = getColorFromStatus(statusInfo.status);
-        }
-        console.debug(`${serviceName} color: ${color}`)
+        // Update card node if exists in dashboard
+        const node = dom.nodes[serviceName];
+        if (node) {
+          console.debug(`${serviceName} statusInfo:`, statusInfo);
 
-        node.style.backgroundColor = color;
-        node.style.display = 'block';
+          let color;
+          if (isDisabled) {
+            color = 'lightgray';
+          } else {
+            color = getColorFromStatus(statusInfo.status);
+          }
+          console.debug(`${serviceName} color: ${color}`);
 
-        // Updates nodes if > 1
-        if (dom.nodeTexts[serviceName]) {
-          console.debug('nodeText:', dom.nodeTexts[serviceName]);
-          const nodeCount = statusInfo.running || 0;
-          dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? `(${nodeCount})` : '';
+          node.style.backgroundColor = color;
+          node.style.display = 'block';
+
+          // Updates nodes if > 1
+          if (dom.nodeTexts[serviceName]) {
+            console.debug('nodeText:', dom.nodeTexts[serviceName]);
+            const nodeCount = statusInfo.running || 0;
+            dom.nodeTexts[serviceName].textContent = nodeCount > 1 ? `(${nodeCount})` : '';
+          }
         }
 
         // Updates console link visibility
         const link = dom.links[serviceName];
         if (link) {
           const shouldShow = statusInfo.running > 0 && !isDisabled;
-          console.debug(`${serviceName} shouldShow: ${shouldShow}`)
+          console.debug(`${serviceName} console link shouldShow: ${shouldShow}`);
           link.style.display = shouldShow ? 'block' : 'none';
-          console.debug('dom.link:', link);
         }
-
-        state.serviceStates[serviceName] = statusInfo;
       }
 
       function updatePMSNode() {
@@ -982,7 +979,9 @@
 
       function updateStatusDot() {
         const services = [
-          ...Object.values(state.serviceStates),
+          ...Object.entries(state.serviceStates)
+            .filter(([name, s]) => CONFIG.serviceList.includes(name) && s.desired > 0)
+            .map(([name, s]) => s),
           ...Object.values(state.pmsServices)
         ];
         const total = services.length;
