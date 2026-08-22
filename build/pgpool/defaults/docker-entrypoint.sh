@@ -107,8 +107,12 @@ enable_pool_hba = on
 pool_passwd = '/etc/pgpool/pool_passwd'
 
 # Logging
-log_statement = on
-log_per_node_statement = on
+log_statement = off
+log_per_node_statement = off
+log_connections = off
+log_disconnections = off
+log_pcp_processes = off
+log_min_messages = warning
 EOF
 }
 
