@@ -251,7 +251,8 @@ elif [ "$SERVICE" = "${STACK}_worker" ]
 then
     # WORKER
     /usr/bin/migrate_db &
-    exec env DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree worker --queues="${QUEUES}" --uid 890 --without-gossip --loglevel INFO
+    export PYTHONPATH="${PYTHONPATH}:/usr/share/core"
+    exec env DJANGO_SETTINGS_MODULE=migasfree.settings.production celery -A migasfree worker --queues="${QUEUES}" --uid 890 --without-gossip --loglevel INFO -I logging_filters
 else
     # CORE
     _WORKERS=$((2 * $(ncores) + 1))
