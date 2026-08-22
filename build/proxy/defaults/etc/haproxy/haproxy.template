@@ -1,7 +1,7 @@
 global
     maxconn 4096
     maxpipes 1024
-    log fd@2 local2
+    log fd@2 local2 info
     # log 127.0.0.1 local0
     # log 127.0.0.1 local1 notice
     # tune.bufsize 32768  # workaround -> 414 Request-URI Too Large

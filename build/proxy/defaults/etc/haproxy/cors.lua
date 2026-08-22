@@ -101,10 +101,7 @@ M.get_allowed_origin = function(origin, allowed_origins)
 
       if pattern ~= nil then
         if origin:match(pattern) then
-          core.Debug("Test: " .. pattern .. ", Origin: " .. origin .. ", Match: yes")
           return origin
-        else
-          core.Debug("Test: " .. pattern .. ", Origin: " .. origin .. ", Match: no")
         end
       end
     end
@@ -121,11 +118,9 @@ end
 -- allowed_methods: Comma-delimited list of allowed HTTP methods. (e.g. GET,POST,PUT,DELETE)
 -- allowed_headers: Comma-delimited list of allowed headers. (e.g. X-Header1,X-Header2)
 function preflight_request_ver1(txn, allowed_methods, allowed_headers)
-  core.Debug("CORS: preflight request received")
   txn.http:res_set_header("Access-Control-Allow-Methods", allowed_methods)
   txn.http:res_set_header("Access-Control-Allow-Headers", allowed_headers)
   txn.http:res_set_header("Access-Control-Max-Age", 600)
-  core.Debug("CORS: attaching allowed methods to response")
 end
 
 -- Add headers for CORS preflight request and then returns a 204 response.
@@ -137,8 +132,6 @@ end
 -- allowed_origins: Comma-delimited list of allowed origins. (e.g. localhost,localhost:8080,test.com)
 -- allowed_headers: Comma-delimited list of allowed headers. (e.g. X-Header1,X-Header2)
 function preflight_request_ver2(txn, origin, allowed_methods, allowed_origins, allowed_headers)
-  core.Debug("CORS: preflight request received")
-
   local reply = txn:reply()
   reply:set_status(204, "No Content")
   reply:add_header("Content-Type", "text/html")
@@ -148,10 +141,7 @@ function preflight_request_ver2(txn, origin, allowed_methods, allowed_origins, a
 
   local allowed_origin = M.get_allowed_origin(origin, allowed_origins)
 
-  if allowed_origin == nil then
-    core.Debug("CORS: " .. origin .. " not allowed")
-  else
-    core.Debug("CORS: " .. origin .. " allowed")
+  if allowed_origin ~= nil then
     reply:add_header("Access-Control-Allow-Origin", allowed_origin)
 
     if allowed_origin ~= "*" then
@@ -159,7 +149,6 @@ function preflight_request_ver2(txn, origin, allowed_methods, allowed_origins, a
     end
   end
 
-  core.Debug("CORS: Returning reply to preflight request")
   txn:done(reply)
 end
 
@@ -177,7 +166,6 @@ function cors_request(txn, allowed_methods, allowed_origins, allowed_headers)
   local allowed_origins = core.tokenize(allowed_origins, ",")
 
   if headers["origin"] ~= nil and headers["origin"][0] ~= nil then
-    core.Debug("CORS: Got 'Origin' header: " .. headers["origin"][0])
     origin = headers["origin"][0]
   end
 
@@ -224,14 +212,11 @@ function cors_response(txn)
 
   local allowed_origin = M.get_allowed_origin(origin, allowed_origins)
 
-  if allowed_origin == nil then
-    core.Debug("CORS: " .. origin .. " not allowed")
-  else
+  if allowed_origin ~= nil then
     if method == "OPTIONS" and txn.reply == nil then
       preflight_request_ver1(txn, allowed_methods, allowed_headers)
     end
 
-    core.Debug("CORS: " .. origin .. " allowed")
     txn.http:res_set_header("Access-Control-Allow-Origin", allowed_origin)
 
     if allowed_origin ~= "*" then
