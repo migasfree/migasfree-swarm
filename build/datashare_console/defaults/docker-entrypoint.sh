@@ -114,6 +114,7 @@ server:
   baseURL: "/"
   logging:
     - levels: "info|warning|error"
+      apiFilter: "^/$|^/health"
   sources:
     - path: "${_ROOT}"
 auth:
