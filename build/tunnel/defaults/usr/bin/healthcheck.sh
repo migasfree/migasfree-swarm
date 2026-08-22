@@ -2,9 +2,9 @@
 
 . /usr/bin/common.sh
 
-if ! check_tcp localhost 8080
+if ! check_http http://localhost:8080/health
 then
-    echo "WebSocket port 8080 not listening"
+    echo "WebSocket HTTP health endpoint http://localhost:8080/health not responding"
     exit 1
 fi
 

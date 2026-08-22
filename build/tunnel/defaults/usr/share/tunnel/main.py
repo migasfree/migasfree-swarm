@@ -41,7 +41,7 @@ for logger_name in [
     "websockets.http11",
 ]:
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.WARNING)
     logger.addFilter(IgnoreHandshakeErrorFilter())
 
 logger = logging.getLogger(__name__)
@@ -180,9 +180,19 @@ class MultiProtocolServer:
             "server_ip": self.get_ip(),
         }
 
-        self.connected_agents[agent_id] = {"websocket": websocket, "data": agent_data}
+        is_new_agent = agent_id not in self.connected_agents
 
-        self.active_connections += 1
+        # Cleanly close previous connection if this agent was already registered
+        if not is_new_agent:
+            old_ws = self.connected_agents[agent_id].get("websocket")
+            if old_ws and old_ws != websocket:
+                try:
+                    await old_ws.close()
+                except Exception:
+                    pass
+
+        self.connected_agents[agent_id] = {"websocket": websocket, "data": agent_data}
+        self.active_connections = len(self.connected_agents)
 
         # Register in Redis
         await self._init_redis()
@@ -198,14 +208,24 @@ class MultiProtocolServer:
         services = agent_data.get("services", [])
         services_str = f" [{', '.join(services)}]" if services else ""
 
-        logger.info(
-            "Agent %s/%s: %s (%s)%s",
-            self.active_connections,
-            self.max_connections,
-            hostname,
-            agent_id,
-            services_str,
-        )
+        if is_new_agent:
+            logger.info(
+                "Agent %s/%s: %s (%s)%s",
+                self.active_connections,
+                self.max_connections,
+                hostname,
+                agent_id,
+                services_str,
+            )
+        else:
+            logger.debug(
+                "Agent %s/%s: %s (%s)%s (renewal)",
+                self.active_connections,
+                self.max_connections,
+                hostname,
+                agent_id,
+                services_str,
+            )
 
         await websocket.send(
             json.dumps(
@@ -497,9 +517,12 @@ class MultiProtocolServer:
             pass
         finally:
             if connection_type == "agent" and agent_id is not None:
-                if agent_id in self.connected_agents:
+                if (
+                    agent_id in self.connected_agents
+                    and self.connected_agents[agent_id].get("websocket") == websocket
+                ):
                     del self.connected_agents[agent_id]
-                    self.active_connections -= 1
+                    self.active_connections = len(self.connected_agents)
                     logger.info("Agent disconnected: %s active", self.active_connections)
 
                     # Remove from Redis
@@ -531,7 +554,7 @@ class MultiProtocolServer:
         """Monitors server statistics and updates Redis TTL"""
         while True:
             await asyncio.sleep(30)
-            logger.info(
+            logger.debug(
                 "Stats: %s agents, %s active TCP tunnels",
                 self.active_connections,
                 len(self.tcp_tunnels),
