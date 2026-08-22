@@ -788,6 +788,7 @@
       }
 
       async function fetchMetricsStatus() {
+        if (document.hidden) return;
         try {
           const response = await fetch('/manager/v1/private/metrics/json');
           if (response.ok) {
@@ -1164,6 +1165,12 @@
           initSSE();
           fetchMetricsStatus();
           setInterval(fetchMetricsStatus, 10000);
+
+          document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+              fetchMetricsStatus();
+            }
+          });
         }
 
         setInterval(checkConnection, 2000);
