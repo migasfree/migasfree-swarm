@@ -1,5 +1,21 @@
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    force=True,
+)
+logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
+logging.getLogger("redis").setLevel(logging.WARNING)
+logging.getLogger("redis.asyncio").setLevel(logging.WARNING)
+logging.getLogger("redis.connection").setLevel(logging.WARNING)
+logging.getLogger("redis.client").setLevel(logging.WARNING)
+logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("websockets.client").setLevel(logging.WARNING)
+logging.getLogger("docker").setLevel(logging.WARNING)
+logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 from jinja2 import Template
 from datetime import datetime
 
@@ -25,14 +41,6 @@ from routers import (
     upgrade,
 )
 from routers.status import lifespan
-
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
-logging.getLogger("redis.connection").setLevel(logging.WARNING)
-logging.getLogger("redis.client").setLevel(logging.WARNING)
 
 
 class HealthCheckFilter(logging.Filter):

@@ -8,21 +8,7 @@ import asyncio
 from core.utils import get_timestamp
 
 
-# Logging configuration
-DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
-logger = logging.getLogger("services")
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-if DEBUG_MODE:
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 service_states_cache = {}
 node_names_cache = {}  # Cache for node names

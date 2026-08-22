@@ -9,9 +9,6 @@ from datetime import datetime, timedelta
 
 from core.config import PATH_CERTIFICATES, MAX_TOKEN_AGE_HOURS
 
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 

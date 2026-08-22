@@ -25,27 +25,7 @@ from core.config import (
 from core.database import get_db_connection
 from core.redis import get_redis_connection
 
-# Logging configuration
-DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
 logger = logging.getLogger(__name__)
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-if DEBUG_MODE:
-    logger.setLevel(logging.DEBUG)
-    logging.getLogger("urllib3").setLevel(logging.DEBUG)
-    logging.getLogger("requests").setLevel(logging.DEBUG)
-    logging.getLogger("sse_starlette.sse").setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
 
 # Disable warning for self-signed certs just in case, though we use http internal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

@@ -32,24 +32,7 @@ TAG = os.environ["TAG"]
 client_id_counter = 0
 docker_monitor = None
 
-# Logging configuration
-DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
-logger = logging.getLogger("services")
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(funcName)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-if DEBUG_MODE:
-    logger.setLevel(logging.DEBUG)
-    logging.getLogger("sse_starlette.sse").setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
-    logging.getLogger("sse_starlette.sse").setLevel(logging.INFO)
-
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["status"])
 
@@ -58,8 +41,6 @@ router_internal = APIRouter(prefix=f"{API_VERSION}/internal", tags=["status"])
 router_private = APIRouter(prefix=f"{API_VERSION}/private", tags=["status"])
 
 router_public = APIRouter(prefix=f"{API_VERSION}/public", tags=["status"])
-
-logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="/usr/share/manager/templates")
 
@@ -171,9 +152,6 @@ async def service_stream(request: Request):
                     "timestamp": get_timestamp(),
                 }
 
-                logger.debug(
-                    f"Client {client_id}: Sending {service_name} = {status_obj['status']} ({status_obj['running']})"
-                )
                 yield {"event": "status", "data": json.dumps(initial_data)}
 
 
@@ -193,9 +171,6 @@ async def service_stream(request: Request):
 
                 try:
                     event_data = await asyncio.wait_for(queue.get(), timeout=30)
-                    logger.debug(
-                        f"Client {client_id}: Broadcasting {event_data['event']} event"
-                    )
                     yield {
                         "event": event_data["event"],
                         "data": json.dumps(event_data["data"]),
