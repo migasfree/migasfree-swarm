@@ -5,11 +5,17 @@ set_tz
 
 # Configure nginx (default template)
 cat << EOF > /etc/nginx/conf.d/default.conf
+map \$remote_addr \$loggable {
+    127.0.0.1 0;
+    "::1" 0;
+    default 1;
+}
+
 server {
     listen       80;
     server_name  localhost 127.0.0.1 console $(hostname);
 
-    access_log  /dev/stdout  main;
+    access_log  /dev/stdout  main if=\$loggable;
     error_log /dev/stderr warn;
 
     # mode history: https://router.vuejs.org/guide/essentials/history-mode.html#example-server-configurations
