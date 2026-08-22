@@ -255,5 +255,6 @@ then
 else
     # CORE
     _WORKERS=$((2 * $(ncores) + 1))
-    exec su -c "uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $_WORKERS --ws-ping-interval 20 --ws-ping-timeout 20" www-data
+    export PYTHONPATH="${PYTHONPATH}:/usr/share/core"
+    exec su -c "PYTHONPATH=${PYTHONPATH} uvicorn migasfree.asgi:application --lifespan off --host 0.0.0.0 --port 8080 --workers $_WORKERS --ws-ping-interval 20 --ws-ping-timeout 20 --log-config /usr/share/core/uvicorn_log_config.json" www-data
 fi
