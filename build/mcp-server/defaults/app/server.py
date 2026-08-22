@@ -34,6 +34,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("migasfree-mcp")
 
+
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return (
+            "/openapi.json" not in msg
+            and "/health" not in msg
+            and "/docs" not in msg
+        )
+
+
+logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
+
 # MCP Server definition
 app = Server(f"{MCP_NAME}-mcp-server")
 
@@ -491,6 +504,7 @@ async def background_doc_sync():
 @contextlib.asynccontextmanager
 async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
     """Application lifespan that manages the Streamable HTTP session manager."""
+    logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
     try:
         # Convert PDFs immediately (local file operation)
         convert_all_pdfs_to_markdown()
