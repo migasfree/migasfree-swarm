@@ -10,6 +10,8 @@ BROKER_URL="redis://default:${SUPERADMIN_PASS}@datastore:6379/0"
 set_tz
 start_message
 
+wait_for_service "datastore" "6379"
+
 show_banner "celery $(celery --version)"
 
 # CELERY CONFIG
@@ -30,7 +32,7 @@ export FLOWER_UNAUTHENTICATED_API=True
 if [ "$(id -u)" = '0' ]
 then
     chown flower:flower "${CONFIG_FILE}"
-    exec su flower -s /bin/sh -c "celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api='${BROKER_URL}/api/'"
+    exec su flower -s /bin/sh -c "celery --config celeryconfig flower --persistent=False --max_tasks=5000 --inspect-timeout=5000"
 fi
 
-celery --config celeryconfig flower --persistent=False --max_tasks=5000 --broker-api="${BROKER_URL}/api/"
+celery --config celeryconfig flower --persistent=False --max_tasks=5000 --inspect-timeout=5000
