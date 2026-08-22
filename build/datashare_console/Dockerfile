@@ -1,4 +1,4 @@
-FROM filebrowser/filebrowser:v2.63.23 AS base
+FROM gtstef/filebrowser:1.5.3-stable AS base
 
 FROM alpine:3.22
 
@@ -15,7 +15,6 @@ RUN apk --no-cache upgrade && \
     apk add --update --no-cache $RUNTIME_DEPENDS
 
 COPY defaults/docker-entrypoint.sh /docker-entrypoint.sh
-
 COPY defaults/usr/bin /usr/bin
 
 # Define non-root user UID and GID
@@ -26,16 +25,13 @@ ENV GID=890
 RUN addgroup -g $GID user && \
     adduser -D -u $UID -G user user
 
-COPY --from=base /bin/filebrowser /bin/filebrowser
-COPY --from=base /JSON.sh /JSON.sh
+COPY --from=base /home/filebrowser /home/filebrowser
+RUN ln -sf /home/filebrowser/filebrowser /bin/filebrowser
 
 # Create data directories, set ownership, and ensure healthcheck script is executable
-RUN mkdir -p /config /database /srv
-RUN chown -R user:user /config /database /srv
+RUN mkdir -p /config /database /srv /tmp && \
+    chown -R user:user /home/filebrowser /config /database /srv /tmp
 
 HEALTHCHECK --start-period=120s --interval=60s --timeout=3s CMD /usr/bin/healthcheck.sh || exit 1
-
-# Reverted: let entrypoint handle user switch after root-only tasks
-# USER user
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

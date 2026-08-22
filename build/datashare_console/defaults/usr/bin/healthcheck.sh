@@ -1,12 +1,12 @@
 #!/bin/sh
 . /usr/bin/common.sh
 _ROOT="/srv"
-PORT="${FB_PORT:-$(jq .port /.filebrowser.json)}"
+PORT="${FB_PORT:-80}"
 
-if ! timeout 2 ls "${_ROOT}/conf/" >/dev/null
+if ! timeout 2 ls "${_ROOT}/conf/" >/dev/null 2>&1
 then
     echo "$(date) File system disconnected"
     exit 1
 fi
 
-check_http "http://localhost:$PORT/health"
+check_http "http://127.0.0.1:$PORT/"

@@ -7,7 +7,7 @@ export MIGASFREE_SECRET_DIR=/var/run/secrets
 start_message
 set_tz
 
-show_banner "$(filebrowser version)"
+show_banner "FileBrowser Quantum $(/bin/filebrowser version 2>&1 | head -n 1)"
 
 init_datashare() {
     # Structure of paths in datashare
@@ -49,8 +49,6 @@ init_datashare() {
     fi
 
     # /pool/install
-
-
     if [ "${HTTPSMODE}" = "manual" ]
     then
         cp "/mnt/cluster/certificates/${STACK}/ca/ca.crt" "${_ROOT}/pool/install/ca-${FQDN}.crt"
@@ -82,7 +80,6 @@ EOF
     chown 890:890 "${_ROOT}/pool/install/"*
 }
 
-
 waiting_fs() {
     if [ "${DATASHARE_FS}" = "nfs" ]
     then
@@ -105,27 +102,44 @@ waiting_fs() {
 # CONFIG
 _ROOT="/srv"
 _DATABASE="${_ROOT}/consoles/datashare/database.db"
+_CONFIG="/config/config.yaml"
 
 waiting_fs
 init_datashare
 
-cat << EOF > /.filebrowser.json
-{
-  "port": 80,
-  "baseURL": "",
-  "address": "",
-  "log": "stdout",
-  "database": "${_DATABASE}",
-  "root": "${_ROOT}"
-}
+mkdir -p /config
+cat << EOF > "${_CONFIG}"
+server:
+  port: 80
+  baseURL: "/"
+  logging:
+    - levels: "info|warning|error"
+  sources:
+    - path: "${_ROOT}"
+auth:
+  methods:
+    password:
+      enabled: true
+      minLength: 5
+      signup: false
+    passkey:
+      enabled: false
 EOF
+
+chown -R user:user /config "${_ROOT}/consoles/datashare"
+
+export FILEBROWSER_CONFIG="${_CONFIG}"
+export FILEBROWSER_DATABASE="${_DATABASE}"
+
+_ADMIN_NAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
+_ADMIN_PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
 
 if ! [ -f "${_DATABASE}" ]
 then
-    su user -c "/bin/filebrowser config init --branding.name datashare"
-    su user -c "/bin/filebrowser users add $(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name") $(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass") --perm.admin"
+    su user -c "cd /home/filebrowser && FILEBROWSER_CONFIG=${_CONFIG} FILEBROWSER_DATABASE=${_DATABASE} /home/filebrowser/filebrowser set -u ${_ADMIN_NAME},${_ADMIN_PASS} -a"
 fi
 
 send_message ""
 
-su user -c "/bin/filebrowser"
+cd /home/filebrowser
+exec su user -c "cd /home/filebrowser && FILEBROWSER_CONFIG=${_CONFIG} FILEBROWSER_DATABASE=${_DATABASE} /home/filebrowser/filebrowser"
