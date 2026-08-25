@@ -301,9 +301,10 @@ async def get_prompt(
                     content=TextContent(
                         type="text",
                         text=(
-                            "Analyze the Migasfree computer fleet. Use the db_get_schema tool first "
-                            "to understand the database structure, then run these queries:\n\n"
-                            "1. Total computers by status (productive, intended, reserved, unsubscribed)\n"
+                            f"Analyze the Migasfree computer fleet. First, consult the database schema by reading "
+                            f"the resource '{MCP_NAME}://docs/db_schema.md' (or using the tool read_doc(name='db_schema.md')), "
+                            f"then use the db_query tool to run these queries:\n\n"
+                            "1. Total computers by status (productive, assigned, reserved, unsubscribed)\n"
                             "2. Computers per project\n"
                             "3. Last synchronization dates\n"
                             "4. Computers that haven't synced in over 7 days\n\n"
@@ -323,8 +324,9 @@ async def get_prompt(
                     content=TextContent(
                         type="text",
                         text=(
-                            "Find computers with synchronization problems. Use the db_get_schema tool "
-                            "to understand the database, then check:\n\n"
+                            f"Find computers with synchronization problems. First, consult the database schema by reading "
+                            f"the resource '{MCP_NAME}://docs/db_schema.md' (or using the tool read_doc(name='db_schema.md')), "
+                            f"then check with db_query:\n\n"
                             "1. Computers where sync_end_date is NULL (incomplete syncs)\n"
                             "2. Computers not synced in the last 30 days\n"
                             "3. Any error records in the system\n\n"
@@ -347,8 +349,9 @@ async def get_prompt(
                         text=(
                             f"I need help querying the Migasfree database. My question is:\n\n"
                             f'"{question}"\n\n'
-                            "First, use db_get_schema to understand the database structure. "
-                            "Then build and execute the appropriate SQL query. "
+                            f"First, consult the database schema by reading the resource '{MCP_NAME}://docs/db_schema.md' "
+                            f"(or using the tool read_doc(name='db_schema.md')). "
+                            "Then build and execute the appropriate SQL query using the db_query tool. "
                             "Explain what the query does and present the results clearly."
                         ),
                     ),
