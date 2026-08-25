@@ -60,7 +60,7 @@ def _ensure_builder_computer_in_db(project_id: int, flavour_id: int = None):
                     INSERT INTO client_computer (
                         uuid, status, name, fqdn, created_at, updated_at, machine, project_id
                     ) VALUES (
-                        %s, 'intended', 'mgi-builder', 'mgi-builder', NOW(), NOW(), 'P', %s
+                        %s, 'reserved', 'mgi-builder', 'mgi-builder', NOW(), NOW(), 'P', %s
                     ) RETURNING id;
                     """,
                     (SYSTEM_UUID.upper(), project_id),
