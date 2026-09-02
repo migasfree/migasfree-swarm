@@ -1,0 +1,3052 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migasfree TDA Dashboard</title>
+    <link rel="stylesheet" href="/manager/static/css/branding.css">
+    <script src="/tda/static/js/3d-force-graph.min.js"></script>
+    <style>
+        /* ── Base ────────────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            margin: 0;
+            padding: 0;
+            background: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Layout ──────────────────────────────────────────────────── */
+        .tda-layout {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* ── Sidebar ─────────────────────────────────────────────────── */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem 1rem;
+            gap: 1.25rem;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .sidebar-brand img {
+            width: 32px;
+            height: 32px;
+        }
+
+        .sidebar-brand h1 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--brand-primary);
+            line-height: 1.2;
+        }
+
+        .sidebar-brand span {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--brand-secondary);
+            display: block;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .nav-link {
+            display: flex; align-items: center; gap: 9px;
+            width: 100%; padding: 0.55rem 0.8rem;
+            background: rgba(255,255,255,0.45);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            text-align: left; font-family: var(--font-ui);
+            font-size: 0.82rem; font-weight: 600; color: var(--text-main);
+            cursor: pointer; text-decoration: none;
+            transition: all 0.18s ease;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.85); border-color: var(--brand-primary); color: var(--brand-primary); }
+        .nav-link.active { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+        .nav-link svg { flex-shrink: 0; opacity: 0.75; }
+        .nav-link.active svg { opacity: 1; }
+
+        .sidebar-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--brand-secondary);
+            margin: 0 0 0.5rem;
+        }
+
+        /* Lenses list */
+        .lens-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .lens-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 0.65rem 0.9rem;
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            text-align: left;
+            font-family: var(--font-ui);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .lens-btn:hover {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: var(--brand-primary);
+        }
+
+        .lens-btn.active {
+            background: var(--brand-primary);
+            color: #fff;
+            border-color: var(--brand-primary);
+            box-shadow: 0 4px 12px rgba(var(--brand-primary-rgb, 30, 80, 200), 0.25);
+        }
+
+        .lens-btn.active .lens-dot {
+            background: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .lens-btn.active .lens-meta {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .lens-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .lens-btn[data-lens="health"] .lens-dot {
+            background: #ef4444;
+        }
+
+        .lens-btn[data-lens="obsolescence"] .lens-dot {
+            background: #f59e0b;
+        }
+
+        .lens-btn[data-lens="software"] .lens-dot {
+            background: #10b981;
+        }
+
+        .lens-btn[data-lens="migration"] .lens-dot {
+            background: #6366f1;
+        }
+
+        .lens-btn[data-lens="sync"] .lens-dot {
+            background: #3b82f6;
+        }
+
+        .lens-btn[data-lens="diversity"] .lens-dot {
+            background: #8b5cf6;
+        }
+
+        .lens-meta {
+            font-size: 0.72rem;
+            color: var(--brand-secondary);
+            margin-left: auto;
+            font-weight: 400;
+        }
+
+        /* Graph stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--brand-primary);
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.68rem;
+            color: var(--brand-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.2rem;
+        }
+
+        .generated-at {
+            font-size: 0.72rem;
+            color: var(--brand-secondary);
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
+
+        /* Floating Canvas Toolbar */
+        .canvas-toolbar {
+            position: absolute;
+            top: 1.25rem;
+            left: 1.25rem;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.5rem;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--glass-border);
+            margin: 0 3px;
+        }
+
+        .ctrl-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            height: 32px;
+            min-width: 32px;
+            padding: 0 6px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid transparent;
+            border-radius: 7px;
+            color: var(--text-main);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.18s ease;
+        }
+
+        .ctrl-btn:hover:not(:disabled) {
+            background: #ffffff;
+            color: var(--brand-primary);
+            border-color: var(--brand-primary);
+            box-shadow: 0 2px 8px rgba(162, 28, 175, 0.15);
+        }
+
+        .ctrl-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Label toggle (checkbox) */
+        .ctrl-btn.ctrl-toggle {
+            width: auto;
+            padding: 0 0.6rem;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .ctrl-btn.ctrl-toggle input {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--brand-primary);
+        }
+
+        /* Node size slider */
+        .ctrl-slider-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 6px;
+            color: var(--brand-secondary);
+            font-size: 0.72rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .ctrl-slider-group svg { flex-shrink: 0; }
+        .ctrl-slider-group input[type="range"] {
+            width: 70px;
+            height: 4px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--brand-primary);
+        }
+
+        .ctrl-btn[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #fff;
+            font-family: var(--font-ui);
+            font-size: 0.7rem;
+            font-weight: 500;
+            white-space: nowrap;
+            padding: 4px 8px;
+            border-radius: 5px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+            z-index: 100;
+        }
+
+        .ctrl-btn[data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(2px);
+        }
+
+        /* ── Search Bar ──────────────────────────────────────────────── */
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input-wrapper svg {
+            position: absolute;
+            left: 10px;
+            color: var(--brand-secondary);
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 34px;
+            padding: 0 28px 0 32px;
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            font-family: var(--font-ui);
+            font-size: 0.8rem;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            background: #ffffff;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(162, 28, 175, 0.15);
+        }
+
+        .search-input::placeholder {
+            color: var(--brand-secondary);
+            opacity: 0.7;
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+            color: var(--brand-secondary);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .search-clear-btn:hover {
+            color: var(--text-main);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 120;
+            display: none;
+            flex-direction: column;
+        }
+
+        .search-dropdown::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .search-dropdown::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 2px;
+        }
+
+        .search-item {
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            transition: background 0.15s ease;
+        }
+
+        .search-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-item:hover {
+            background: rgba(162, 28, 175, 0.08);
+        }
+
+        .search-item-name {
+            font-weight: 600;
+            color: var(--brand-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .search-item-cluster {
+            font-size: 0.7rem;
+            color: var(--brand-secondary);
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .search-no-results {
+            padding: 12px;
+            font-size: 0.78rem;
+            color: var(--brand-secondary);
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* ── Canvas area ──────────────────────────────────────────────── */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #cy {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-body);
+        }
+
+        /* Text layer above the graph canvas (clean pill badges) */
+        #cy-labels {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 5;
+        }
+        #cy-labels .cy-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-ui, Inter, -apple-system, sans-serif);
+            font-weight: 400;
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: none;
+            box-shadow: none;
+            border-radius: 4px;
+            padding: 1px 5px;
+            white-space: nowrap;
+            text-align: center;
+            line-height: 1.2;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+
+        /* placeholder */
+        #cy-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            color: var(--brand-secondary);
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #cy-placeholder svg {
+            opacity: 0.35;
+        }
+
+        #cy-placeholder h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        #cy-placeholder p {
+            margin: 0;
+            font-size: 0.88rem;
+        }
+
+        /* loading spinner */
+        #cy-loading {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: rgba(var(--bg-body-rgb, 248, 249, 252), 0.85);
+            z-index: 10;
+        }
+
+        #cy-loading.visible {
+            display: flex;
+        }
+
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid var(--glass-border);
+            border-top-color: var(--brand-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* legend */
+        .legend {
+            position: absolute;
+            bottom: 1.25rem;
+            left: 1.25rem;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+            font-size: 0.78rem;
+            color: var(--brand-secondary);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+            max-width: 380px;
+            z-index: 10;
+        }
+
+        .legend.visible {
+            display: flex;
+        }
+
+        .legend-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 0.75rem;
+        }
+
+        .legend-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.7) url("data:image/svg+xml;utf8,<svg fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.5rem center / 12px 12px;
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            padding: 0.25rem 1.6rem 0.25rem 0.55rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .legend-select:hover, .legend-select:focus {
+            border-color: var(--brand-primary);
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+
+        .legend-scale {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            width: 100%;
+        }
+
+        .legend-gradient {
+            width: 90px;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #22c55e, #f59e0b, #ef4444);
+            flex-shrink: 0;
+        }
+
+        /* Per-value category legend (attribute/prefix coloring) */
+        .legend-cats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            margin-top: 2px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .legend-cat {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+        .legend-cat-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        /* ── Detail panel ─────────────────────────────────────────────── */
+        .detail-panel {
+            width: 320px;
+            min-width: 320px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-left: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .detail-panel.open {
+            transform: translateX(0);
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .detail-header h2 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--brand-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--brand-secondary);
+            padding: 4px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .close-btn:hover {
+            background: rgba(0, 0, 0, 0.07);
+            color: var(--text-main);
+        }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .detail-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.55rem 0.5rem;
+            text-align: center;
+        }
+
+        .metric-card .mv {
+            font-size: 1.15rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .metric-card .ml {
+            font-size: 0.64rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--brand-secondary);
+            margin-top: 0.15rem;
+        }
+
+        .metric-card.red .mv {
+            color: #ef4444;
+        }
+
+        .metric-card.amber .mv {
+            color: #f59e0b;
+        }
+
+        .metric-card.blue .mv {
+            color: #3b82f6;
+        }
+
+        .detail-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--brand-secondary);
+            margin: 0 0 0.5rem;
+        }
+
+        .badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+        }
+
+        .badge .badge-count {
+            color: var(--brand-primary);
+            font-weight: 800;
+            margin-left: 4px;
+        }
+
+        /* reason for grouping */
+        .attr-reason-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .attr-reason {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.35rem 0.55rem;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+        }
+        .attr-reason-dist {
+            border-color: rgba(162, 28, 175, 0.4);
+            background: rgba(162, 28, 175, 0.05);
+        }
+        .attr-name {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-main);
+            min-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .attr-bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 99px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .attr-bar-fill {
+            display: block;
+            height: 100%;
+            border-radius: 99px;
+            background: var(--brand-primary, #a21caf);
+        }
+        .attr-pct {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--brand-secondary);
+            min-width: 34px;
+            text-align: right;
+        }
+        .attr-lift {
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: rgba(162, 28, 175, 0.12);
+            color: var(--brand-primary);
+            white-space: nowrap;
+        }
+        .attr-star {
+            font-size: 0.95rem;
+            line-height: 1;
+            color: #f59e0b;
+            cursor: help;
+            flex-shrink: 0;
+        }
+
+        /* computers list */
+        .computers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            max-height: 260px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .computers-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .computers-list::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 2px;
+        }
+
+        .computer-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--brand-primary);
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+
+        .computer-link:hover {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: var(--brand-primary);
+        }
+
+        .computer-link svg {
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
+
+        .show-more-btn {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--brand-primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.3rem 0;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tda-layout">
+
+        <!-- ── Sidebar ───────────────────────────────────────────────── -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/manager/static/img/logo.svg" alt="Migasfree logo">
+                <div>
+                    <h1>migasfree</h1>
+                    <span>Topological Analysis</span>
+                </div>
+            </div>
+
+            <!-- Global Navigation Links -->
+            <div style="display:flex;flex-direction:column;gap:0.35rem;">
+                <a href="/tda/" class="nav-link active">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="/tda/settings" id="settingsNavLink" class="nav-link">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Settings
+                </a>
+            </div>
+
+            <!-- Search Computer -->
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="computerSearchInput" class="search-input" placeholder="Search computer (name or #id)..." autocomplete="off" spellcheck="false" oninput="handleComputerSearch(this.value)" onkeydown="handleSearchKeyDown(event)">
+                    <button type="button" id="searchClearBtn" class="search-clear-btn" onclick="clearComputerSearch(event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="searchDropdown" class="search-dropdown"></div>
+            </div>
+
+            <!-- Lens selector -->
+            <div style="display:flex;flex-direction:column;gap:0.35rem;">
+                <p class="sidebar-section-title">Analysis Maps</p>
+                <div class="lens-list" id="lensList">
+                    <p style="font-size:0.85rem;color:var(--brand-secondary);font-style:italic;">Loading maps…</p>
+                </div>
+            </div>
+
+            <!-- Graph stats (populated after load) -->
+            <div id="statsSection" style="display:none;">
+                <p class="sidebar-section-title">Graph Stats</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statComputers">—</div>
+                        <div class="stat-label">Computers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statNodes">—</div>
+                        <div class="stat-label">Clusters</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statEdges">—</div>
+                        <div class="stat-label">Edges</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statLens">—</div>
+                        <div class="stat-label">Map</div>
+                    </div>
+                </div>
+                <p class="generated-at" id="generatedAt"></p>
+            </div>
+
+            <!-- User Profile / Auth Status -->
+            <div id="userProfileSection"
+                style="display:none;margin-top:auto;padding:0.7rem 0.85rem;background:rgba(255,255,255,0.65);border:1px solid var(--glass-border);border-radius:10px;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                <div style="display:flex;align-items:center;gap:10px;overflow:hidden;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--brand-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;"
+                        id="userAvatar">U</div>
+                    <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <div id="userName"
+                            style="font-weight:700;font-size:0.82rem;color:var(--text-main);line-height:1.2;">User</div>
+                        <div id="userRole" style="font-size:0.68rem;color:var(--brand-secondary);">Staff</div>
+                    </div>
+                </div>
+                <button onclick="logout()" title="Logout"
+                    style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);cursor:pointer;color:#dc2626;padding:5px;display:flex;border-radius:6px;transition:all 0.2s ease;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── Canvas ─────────────────────────────────────────────────── -->
+        <div class="canvas-area">
+            <!-- Floating Canvas Toolbar -->
+            <div class="canvas-toolbar">
+                <button class="ctrl-btn" onclick="fitGraph()" data-tooltip="Fit to screen">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                </button>
+                <button class="ctrl-btn" onclick="zoomIn()" data-tooltip="Zoom in">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35M11 8v6M8 11h6" />
+                    </svg>
+                </button>
+                <button class="ctrl-btn" onclick="zoomOut()" data-tooltip="Zoom out">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35M8 11h6" />
+                    </svg>
+                </button>
+                <button class="ctrl-btn" id="relayoutBtn" onclick="relayout()" disabled data-tooltip="Re-layout">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10" />
+                        <polyline points="1 20 1 14 7 14" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                </button>
+
+                <div class="toolbar-divider"></div>
+
+                <label class="ctrl-btn ctrl-toggle" data-tooltip="Show/hide node labels">
+                    <input type="checkbox" id="labelsToggle" checked onchange="toggleLabels(this.checked)">
+                    <span>Labels</span>
+                </label>
+
+                <div class="toolbar-divider"></div>
+
+                <!-- Node size slider -->
+                <div class="ctrl-slider-group" data-tooltip="Adjust node size">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4" />
+                    </svg>
+                    <input type="range" id="nodeSizeSlider" min="0" max="5" step="0.05" value="2.5" oninput="setNodeScale(this.value)">
+                </div>
+
+
+            </div>
+            <!-- Login Modal Overlay (when unauthenticated or not staff) -->
+            <div id="login-modal"
+                style="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);z-index:50;padding:1.5rem;">
+                <div
+                    style="background:var(--bg-body, #fff);border:1px solid var(--glass-border);border-radius:14px;width:100%;max-width:380px;box-shadow:0 24px 48px rgba(0,0,0,0.25);overflow:hidden;padding:2rem;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;">
+                        <img src="/manager/static/img/logo.svg" alt="Migasfree" style="width:36px;height:36px;">
+                        <div>
+                            <h3 style="margin:0;font-size:1.1rem;font-weight:800;color:#1e293b;">Staff Authentication</h3>
+                            <span style="font-size:0.75rem;color:#64748b;">TDA Dashboard (Staff Area)</span>
+                        </div>
+                    </div>
+                    <form id="loginForm" onsubmit="submitLogin(event)"
+                        style="display:flex;flex-direction:column;gap:1rem;">
+                        <div id="loginError"
+                            style="display:none;padding:0.6rem;background:#fee2e2;border:1px solid #f87171;border-radius:6px;font-size:0.78rem;color:#b91c1c;">
+                        </div>
+                        <div>
+                            <label
+                                style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-main);margin-bottom:0.3rem;">Username</label>
+                            <input type="text" id="loginUsername" required autocomplete="username"
+                                style="width:100%;padding:0.6rem 0.8rem;border:1px solid var(--glass-border);border-radius:8px;font-family:inherit;font-size:0.85rem;outline:none;">
+                        </div>
+                        <div>
+                            <label
+                                style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-main);margin-bottom:0.3rem;">Password</label>
+                            <input type="password" id="loginPassword" required autocomplete="current-password"
+                                style="width:100%;padding:0.6rem 0.8rem;border:1px solid var(--glass-border);border-radius:8px;font-family:inherit;font-size:0.85rem;outline:none;">
+                        </div>
+                        <button type="submit" id="loginSubmitBtn"
+                            style="margin-top:0.5rem;padding:0.7rem;background:var(--brand-primary);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                            <span>Sign in</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Placeholder -->
+            <div id="cy-placeholder">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+                <h3>No Map Selected</h3>
+                <p>Choose an analysis map from the sidebar to visualize the topology.</p>
+            </div>
+
+            <!-- Loading -->
+            <div id="cy-loading">
+                <div class="spinner"></div>
+                <span id="cy-loading-text" style="font-size:0.88rem;color:var(--brand-secondary);">Computing
+                    layout…</span>
+            </div>
+
+            <!-- Recalculate Confirmation Modal -->
+            <div id="recalc-confirm-modal"
+                style="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);z-index:35;padding:1.5rem;">
+                <div
+                    style="background:var(--bg-body, #fff);border:1px solid var(--glass-border);border-radius:14px;width:100%;max-width:440px;box-shadow:0 20px 40px rgba(0,0,0,0.25);overflow:hidden;padding:1.6rem 1.75rem;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;">
+                        <div
+                            style="width:40px;height:40px;border-radius:10px;background:rgba(67,20,7,0.08);color:var(--brand-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:var(--brand-primary);">
+                                Recalculate Topology</h3>
+                            <span style="font-size:0.75rem;color:var(--brand-secondary);">Topological Data Analysis
+                                (TDA)</span>
+                        </div>
+                    </div>
+                    <p style="font-size:0.86rem;line-height:1.55;color:var(--text-main);margin:0 0 1.5rem 0;">
+                        Depending on the volume of computer fleet data and active maps, this process may
+                        <strong>consume significant time and server resources</strong> (distance matrix computation
+                        and Mapper clustering algorithm).
+                    </p>
+                    <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+                        <button onclick="closeRecalcConfirmModal()"
+                            style="padding:0.55rem 1rem;background:rgba(0,0,0,0.06);border:1px solid transparent;border-radius:8px;font-size:0.84rem;font-weight:600;color:var(--text-main);cursor:pointer;transition:all 0.15s ease;">
+                            Cancel
+                        </button>
+                        <button onclick="acceptRecalculate()"
+                            style="padding:0.55rem 1.25rem;background:var(--brand-primary);border:none;border-radius:8px;font-size:0.84rem;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(67,20,7,0.25);transition:all 0.15s ease;">
+                            ACCEPT
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recalculate Live Progress Modal -->
+            <div id="recalc-modal"
+                style="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:30;padding:1.5rem;">
+                <div
+                    style="background:var(--bg-body, #fff);border:1px solid var(--glass-border);border-radius:12px;width:100%;max-width:620px;box-shadow:0 20px 40px rgba(0,0,0,0.2);display:flex;flex-direction:column;overflow:hidden;">
+                    <div
+                        style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;background:rgba(67,20,7,0.03);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div id="recalc-spinner" class="spinner" style="width:18px;height:18px;border-width:2.5px;">
+                            </div>
+                            <span id="recalc-modal-title"
+                                style="font-weight:700;font-size:0.92rem;color:var(--brand-primary);">Recalculating TDA
+                                Topology…</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="recalc-step-badge"
+                                style="font-size:0.75rem;padding:3px 8px;border-radius:6px;background:var(--brand-primary);color:#fff;font-weight:600;">Processing</span>
+                            <button onclick="closeRecalcModal()"
+                                style="background:transparent;border:none;cursor:pointer;color:var(--brand-secondary);padding:4px;display:flex;border-radius:4px;"
+                                title="Close">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="recalc-logs-container"
+                        style="padding:1rem 1.25rem;max-height:300px;min-height:180px;overflow-y:auto;font-family:'JetBrains Mono', monospace, sans-serif;font-size:0.78rem;line-height:1.6;background:#0f172a;color:#e2e8f0;display:flex;flex-direction:column;gap:4px;">
+                        <div style="color:#94a3b8;">Connecting to analytics worker…</div>
+                    </div>
+                    <div
+                        style="padding:0.75rem 1.25rem;border-top:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.7);">
+                        <span id="recalc-footer-info" style="font-size:0.75rem;color:var(--brand-secondary);">Updating
+                            all 6 mathematical projections</span>
+                        <button id="recalc-close-btn" onclick="closeRecalcModal()"
+                            style="display:none;padding:0.4rem 1rem;background:var(--brand-primary);color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cytoscape canvas -->
+            <div id="cy"></div>
+            <div id="cy-labels"></div>
+
+            <!-- Color legend -->
+            <div class="legend" id="colorLegend">
+                <div class="legend-header">
+                    <span id="legendTitle" style="font-weight:700;color:var(--text-main);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;">Color Metric</span>
+                    <select id="colorModeSelect" class="legend-select" onchange="onColorModeChange(this.value)">
+                        <option value="default">Default (Lens config)</option>
+                    </select>
+                </div>
+                <div class="legend-scale" id="legendScale">
+                    <span id="legendLowLabel">Low</span>
+                    <div class="legend-gradient"></div>
+                    <span id="legendHighLabel">High</span>
+                </div>
+                <div id="legendCategories" class="legend-cats" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ── Detail panel ────────────────────────────────────────────── -->
+        <aside class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <h2 id="detailTitle">Cluster details</h2>
+                <button type="button" class="close-btn" onclick="closeDetail(event)" title="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="detail-body" id="detailBody">
+                <!-- Populated by JS -->
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        "use strict";
+
+        /* ── Configuration ──────────────────────────────────────────────── */
+        const ROOT_PATH = "/tda";
+        const FQDN = window.location.hostname;
+        const MAX_LISTED = 50;           // computers listed before "show more"
+        const CONFIGURED_LENSES = {{ configured_lenses | default(["health", "obsolescence", "software", "migration", "sync", "diversity"]) | tojson }};
+
+        /* ── State ──────────────────────────────────────────────────────── */
+        let activeLens = null;
+        let currentLensMeta = null;   // metadata of the lens currently displayed
+        let currentData = null;       // raw JSON of the lens currently displayed
+        let is3D = true;              // pure 3D rendering mode
+        let graph3d = null;           // ForceGraph3D instance
+        let nodeScale = 2.5;          // node size multiplier (slider 0..5, default 2.5)
+        let currentColorMode = null;  // active color metric mode
+
+        /* ── Metric metadata for live coloring (mapped to dataset columns) ─ */
+        const COLOR_METRICS = {
+            error_count: { label: "Errors (avg)", unit: "", kind: "continuous", field: "avg_errors" },
+            fault_count: { label: "Faults (avg)", unit: "", kind: "continuous", field: "avg_faults" },
+            avg_sync_duration_secs: { label: "Sync Duration (avg)", unit: " s", kind: "continuous", field: "avg_sync" },
+            sync_count: { label: "Sync Count (avg)", unit: "", kind: "continuous", field: "avg_sync_count" },
+            pms_failures: { label: "PMS Failures (avg)", unit: "", kind: "continuous", field: "avg_pms_failures" },
+            ram_gb: { label: "RAM (avg)", unit: " GB", kind: "continuous", field: "avg_ram_gb" },
+            disk_gb: { label: "Disk (avg)", unit: " GB", kind: "continuous", field: "avg_disk_gb" },
+            machine_type: { label: "Machine Type (avg)", unit: "", kind: "continuous", field: "avg_machine_type" },
+            computer_age_days: { label: "Computer Age (avg)", unit: " d", kind: "continuous", field: "avg_computer_age_days" },
+            days_since_last_sync: { label: "Days Since Sync (avg)", unit: " d", kind: "continuous", field: "avg_days_since_last_sync" },
+            total_packages: { label: "Packages (avg)", unit: "", kind: "continuous", field: "avg_packages" },
+            migration_count: { label: "Migrations (avg)", unit: "", kind: "continuous", field: "avg_migrations" },
+            days_since_last_migration: { label: "Days Since Migration (avg)", unit: " d", kind: "continuous", field: "avg_days_since_migration" },
+            jaccard_outlier_score: { label: "Config Outlier Score", unit: "", kind: "continuous", field: "color_value" },
+            software_drift_score: { label: "Software Drift Score", unit: "", kind: "continuous", field: "color_value" },
+        };
+
+        /* ── Lens label/description map (built-in lenses only) ────────────── */
+        const LENS_META = {
+            health: { label: "Health", color: "#ef4444", desc: "Error & fault rate" },
+            obsolescence: { label: "Obsolescence", color: "#f59e0b", desc: "Hardware capacity & profiles" },
+            software: { label: "Software", color: "#10b981", desc: "Package drift & archetypes" },
+            migration: { label: "Migration", color: "#6366f1", desc: "Trajectories & bottlenecks" },
+            sync: { label: "Sync", color: "#3b82f6", desc: "Sync speed & PMS failures" },
+            diversity: { label: "Diversity", color: "#8b5cf6", desc: "Config divergence (Jaccard)" },
+        };
+
+        /* ── Stable color for user-defined lenses ────────────────────────── */
+        const LENS_PALETTE = ["#ec4899", "#14b8a6", "#f97316", "#84cc16", "#06b6d4", "#a855f7", "#f43f5e", "#64748b"];
+        function paletteFor(name) {
+            if (LENS_META[name]) return LENS_META[name].color;
+            let h = 0;
+            for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+            return LENS_PALETTE[h % LENS_PALETTE.length];
+        }
+
+        /* ── Color interpolation (green → amber → red) ───────────────────── */
+        function scoreColor(norm) {
+            // norm ∈ [0,1]
+            if (norm <= 0.5) {
+                // green → amber
+                const t = norm * 2;
+                const r = Math.round(34 + t * (245 - 34));
+                const g = Math.round(197 + t * (158 - 197));
+                const b = Math.round(94 + t * (11 - 94));
+                return `rgb(${r},${g},${b})`;
+            } else {
+                // amber → red
+                const t = (norm - 0.5) * 2;
+                const r = Math.round(245 + t * (239 - 245));
+                const g = Math.round(158 + t * (68 - 158));
+                const b = Math.round(11 + t * (68 - 11));
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        /* ── Node score per lens (fallback for legacy JSON) ──────────────── */
+        function nodeScore(node, lens) {
+            const d = node.data || node;
+            switch (lens) {
+                case "health":
+                    return (d.avg_errors || 0) + (d.avg_faults || 0);
+                case "sync":
+                    return (d.avg_sync_duration || 0) / 60 + (d.pms_failures || 0);
+                default:
+                    return 0;
+            }
+        }
+
+        /* ── Categorical palette (per project / category) ─────────────────── */
+        // Perceptually distinct categorical palette (d3 schemeTableau10). The
+        // assignment is deterministic per graph: categories sorted alphabetically
+        // map in order, so every distinct value gets a different, well-separated
+        // color (a plain name-hash would map similar names to adjacent hues).
+        const CATEGORY_COLORS = [
+            "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+            "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+        ];
+        function buildCategoryMap(nodes, mode) {
+            const keys = new Set();
+            const prefixFilter = mode && mode.startsWith("prefix:") ? mode.slice(7) : null;
+
+            (nodes || []).forEach(n => {
+                const d = n.data || n;
+                if (mode === "projects") {
+                    const projects = d.projects || [];
+                    if (projects && projects.length) {
+                        const dom = projects[0];
+                        keys.add(String(dom.name != null ? dom.name : (dom.id != null ? dom.id : "?")));
+                    }
+                } else if (prefixFilter) {
+                    const cats = d.color_categories;
+                    if (cats) {
+                        Object.keys(cats).forEach(k => {
+                            const strK = String(k);
+                            if (strK.startsWith(prefixFilter + "-") || strK.startsWith(prefixFilter + ":") || strK === prefixFilter) {
+                                keys.add(strK);
+                            }
+                        });
+                    }
+                    const topList = d.top_attributes || [];
+                    topList.forEach(a => {
+                        if (a && a.name && (a.name.startsWith(prefixFilter + "-") || a.name.startsWith(prefixFilter + ":") || a.name === prefixFilter)) {
+                            keys.add(String(a.name));
+                        }
+                    });
+                } else if (mode === "attributes") {
+                    const cats = d.color_categories;
+                    if (cats && Object.keys(cats).length) {
+                        Object.keys(cats).forEach(k => keys.add(String(k)));
+                    } else {
+                        const topList = d.top_attributes || [];
+                        const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+                        if (distAttr && distAttr.name) keys.add(String(distAttr.name));
+                    }
+                } else {
+                    const cats = d.color_categories;
+                    if (cats) Object.keys(cats).forEach(k => keys.add(String(k)));
+                }
+            });
+            const map = new Map();
+            Array.from(keys).sort().forEach((k, i) => {
+                map.set(k, CATEGORY_COLORS[i % CATEGORY_COLORS.length]);
+            });
+            return map;
+        }
+        function categoryColor(key, map) {
+            if (map && map.has(String(key))) return map.get(String(key));
+            let h = 0;
+            for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+            return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
+        }
+        function projectCategoryColor(node, map) {
+            const d = node.data || node;
+            const projects = d.projects || [];
+            if (!projects || !projects.length) return "#94a3b8";
+            const dom = projects[0];
+            const key = String(dom.name != null ? dom.name : (dom.id != null ? dom.id : "?"));
+            return categoryColor(key, map);
+        }
+        function attributeCategoryColor(node, map, prefixFilter) {
+            const d = node.data || node;
+            const categories = d.color_categories;
+            if (prefixFilter) {
+                if (categories) {
+                    const matches = Object.entries(categories).filter(([k]) =>
+                        k.startsWith(prefixFilter + "-") || k.startsWith(prefixFilter + ":") || k === prefixFilter
+                    ).sort((a, b) => b[1] - a[1]);
+                    if (matches.length) {
+                        return categoryColor(String(matches[0][0]), map);
+                    }
+                }
+                const topList = d.top_attributes || [];
+                const matchAttr = topList.find(a =>
+                    a && a.name && (a.name.startsWith(prefixFilter + "-") || a.name.startsWith(prefixFilter + ":") || a.name === prefixFilter)
+                );
+                if (matchAttr) {
+                    return categoryColor(String(matchAttr.name), map);
+                }
+                return "#e2e8f0"; // Neutral background if node doesn't match this prefix
+            }
+
+            if (categories && Object.keys(categories).length) {
+                const dominant = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
+                return categoryColor(String(dominant[0]), map);
+            }
+            const topList = d.top_attributes || [];
+            const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+            if (distAttr && distAttr.name) {
+                return categoryColor(String(distAttr.name), map);
+            }
+            return "#94a3b8";
+        }
+
+        // Categorical coloring driven by the engine's color_categories
+        // (dominant category per node), used e.g. for boolean attribute colors.
+        function categoricalNodeColor(node, map) {
+            const d = node.data || node;
+            const categories = d.color_categories;
+            if (categories && Object.keys(categories).length) {
+                const dominant = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
+                return categoryColor(String(dominant[0]), map);
+            }
+            return projectCategoryColor(node, map);
+        }
+
+        /* ── Node label: distinctive attribute vs lens metric ───────────── */
+        const METRIC_UNITS = {
+            error_count: "", fault_count: "", sync_count: "",
+            avg_sync_duration_secs: " s", pms_failures: "",
+            ram_gb: " GB", disk_gb: " GB", machine_type: "",
+            computer_age_days: " d", days_since_last_sync: " d",
+            total_packages: "", migration_count: "",
+            days_since_last_migration: " d", jaccard_outlier_score: "",
+            software_drift_score: "",
+        };
+
+        function formatMetricValue(value, colorColumns) {
+            const num = Number(value);
+            if (value === undefined || value === null || !isFinite(num)) return "";
+            const formatted = (Math.round(num * 100) / 100).toLocaleString("en-US", {
+                maximumFractionDigits: 2,
+            });
+            const col = (colorColumns && colorColumns.length) ? colorColumns[0] : "";
+            const unit = METRIC_UNITS[col] !== undefined ? METRIC_UNITS[col] : "";
+            return formatted + unit;
+        }
+
+        /* ── Compute color and norm for a node based on current color mode ─ */
+        function getNodeColorInfo(node, mode, data, lens, catMap, minScore, maxScore) {
+            const d = node.data || node;
+            if (mode && mode.startsWith("prefix:")) {
+                const prefixName = mode.slice(7);
+                return { color: attributeCategoryColor(node, catMap, prefixName), norm: -1 };
+            }
+
+            const metricCfg = mode ? COLOR_METRICS[mode] : null;
+            if (metricCfg) {
+                if (metricCfg.kind === "categorical") {
+                    return { color: categoricalNodeColor(node, catMap), norm: -1 };
+                }
+                const field = metricCfg.field;
+                let val = d[field] !== undefined ? Number(d[field]) : (d.color_value !== undefined ? d.color_value : 0);
+                if (!isFinite(val)) val = 0;
+                const range = (maxScore - minScore) || 1;
+                const norm = Math.max(0, Math.min(1, (val - minScore) / range));
+                return { color: scoreColor(norm), norm: norm };
+            }
+
+            // Fallback to lens metadata
+            const colorMeta = (data.metadata && data.metadata.color) || null;
+            const colorKind = colorMeta ? colorMeta.kind : "continuous";
+            if (colorKind === "categorical") {
+                return { color: categoricalNodeColor(node, catMap), norm: -1 };
+            } else {
+                const val = d.color_value !== undefined ? d.color_value : nodeScore(d, lens);
+                const range = (maxScore - minScore) || 1;
+                const norm = Math.max(0, Math.min(1, (val - minScore) / range));
+                return { color: scoreColor(norm), norm: norm };
+            }
+        }
+
+        /* ── 3D node label overlay (DOM layer, projected from 3D world) ─── */
+        let labelsVisible = true;
+        let label3DRAF = null;
+
+        function toggleLabels(visible) {
+            labelsVisible = visible;
+            applyLabelMode();
+        }
+
+        function applyLabelMode() {
+            if (graph3d && is3D) render3DLabelOverlay();
+        }
+
+        function buildViewMatrix(camera) {
+            const q = camera.quaternion;
+            const x = q.x, y = q.y, z = q.z, w = q.w;
+            const x2 = x + x, y2 = y + y, z2 = z + z;
+            const xx = x * x2, xy = x * y2, xz = x * z2;
+            const yy = y * y2, yz = y * z2, zz = z * z2;
+            const wx = w * x2, wy = w * y2, wz = w * z2;
+            const m00 = 1 - (yy + zz), m01 = xy + wz, m02 = xz - wy;
+            const m10 = xy - wz, m11 = 1 - (xx + zz), m12 = yz + wx;
+            const m20 = xz + wy, m21 = yz - wx, m22 = 1 - (xx + yy);
+            const px = camera.position.x, py = camera.position.y, pz = camera.position.z;
+            return [
+                m00, m10, m20, 0,
+                m01, m11, m21, 0,
+                m02, m12, m22, 0,
+                -(m00 * px + m01 * py + m02 * pz),
+                -(m10 * px + m11 * py + m12 * pz),
+                -(m20 * px + m21 * py + m22 * pz),
+                1,
+            ];
+        }
+
+        function project3DPoint(proj, view, x, y, z, width, height) {
+            const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
+            const vy = view[1] * x + view[5] * y + view[9] * z + view[13];
+            const vz = view[2] * x + view[6] * y + view[10] * z + view[14];
+            const vw = view[3] * x + view[7] * y + view[11] * z + view[15];
+            const cx = proj[0] * vx + proj[4] * vy + proj[8] * vz + proj[12] * vw;
+            const cy = proj[1] * vx + proj[5] * vy + proj[9] * vz + proj[13] * vw;
+            const cw = proj[3] * vx + proj[7] * vy + proj[11] * vz + proj[15] * vw;
+            if (cw <= 0.0001) return null;
+            return {
+                x: (cx / cw + 1) * 0.5 * width,
+                y: (1 - cy / cw) * 0.5 * height,
+                depth: Math.sqrt(vx * vx + vy * vy + vz * vz),
+            };
+        }
+
+        function render3DLabelOverlay() {
+            const overlay = document.getElementById("cy-labels");
+            if (!overlay) return;
+            overlay.innerHTML = "";
+            if (!labelsVisible || !graph3d || !is3D) return;
+
+            const renderer = graph3d.renderer();
+            const camera = graph3d.camera();
+            if (!renderer || !camera) return;
+            const canvas = renderer.domElement;
+            const width = (canvas.clientWidth || canvas.width) || 0;
+            const height = (canvas.clientHeight || canvas.height) || 0;
+            if (!width || !height) return;
+
+            const proj = camera.projectionMatrix.elements;
+            const view = buildViewMatrix(camera);
+            if (!proj) return;
+
+            const nodes = (graph3d.graphData() || {}).nodes || [];
+
+            // Group by distinctive attribute, keep the largest node per group
+            const groups = new Map();
+            nodes.forEach(n => {
+                const dist = n.distLabel;
+                if (!dist) return;
+                const cur = groups.get(dist);
+                if (!cur || (n.size || 0) > (cur.size || 0)) groups.set(dist, n);
+            });
+
+            let refDepth = 1;
+            const positioned = nodes.filter(n => n.x != null && isFinite(n.x));
+            if (positioned.length) {
+                let cx = 0, cy = 0, cz = 0;
+                positioned.forEach(n => { cx += n.x; cy += n.y; cz += n.z; });
+                cx /= positioned.length; cy /= positioned.length; cz /= positioned.length;
+                const cvx = view[0] * cx + view[4] * cy + view[8] * cz + view[12];
+                const cvy = view[1] * cx + view[5] * cy + view[9] * cz + view[13];
+                const cvz = view[2] * cx + view[6] * cy + view[10] * cz + view[14];
+                refDepth = Math.max(1, Math.sqrt(cvx * cvx + cvy * cvy + cvz * cvz));
+            }
+
+            const sorted3DNodes = Array.from(groups.values()).sort((a, b) => (b.size || 0) - (a.size || 0));
+            const rendered3DBoxes = [];
+
+            sorted3DNodes.forEach(n => {
+                let wx, wy, wz;
+                const obj = n.__threeObj;
+                if (obj && obj.position) {
+                    wx = obj.position.x; wy = obj.position.y; wz = obj.position.z;
+                } else {
+                    wx = n.x; wy = n.y; wz = n.z;
+                }
+                if (wx == null || !isFinite(wx) || wy == null || !isFinite(wy) || wz == null || !isFinite(wz)) return;
+                const p = project3DPoint(proj, view, wx, wy, wz, width, height);
+                if (!p || !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.depth)) return;
+                if (p.x < -60 || p.y < -60 || p.x > width + 60 || p.y > height + 60) return;
+
+                const fSize = Math.max(8, Math.min(22, Math.round(15 * refDepth / p.depth)));
+                if (!isFinite(fSize)) return;
+
+                const labelText = n.distLabel;
+                const estWidth = labelText.length * (fSize * 0.55) + 16;
+                const estHeight = fSize + 10;
+                const curBox = {
+                    x1: p.x - estWidth / 2,
+                    y1: p.y - estHeight / 2,
+                    x2: p.x + estWidth / 2,
+                    y2: p.y + estHeight / 2,
+                };
+
+                const collides = rendered3DBoxes.some(b => {
+                    return !(curBox.x2 + 8 < b.x1 || curBox.x1 - 8 > b.x2 || curBox.y2 + 4 < b.y1 || curBox.y1 - 4 > b.y2);
+                });
+
+                if (!collides) {
+                    rendered3DBoxes.push(curBox);
+                    const el = document.createElement("div");
+                    el.className = "cy-label";
+                    el.style.fontSize = fSize + "px";
+                    el.style.left = p.x + "px";
+                    el.style.top = p.y + "px";
+                    el.textContent = labelText;
+                    overlay.appendChild(el);
+                }
+            });
+        }
+
+        function start3DLabelLoop() {
+            if (label3DRAF != null) return;
+            const tick = () => {
+                label3DRAF = null;
+                try {
+                    if (graph3d && is3D) render3DLabelOverlay();
+                } catch (err) {
+                    console.error("3D label overlay error:", err);
+                }
+                label3DRAF = requestAnimationFrame(tick);
+            };
+            label3DRAF = requestAnimationFrame(tick);
+        }
+
+        function stop3DLabelLoop() {
+            if (label3DRAF != null) {
+                cancelAnimationFrame(label3DRAF);
+                label3DRAF = null;
+            }
+        }
+
+        /* ── 3D force-graph rendering (3d-force-graph) ────────────────────── */
+        function init3DGraph(data, lens, drawCfg) {
+            if (graph3d) { try { graph3d._destructor(); } catch (_) { } graph3d = null; }
+            is3D = true;
+
+            const container = document.getElementById("cy");
+            container.innerHTML = "";
+            const labelOverlay = document.getElementById("cy-labels");
+            if (labelOverlay) labelOverlay.innerHTML = "";
+
+            const colorMeta = (data.metadata && data.metadata.color) || null;
+            const nodeLabelMode = (data.metadata && data.metadata.node_label) || "attribute";
+            const colorColumns = (colorMeta && colorMeta.columns) || [];
+            const nodes = data.nodes || [];
+
+            // Compute score range / categories for active color mode
+            let minScore = 0, maxScore = 1, catMap = null;
+            if (currentColorMode && currentColorMode.startsWith("prefix:")) {
+                catMap = buildCategoryMap(nodes, currentColorMode);
+            } else {
+                const metricCfg = currentColorMode ? COLOR_METRICS[currentColorMode] : null;
+                if (metricCfg) {
+                    if (metricCfg.kind === "continuous") {
+                        const scores = nodes.map(n => {
+                            const val = Number(n[metricCfg.field]);
+                            return isFinite(val) ? val : 0;
+                        });
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    } else {
+                        catMap = buildCategoryMap(nodes, metricCfg.mode || "categories");
+                    }
+                } else {
+                    const colorKind = colorMeta ? colorMeta.kind : "continuous";
+                    if (colorKind === "continuous") {
+                        const scores = nodes.map(n => (n.color_value !== undefined ? n.color_value : nodeScore(n, lens)));
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    } else {
+                        catMap = buildCategoryMap(nodes, "categories");
+                    }
+                }
+            }
+
+            const graphNodes = nodes.map((n) => {
+                const colorInfo = getNodeColorInfo(n, currentColorMode, data, lens, catMap, minScore, maxScore);
+                const color = colorInfo.color;
+                const radius = Math.max(18, Math.min(60, 18 + Math.sqrt(n.size) * 2.8));
+                let distLabel = "";
+                if (nodeLabelMode === "metric") {
+                    distLabel = formatMetricValue(n.color_value, colorColumns);
+                } else {
+                    const topList = n.top_attributes || [];
+                    const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+                    distLabel = distAttr ? distAttr.name : "";
+                }
+                return {
+                    id: String(n.id),
+                    size: n.size,
+                    radius: radius,
+                    color: color,
+                    color_value: n.color_value !== undefined ? n.color_value : 0,
+                    color_categories: n.color_categories || null,
+                    distLabel: distLabel,
+                    computer_ids: n.computer_ids || [],
+                    computer_names: n.computer_names || [],
+                    projects: n.projects || {},
+                    statuses: n.statuses || {},
+                    avg_errors: n.avg_errors || 0,
+                    avg_faults: n.avg_faults || 0,
+                    avg_sync: n.avg_sync_duration || 0,
+                    avg_sync_count: n.avg_sync_count || 0,
+                    avg_pms_failures: n.avg_pms_failures || 0,
+                    avg_ram_gb: n.avg_ram_gb,
+                    avg_disk_gb: n.avg_disk_gb,
+                    avg_machine_type: n.avg_machine_type !== undefined ? n.avg_machine_type : 0,
+                    machine_types: n.machine_types || {},
+                    avg_computer_age_days: n.avg_computer_age_days || 0,
+                    avg_days_since_last_sync: n.avg_days_since_last_sync || 0,
+                    avg_days_since_migration: n.avg_days_since_migration || 0,
+                    avg_packages: n.avg_packages || 0,
+                    avg_migrations: n.avg_migrations || 0,
+                    migrated_count: n.migrated_count || 0,
+                    cpu_models: n.cpu_models || [],
+                    gpus: n.gpus || [],
+                    top_attributes: n.top_attributes || [],
+                    keplerId: n.kepler_id || "",
+                };
+            });
+
+            const graphLinks = (data.edges || []).map((e, i) => ({
+                id: `e${i}`,
+                source: String(e.source),
+                target: String(e.target),
+            }));
+
+            const graph = ForceGraph3D()(container)
+                .width(container.clientWidth || window.innerWidth)
+                .height(container.clientHeight || window.innerHeight)
+                .graphData({ nodes: graphNodes, links: graphLinks })
+                .backgroundColor("#ffffff")
+                .nodeColor(n => n.color)
+                .nodeVal(n => (n.radius || 20) / 8)
+                .nodeRelSize(4 * nodeScale)
+                .nodeLabel(n => n.distLabel ? `${n.distLabel}\n${n.size} computers` : `${n.size} computers`)
+                .linkColor(() => "rgba(148,163,184,0.45)")
+                .linkWidth(1.5)
+                .linkOpacity(0.7)
+                .onNodeClick(n => { showDetail({ data: () => n }); })
+                .onNodeHover(n => { container.style.cursor = n ? "pointer" : "default"; });
+
+            graph.numDimensions(3);
+            graph.d3Force("charge").strength(-300);
+            graph.d3Force("link").distance(70);
+            graph3d = graph;
+            resizeGraph3D();
+            start3DLabelLoop();
+
+            // Automatically frame the whole 3D graph into view with padding
+            setTimeout(() => {
+                if (is3D && graph3d) {
+                    graph3d.zoomToFit(600, 40);
+                }
+            }, 300);
+        }
+
+        /* ── Keep the 3D graph sized to the canvas container ────────────── */
+        function resizeGraph3D() {
+            if (!graph3d || !is3D) return;
+            const container = document.getElementById("cy");
+            if (!container) return;
+            graph3d.width(container.clientWidth || window.innerWidth)
+                .height(container.clientHeight || window.innerHeight);
+        }
+
+        window.addEventListener("resize", () => {
+            if (is3D && graph3d) resizeGraph3D();
+        });
+
+        /* ── Load a lens ────────────────────────────────────────────────── */
+        async function selectLens(lens, btn) {
+            if (lens === activeLens) return;
+            activeLens = lens;
+
+            // Update button styles
+            document.querySelectorAll(".lens-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            // Update settings link with active map hash
+            const settingsLink = document.getElementById("settingsNavLink");
+            if (settingsLink) {
+                settingsLink.href = `${ROOT_PATH}/settings#${encodeURIComponent(lens)}`;
+            }
+
+            // Show loading
+            const loading = document.getElementById("cy-loading");
+            const placeholder = document.getElementById("cy-placeholder");
+            placeholder.style.display = "none";
+            loading.classList.add("visible");
+            document.getElementById("statsSection").style.display = "none";
+            document.getElementById("colorLegend").classList.remove("visible");
+            closeDetail();
+            currentColorMode = null;
+            const searchIn = document.getElementById("computerSearchInput");
+            if (searchIn) searchIn.value = "";
+            const searchDrop = document.getElementById("searchDropdown");
+            if (searchDrop) searchDrop.style.display = "none";
+            const clearBtn = document.getElementById("searchClearBtn");
+            if (clearBtn) clearBtn.style.display = "none";
+
+            try {
+                // Load the graph JSON and the live lens descriptor in parallel.
+                // The descriptor carries draw.dimensions so a 2D/3D change takes
+                // effect immediately, without recalculating the Mapper.
+                const [resp, specResp] = await Promise.all([
+                    fetch(`${ROOT_PATH}/api/v1/lens/${lens}/json`),
+                    fetch(`${ROOT_PATH}/api/v1/lenses/${lens}`),
+                ]);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const spec = specResp.ok ? await specResp.json() : null;
+                currentData = data;
+                currentLensMeta = data.metadata || {};
+
+                document.getElementById("relayoutBtn").disabled = false;
+
+                // Update stats & legend immediately
+                updateStats(data);
+                updateLegend(data);
+
+                renderCurrent(data, lens);
+            } catch (err) {
+                loading.classList.remove("visible");
+                console.error("Error loading map JSON:", err);
+                placeholder.style.display = "flex";
+                placeholder.querySelector("h3").textContent = "Error loading map";
+                placeholder.querySelector("p").textContent = err.message;
+            }
+        }
+
+        /* ── Render the current data in 3D ──────────────────────────────── */
+        function renderCurrent(data, lens) {
+            init3DGraph(data, lens, {});
+            hideLoading();
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById("cy-loading");
+            if (loading) loading.classList.remove("visible");
+        }
+
+        /* ── Update sidebar stats ────────────────────────────────────────── */
+        function updateStats(data) {
+            const m = data.metadata || {};
+            document.getElementById("statComputers").textContent = m.total_computers ?? "—";
+            document.getElementById("statNodes").textContent = m.total_nodes ?? "—";
+            document.getElementById("statEdges").textContent = m.total_edges ?? "—";
+            document.getElementById("statLens").textContent = (m.lens || "—").charAt(0).toUpperCase() + (m.lens || "").slice(1);
+
+            if (m.generated_at) {
+                const d = new Date(m.generated_at + (m.generated_at.endsWith("Z") ? "" : "Z"));
+                document.getElementById("generatedAt").textContent =
+                    "Generated: " + d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+            } else {
+                document.getElementById("generatedAt").textContent = "";
+            }
+            document.getElementById("statsSection").style.display = "block";
+        }
+
+        /* ── Populate color mode dropdown with available computed data ───── */
+        function populateColorModeSelect(data) {
+            const selectEl = document.getElementById("colorModeSelect");
+            if (!selectEl || !data) return;
+
+            const m = data.metadata || {};
+            const datasetCols = m.dataset_metric_columns || (currentLensMeta && currentLensMeta.dataset_metric_columns) || [];
+            const lensColorCols = (m.color && m.color.columns) || [];
+
+            // 1. Gather continuous metric columns from computed dataset
+            const availableCols = [];
+            datasetCols.forEach(c => {
+                if (COLOR_METRICS[c] && !availableCols.includes(c)) availableCols.push(c);
+            });
+            // Include lens coloring columns if defined (e.g. outlier/drift scores)
+            lensColorCols.forEach(c => {
+                if (COLOR_METRICS[c] && !availableCols.includes(c)) availableCols.push(c);
+            });
+
+            // 2. Discover distinct prefixes from computed nodes
+            const discoveredPrefixes = new Set();
+
+            (data.nodes || []).forEach(n => {
+                if (n.color_categories) {
+                    Object.keys(n.color_categories).forEach(k => {
+                        const strK = String(k);
+                        const idx = strK.indexOf("-");
+                        if (idx > 0) {
+                            discoveredPrefixes.add(strK.slice(0, idx));
+                        } else {
+                            const idxColon = strK.indexOf(":");
+                            if (idxColon > 0) discoveredPrefixes.add(strK.slice(0, idxColon));
+                        }
+                    });
+                }
+                if (n.top_attributes) {
+                    n.top_attributes.forEach(a => {
+                        if (a && a.name) {
+                            const strA = String(a.name);
+                            const idx = strA.indexOf("-");
+                            if (idx > 0) {
+                                discoveredPrefixes.add(strA.slice(0, idx));
+                            } else {
+                                const idxColon = strA.indexOf(":");
+                                if (idxColon > 0) discoveredPrefixes.add(strA.slice(0, idxColon));
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Build options (no synthetic 'default' option; configured metric/prefix is directly selected)
+            selectEl.innerHTML = "";
+
+            if (availableCols.length) {
+                const grpMetrics = document.createElement("optgroup");
+                grpMetrics.label = "Dataset Metrics";
+                availableCols.forEach(col => {
+                    const cfg = COLOR_METRICS[col];
+                    if (cfg && cfg.kind === "continuous") {
+                        const opt = document.createElement("option");
+                        opt.value = col;
+                        opt.textContent = cfg.label;
+                        grpMetrics.appendChild(opt);
+                    }
+                });
+                if (grpMetrics.children.length) {
+                    selectEl.appendChild(grpMetrics);
+                }
+            }
+
+            const prefixNames = Object.assign(
+                {},
+                window.tdaPrefixCatalog || {},
+                (m && m.prefix_names) || {}
+            );
+            const prefixList = Array.from(discoveredPrefixes).sort();
+            if (prefixList.length) {
+                const grpCats = document.createElement("optgroup");
+                grpCats.label = "Attributes";
+                prefixList.forEach(prefix => {
+                    const opt = document.createElement("option");
+                    opt.value = `prefix:${prefix}`;
+                    const displayName = prefixNames[prefix] || prefixNames[prefix.toUpperCase()] || prefix;
+                    opt.textContent = displayName;
+                    grpCats.appendChild(opt);
+                });
+                if (grpCats.children.length) {
+                    selectEl.appendChild(grpCats);
+                }
+            }
+
+            // Determine active/default key from lens metadata if not explicitly set
+            const validValues = Array.from(selectEl.options).map(o => o.value);
+            let configuredMode = null;
+            if (m.color && m.color.columns && m.color.columns.length) {
+                const firstCol = m.color.columns[0];
+                if (m.color.kind === "categorical" && firstCol.startsWith("prefix_")) {
+                    const pMatch = /^prefix_(\d+)$/.exec(firstCol);
+                    if (pMatch && prefixList.length) {
+                        configuredMode = `prefix:${prefixList[0]}`;
+                    }
+                } else if (validValues.includes(firstCol)) {
+                    configuredMode = firstCol;
+                }
+            }
+            if (!currentColorMode || currentColorMode === "default" || !validValues.includes(currentColorMode)) {
+                currentColorMode = configuredMode || (validValues.length ? validValues[0] : "");
+            }
+            if (currentColorMode) {
+                selectEl.value = currentColorMode;
+            }
+        }
+
+        /* ── Update color legend ─────────────────────────────────────────── */
+        function updateLegend(data) {
+            const legendEl = document.getElementById("colorLegend");
+            const catsBox = document.getElementById("legendCategories");
+            const scaleBox = document.getElementById("legendScale");
+            const lowLabel = document.getElementById("legendLowLabel");
+            const highLabel = document.getElementById("legendHighLabel");
+            const selectEl = document.getElementById("colorModeSelect");
+
+            if (!data || !data.nodes || !data.nodes.length) {
+                legendEl.classList.remove("visible");
+                return;
+            }
+
+            populateColorModeSelect(data);
+
+            const m = data.metadata || {};
+            const colorMeta = m.color || null;
+            const nodes = data.nodes || [];
+
+            let isCategorical = false;
+            let catMap = null;
+            let minScore = 0, maxScore = 1;
+            let unit = "";
+
+            if (currentColorMode && currentColorMode.startsWith("prefix:")) {
+                isCategorical = true;
+                catMap = buildCategoryMap(nodes, currentColorMode);
+            } else {
+                const metricCfg = currentColorMode ? COLOR_METRICS[currentColorMode] : null;
+                if (metricCfg) {
+                    isCategorical = metricCfg.kind === "categorical";
+                    unit = metricCfg.unit || "";
+                    if (isCategorical) {
+                        catMap = buildCategoryMap(nodes, metricCfg.mode || "categories");
+                    } else {
+                        const scores = nodes.map(n => {
+                            const val = Number(n[metricCfg.field]);
+                            return isFinite(val) ? val : 0;
+                        });
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    }
+                } else {
+                    const colorKind = colorMeta ? colorMeta.kind : "continuous";
+                    isCategorical = colorKind === "categorical";
+                    if (isCategorical) {
+                        catMap = buildCategoryMap(nodes, "categories");
+                    } else {
+                        const scores = nodes.map(n => (n.color_value !== undefined ? n.color_value : nodeScore(n, activeLens)));
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    }
+                }
+            }
+
+            legendEl.classList.add("visible");
+
+            if (isCategorical) {
+                if (scaleBox) scaleBox.style.display = "none";
+                catsBox.innerHTML = "";
+
+                if (catMap && catMap.size) {
+                    Array.from(catMap.keys()).sort().forEach(k => {
+                        const chip = document.createElement("span");
+                        chip.className = "legend-cat";
+                        const swatch = document.createElement("span");
+                        swatch.className = "legend-cat-swatch";
+                        swatch.style.background = catMap.get(k);
+                        chip.appendChild(swatch);
+                        chip.appendChild(document.createTextNode(k));
+                        catsBox.appendChild(chip);
+                    });
+                    catsBox.style.display = "flex";
+                } else {
+                    catsBox.style.display = "none";
+                }
+            } else {
+                if (catsBox) { catsBox.style.display = "none"; catsBox.innerHTML = ""; }
+                if (scaleBox) scaleBox.style.display = "flex";
+                const fmtMin = (Math.round(minScore * 100) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
+                const fmtMax = (Math.round(maxScore * 100) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
+                if (lowLabel) lowLabel.textContent = `${fmtMin}${unit}`;
+                if (highLabel) highLabel.textContent = `${fmtMax}${unit}`;
+            }
+        }
+
+        /* ── Live change of coloring mode without full recalculation ────── */
+        function onColorModeChange(mode) {
+            currentColorMode = mode;
+            if (!currentData || !currentData.nodes) return;
+
+            const nodes = currentData.nodes || [];
+            const data = currentData;
+            const lens = activeLens;
+
+            // Recompute min/max or categories
+            let minScore = 0, maxScore = 1, catMap = null;
+            if (currentColorMode && currentColorMode.startsWith("prefix:")) {
+                catMap = buildCategoryMap(nodes, currentColorMode);
+            } else {
+                const metricCfg = currentColorMode ? COLOR_METRICS[currentColorMode] : null;
+                if (metricCfg) {
+                    if (metricCfg.kind === "continuous") {
+                        const scores = nodes.map(n => {
+                            const val = Number(n[metricCfg.field]);
+                            return isFinite(val) ? val : 0;
+                        });
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    } else {
+                        catMap = buildCategoryMap(nodes, metricCfg.mode || "categories");
+                    }
+                } else {
+                    const colorMeta = (data.metadata && data.metadata.color) || null;
+                    const colorKind = colorMeta ? colorMeta.kind : "continuous";
+                    if (colorKind === "continuous") {
+                        const scores = nodes.map(n => (n.color_value !== undefined ? n.color_value : nodeScore(n, lens)));
+                        minScore = scores.length ? Math.min(...scores) : 0;
+                        maxScore = scores.length ? Math.max(...scores, minScore + 0.001) : 1;
+                    } else {
+                        catMap = buildCategoryMap(nodes, "categories");
+                    }
+                }
+            }
+
+            // Update 3D ForceGraph
+            if (graph3d) {
+                const graphData = graph3d.graphData();
+                if (graphData && graphData.nodes) {
+                    graphData.nodes.forEach(n => {
+                        const colorInfo = getNodeColorInfo(n, currentColorMode, data, lens, catMap, minScore, maxScore);
+                        n.color = colorInfo.color;
+                    });
+                    graph3d.nodeColor(n => n.color);
+                }
+            }
+
+            updateLegend(currentData);
+        }
+
+        /* ── Graph controls ─────────────────────────────────────────────── */
+        function fitGraph() {
+            if (graph3d) {
+                graph3d.zoomToFit(500, 40);
+            }
+        }
+        function zoomIn() {
+            if (graph3d) {
+                const pos = graph3d.cameraPosition();
+                graph3d.cameraPosition({ x: pos.x * 0.75, y: pos.y * 0.75, z: pos.z * 0.75 }, pos.lookAt, 300);
+            }
+        }
+        function zoomOut() {
+            if (graph3d) {
+                const pos = graph3d.cameraPosition();
+                graph3d.cameraPosition({ x: pos.x * 1.33, y: pos.y * 1.33, z: pos.z * 1.33 }, pos.lookAt, 300);
+            }
+        }
+        function relayout() {
+            if (graph3d) {
+                graph3d.d3ReheatSimulation();
+                setTimeout(() => { if (graph3d) graph3d.zoomToFit(400, 40); }, 200);
+            }
+        }
+
+        /* ── Node size slider (0..5) ─────────────────────────────────────── */
+        function setNodeScale(v) {
+            nodeScale = parseFloat(v);
+            if (!isFinite(nodeScale) || nodeScale < 0) nodeScale = 0;
+            if (nodeScale > 5) nodeScale = 5;
+
+            if (graph3d) {
+                graph3d.nodeRelSize(4 * nodeScale);
+            }
+        }
+
+        /* ── Detail panel ────────────────────────────────────────────────── */
+        function escHtml(s) {
+            return String(s)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        /* ── Lens metric cards in the detail panel ──────────────────────── */
+        const METRIC_DETAILS = {
+            error_count:               { field: "avg_errors",               label: "Avg Errors",        unit: "",    decimals: 2, cls: "red" },
+            fault_count:               { field: "avg_faults",               label: "Avg Faults",        unit: "",    decimals: 2, cls: "amber" },
+            sync_count:                { field: "avg_sync_count",           label: "Avg Syncs",         unit: "",    decimals: 1, cls: "blue" },
+            avg_sync_duration_secs:    { field: "avg_sync",                 label: "Avg Sync",          unit: "m",   decimals: 1, cls: "blue", divBy: 60 },
+            pms_failures:              { field: "avg_pms_failures",         label: "PMS Failures",      unit: "",    decimals: 1, cls: "red" },
+            ram_gb:                    { field: "avg_ram_gb",               label: "Avg RAM",           unit: "GB",  decimals: 1, cls: "blue" },
+            disk_gb:                   { field: "avg_disk_gb",              label: "Avg Disk",          unit: "GB",  decimals: 0, cls: "amber" },
+            machine_type:              { field: "avg_machine_type",         label: "Virtual Ratio",     unit: "",    decimals: 2, cls: "violet" },
+            computer_age_days:         { field: "avg_computer_age_days",    label: "Avg Age",           unit: "d",   decimals: 0, cls: "blue" },
+            days_since_last_sync:      { field: "avg_days_since_last_sync", label: "Days Since Sync",   unit: "d",   decimals: 0, cls: "amber" },
+            total_packages:            { field: "avg_packages",             label: "Avg Packages",      unit: "",    decimals: 0, cls: "green" },
+            migration_count:           { field: "avg_migrations",           label: "Avg Migrations",    unit: "",    decimals: 1, cls: "indigo" },
+            days_since_last_migration: { field: "avg_days_since_migration", label: "Days Since Migration", unit: "d", decimals: 0, cls: "amber" },
+            jaccard_outlier_score:     { field: "color_value",              label: "Config Divergence", unit: "",    decimals: 3, cls: "violet" },
+            software_drift_score:      { field: "color_value",              label: "Software Drift",    unit: "",    decimals: 3, cls: "green" },
+        };
+        const METRIC_CARD_COLORS = {
+            red: "#ef4444", amber: "#f59e0b", blue: "#3b82f6",
+            green: "#10b981", indigo: "#6366f1", violet: "#8b5cf6",
+        };
+
+        function renderLensMetricCard(col, d) {
+            const spec = METRIC_DETAILS[col];
+            if (!spec) return "";
+            // color_value only reflects this column when the lens colors by it
+            if (spec.field === "color_value") {
+                const colorCols = (currentLensMeta && currentLensMeta.color && currentLensMeta.color.columns) || [];
+                if (!colorCols.includes(col)) return "";
+            }
+            const color = METRIC_CARD_COLORS[spec.cls] || "#3b82f6";
+            const label = escHtml(spec.label);
+            let raw = d[spec.field];
+            if (raw === undefined || raw === null || !isFinite(Number(raw))) {
+                return `<div class="metric-card"><div class="mv" style="color:${color}">—</div><div class="ml">${label}</div></div>`;
+            }
+            let num = Number(raw);
+            if (spec.divBy) num = num / spec.divBy;
+            const dec = spec.decimals !== undefined ? spec.decimals : 1;
+            const formatted = (Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec)).toFixed(dec);
+            return `<div class="metric-card"><div class="mv" style="color:${color}">${formatted}${spec.unit || ""}</div><div class="ml">${label}</div></div>`;
+        }
+
+        function showDetail(node, highlightComputerId = null) {
+            const d = typeof node.data === "function" ? node.data() : (node.data || node);
+            const panel = document.getElementById("detailPanel");
+            const body = document.getElementById("detailBody");
+            const title = document.getElementById("detailTitle");
+
+            title.textContent = `Cluster #${d.id} — ${d.size} computer${d.size !== 1 ? "s" : ""}`;
+
+            // Dynamic metrics section: show only the metrics included in the
+            // lens data matrix (dataset_metric_columns).  Color columns
+            // (jaccard_outlier_score, software_drift_score) are appended when
+            // they are part of the coloring function but not in the dataset
+            // metrics.  A "Computers" count card is always rendered.
+            let html = '';
+            {
+                // 1. Determine which metric columns to display
+                const datasetCols = (currentLensMeta && currentLensMeta.dataset_metric_columns)
+                    ? currentLensMeta.dataset_metric_columns
+                    : null;
+                const colorCols = (currentLensMeta && currentLensMeta.color && currentLensMeta.color.columns) || [];
+
+                let displayCols;
+                if (datasetCols && datasetCols.length) {
+                    // Use the dataset metrics; append color-only columns that
+                    // are not already in the list (e.g. jaccard_outlier_score)
+                    displayCols = [...datasetCols];
+                    colorCols.forEach(c => {
+                        if (!displayCols.includes(c)) displayCols.push(c);
+                    });
+                } else if (datasetCols !== null) {
+                    // datasetCols is explicitly empty ([]): only show color columns
+                    displayCols = [...colorCols];
+                } else {
+                    // Legacy cached graph without dataset_metric_columns:
+                    // fall back to lens metric_columns, then color columns
+                    const lensCols = (currentLensMeta && currentLensMeta.metric_columns)
+                        ? currentLensMeta.metric_columns
+                        : [];
+                    displayCols = lensCols.length ? [...lensCols] : [...colorCols];
+                }
+
+                // 2. Build metric cards
+                const metricCards = displayCols
+                    .map(c => renderLensMetricCard(c, d))
+                    .filter(c => c);
+
+                // 3. Always add a "Computers" count card
+                const sizeColor = "#8b5cf6";
+                metricCards.push(
+                    `<div class="metric-card" style="border-color:rgba(139,92,246,0.3);">` +
+                    `<div class="mv" style="color:${sizeColor}">${d.size}</div>` +
+                    `<div class="ml">Computers</div></div>`
+                );
+
+                // 4. Lens-specific extras (hardware details for obsolescence,
+                //    migrated-count for migration)
+                let extras = '';
+                if (activeLens === 'obsolescence') {
+                    if (d.cpu_models && d.cpu_models.length) {
+                        extras += `<div style="margin-top:0.6rem;font-size:0.75rem;color:var(--brand-secondary);line-height:1.3;">
+                        <strong>CPU:</strong> ${d.cpu_models.join(', ')}
+                    </div>`;
+                    }
+                    if (d.gpus && d.gpus.length) {
+                        extras += `<div style="margin-top:0.3rem;font-size:0.75rem;color:var(--brand-secondary);line-height:1.3;">
+                        <strong>GPU:</strong> ${d.gpus.join(', ')}
+                    </div>`;
+                    }
+                }
+                if (activeLens === 'migration') {
+                    const migRatio = `${d.migrated_count || 0} / ${d.size || 0}`;
+                    // Prepend the migrated count card
+                    metricCards.unshift(
+                        `<div class="metric-card" style="border-color:rgba(99,102,241,0.3);">` +
+                        `<div class="mv" style="color:#6366f1;">${migRatio}</div>` +
+                        `<div class="ml">Migrated PCs</div></div>`
+                    );
+                }
+                if (activeLens === 'diversity') {
+                    const distCount = (d.top_attributes || []).filter(a => a.lift >= 1.5).length;
+                    metricCards.splice(metricCards.length - 1, 0,
+                        `<div class="metric-card amber">` +
+                        `<div class="mv">${distCount}</div>` +
+                        `<div class="ml">Distinctive Attributes</div></div>`
+                    );
+                }
+
+                html += `
+            <div>
+                <p class="detail-section-title">Metrics</p>
+                <div class="detail-metrics">
+                    ${metricCards.join("")}
+                </div>
+                ${extras}
+            </div>`;
+            }
+
+            // Reason for grouping: characteristic attributes of the node
+            const topAttrs = d.top_attributes || [];
+            if (topAttrs.length) {
+                html += `<div>
+                <p class="detail-section-title">Why are these computers grouped?</p>
+                <div class="attr-reason-list">`;
+                topAttrs.forEach(a => {
+                    const name = escHtml(a.name);
+                    const distinctive = a.lift >= 1.5;
+                    const badge = distinctive
+                        ? `<span class="attr-star" title="Atributo distintivo: mucho más presente en este nodo que en el resto de la flota">★</span>`
+                        : "";
+                    html += `<div class="attr-reason ${distinctive ? "attr-reason-dist" : ""}">
+                        <span class="attr-name">${name}</span>
+                        <span class="attr-bar"><span class="attr-bar-fill" style="width:${Math.min(100, a.pct)}%"></span></span>
+                        <span class="attr-pct">${a.pct}%</span>
+                        ${badge}
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+
+            // Projects
+            const projects = d.projects || [];
+            let projectList = [];
+            if (Array.isArray(projects)) {
+                projectList = projects;
+            } else if (typeof projects === "object") {
+                projectList = Object.keys(projects).map(k => ({
+                    id: /^\d+$/.test(k) ? k : null,
+                    name: /^\d+$/.test(k) ? `Project ${k}` : k,
+                    count: projects[k]
+                }));
+            }
+
+            if (projectList.length) {
+                html += `<div>
+                <p class="detail-section-title">Projects (${projectList.length})</p>
+                <div class="badge-list">`;
+                projectList.forEach(p => {
+                    const label = p.name || `Project ${p.id}`;
+                    if (p.id) {
+                        html += `<a class="badge" style="text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;"
+                                href="https://${FQDN}/projects/results/${p.id}" target="_blank" rel="noopener">
+                                ${label}<span class="badge-count">${p.count}</span>
+                             </a>`;
+                    } else {
+                        html += `<span class="badge">${label}<span class="badge-count">${p.count}</span></span>`;
+                    }
+                });
+                html += `</div></div>`;
+            }
+
+            // Statuses
+            const statuses = d.statuses || {};
+            const statusKeys = Object.keys(statuses);
+            if (statusKeys.length) {
+                html += `<div>
+                <p class="detail-section-title">Statuses</p>
+                <div class="badge-list">`;
+                statusKeys.forEach(k => {
+                    html += `<span class="badge">${k}<span class="badge-count">${statuses[k]}</span></span>`;
+                });
+                html += `</div></div>`;
+            }
+
+            // Computers list
+            const ids = d.computer_ids || [];
+            const names = d.computer_names || [];
+            const computers = ids.map((id, i) => ({ id, name: names[i] || null }));
+
+            let shownComputers = computers.slice(0, MAX_LISTED);
+            let remaining = ids.length - shownComputers.length;
+
+            if (highlightComputerId != null && !shownComputers.some(c => c.id === highlightComputerId)) {
+                const found = computers.find(c => c.id === highlightComputerId);
+                if (found) {
+                    shownComputers.unshift(found);
+                    remaining = Math.max(0, ids.length - shownComputers.length);
+                }
+            }
+
+            html += `<div>
+            <p class="detail-section-title">Computers (${ids.length})</p>
+            <div class="computers-list" id="computersList">`;
+            shownComputers.forEach(({ id, name }) => {
+                const isMatch = (highlightComputerId != null && id === highlightComputerId);
+                const label = name ? `${escHtml(name)} <span style="opacity:.5;font-weight:400">#${id}</span>` : `#${id}`;
+                const highlightStyle = isMatch
+                    ? 'background:rgba(162,28,175,0.18);border-color:var(--brand-primary);font-weight:600;'
+                    : '';
+                html += `<a class="computer-link" id="comp-item-${id}" style="${highlightStyle}"
+                        href="https://${FQDN}/computers/results/${id}"
+                        target="_blank" rel="noopener">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                ${label}
+                ${isMatch ? '<span style="margin-left:auto;font-size:0.68rem;color:var(--brand-primary);background:rgba(162,28,175,0.12);padding:1px 6px;border-radius:4px;font-weight:600;">Match</span>' : ''}
+            </a>`;
+            });
+            html += `</div>`;
+            if (remaining > 0) {
+                html += `<button class="show-more-btn" onclick="showAllComputers(${JSON.stringify(computers)}, ${highlightComputerId != null ? highlightComputerId : 'null'})">
+                Show ${remaining} more…
+            </button>`;
+            }
+            html += `</div>`;
+
+            body.innerHTML = html;
+            panel.classList.add("open");
+
+            if (highlightComputerId != null) {
+                setTimeout(() => {
+                    const el = document.getElementById(`comp-item-${highlightComputerId}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }, 120);
+            }
+        }
+
+        function closeDetail(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const panel = document.getElementById("detailPanel");
+            if (panel) panel.classList.remove("open");
+        }
+
+        /* ── Edge detail: why is this edge displayed ─────────────────────── */
+        function showEdgeDetail(edge) {
+            const d = edge.data();
+            const panel = document.getElementById("detailPanel");
+            const body = document.getElementById("detailBody");
+            const title = document.getElementById("detailTitle");
+
+            const shared = d.shared_computer_ids || [];
+            title.textContent = `Edge ${d.sourceNode} \u2194 ${d.targetNode} \u2014 ${d.shared_count || 0} shared computer${(d.shared_count || 0) !== 1 ? "s" : ""}`;
+
+            let html = `<div>
+                <p class="detail-section-title">Why is this edge displayed?</p>
+                <p style="font-size:0.82rem;color:var(--brand-secondary);line-height:1.55;margin:0 0 0.25rem;">`;
+            if (shared.length === 0) {
+                html += `This edge connects clusters ${d.sourceNode} and ${d.targetNode}.`;
+            } else {
+                html += `The clusters ${d.sourceNode} and ${d.targetNode} are linked because these computers appear in <b>both</b> nodes (Mapper cover overlap):`;
+            }
+            html += `</p></div>`;
+
+            if (shared.length) {
+                const names = d.shared_computer_names || [];
+                html += `<div>
+                    <p class="detail-section-title">Shared computers (${shared.length})</p>
+                    <div class="computers-list">`;
+                shared.forEach((id, i) => {
+                    const label = names[i] ? `${escHtml(names[i])} <span style="opacity:.5;font-weight:400">#${id}</span>` : `#${id}`;
+                    html += `<a class="computer-link"
+                            href="https://${FQDN}/computers/results/${id}"
+                            target="_blank" rel="noopener">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    ${label}
+                </a>`;
+                });
+                html += `</div></div>`;
+            }
+
+            body.innerHTML = html;
+            panel.classList.add("open");
+        }
+
+        function showAllComputers(computers, highlightComputerId = null) {
+            const list = document.getElementById("computersList");
+            if (!list) return;
+            list.innerHTML = "";
+            computers.forEach(({ id, name }) => {
+                const isMatch = (highlightComputerId != null && id === highlightComputerId);
+                const label = name ? `${escHtml(name)} <span style="opacity:.5;font-weight:400">#${id}</span>` : `#${id}`;
+                const highlightStyle = isMatch
+                    ? 'background:rgba(162,28,175,0.18);border-color:var(--brand-primary);font-weight:600;'
+                    : '';
+                list.innerHTML += `<a class="computer-link" id="comp-item-${id}" style="${highlightStyle}"
+                    href="https://${FQDN}/computers/results/${id}"
+                    target="_blank" rel="noopener">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                ${label}
+                ${isMatch ? '<span style="margin-left:auto;font-size:0.68rem;color:var(--brand-primary);background:rgba(162,28,175,0.12);padding:1px 6px;border-radius:4px;font-weight:600;">Match</span>' : ''}
+            </a>`;
+            });
+            const btn = document.querySelector(".show-more-btn");
+            if (btn) btn.remove();
+
+            if (highlightComputerId != null) {
+                setTimeout(() => {
+                    const el = document.getElementById(`comp-item-${highlightComputerId}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }, 120);
+            }
+        }
+
+        /* ── Computer Search & Locate ───────────────────────────────────── */
+        let searchDebounceTimer = null;
+
+        function handleComputerSearch(query) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                executeComputerSearch(query);
+            }, 100);
+        }
+
+        function handleSearchKeyDown(e) {
+            if (e.key === "Escape") {
+                clearComputerSearch(e);
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                const dropdown = document.getElementById("searchDropdown");
+                if (dropdown && dropdown.style.display !== "none") {
+                    const firstItem = dropdown.querySelector(".search-item");
+                    if (firstItem) {
+                        firstItem.click();
+                    }
+                }
+            }
+        }
+
+        function executeComputerSearch(query) {
+            const dropdown = document.getElementById("searchDropdown");
+            const clearBtn = document.getElementById("searchClearBtn");
+            const q = (query || "").trim().toLowerCase();
+
+            if (!q) {
+                if (dropdown) {
+                    dropdown.style.display = "none";
+                    dropdown.innerHTML = "";
+                }
+                if (clearBtn) clearBtn.style.display = "none";
+                clearSearchHighlight();
+                return;
+            }
+
+            if (clearBtn) clearBtn.style.display = "flex";
+
+            if (!currentData || !currentData.nodes || !currentData.nodes.length) {
+                if (dropdown) {
+                    dropdown.innerHTML = `<div class="search-no-results">No graph data loaded</div>`;
+                    dropdown.style.display = "flex";
+                }
+                return;
+            }
+
+            // Search matches in currentData.nodes (works in both 2D and 3D)
+            const matches = [];
+            const cleanQ = q.startsWith("#") ? q.slice(1).trim() : q;
+            if (!cleanQ) return;
+
+            currentData.nodes.forEach(node => {
+                const ids = node.computer_ids || [];
+                const names = node.computer_names || [];
+
+                ids.forEach((cid, i) => {
+                    const cname = names[i] || "";
+                    const idStr = String(cid);
+                    const nameStr = String(cname).toLowerCase();
+
+                    if (idStr.includes(cleanQ) || nameStr.includes(cleanQ)) {
+                        matches.push({
+                            nodeId: String(node.id),
+                            clusterId: node.id,
+                            clusterSize: node.size,
+                            computerId: cid,
+                            computerName: cname || `#${cid}`
+                        });
+                    }
+                });
+            });
+
+            // Render dropdown
+            if (!dropdown) return;
+            if (matches.length === 0) {
+                dropdown.innerHTML = `<div class="search-no-results">No computers found matching "${escHtml(query)}"</div>`;
+            } else {
+                const topMatches = matches.slice(0, 30);
+                dropdown.innerHTML = topMatches.map(m => `
+                    <div class="search-item" onclick="locateComputer('${m.nodeId}', ${m.computerId})">
+                        <div class="search-item-name">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                            <span>${escHtml(m.computerName)}</span>
+                            <span style="opacity:0.5;font-weight:400;font-size:0.72rem;">#${m.computerId}</span>
+                        </div>
+                        <span class="search-item-cluster">Cluster #${m.clusterId} (${m.clusterSize} PCs)</span>
+                    </div>
+                `).join("");
+                if (matches.length > 30) {
+                    dropdown.innerHTML += `<div class="search-no-results" style="border-top:1px solid rgba(0,0,0,0.05);padding:6px;">+${matches.length - 30} more results… refine search</div>`;
+                }
+            }
+            dropdown.style.display = "flex";
+        }
+
+        function locateComputer(nodeId, computerId) {
+            const dropdown = document.getElementById("searchDropdown");
+            if (dropdown) dropdown.style.display = "none";
+
+            const strNodeId = String(nodeId);
+            const numComputerId = computerId != null ? Number(computerId) : null;
+
+            if (graph3d) {
+                const gData = graph3d.graphData();
+                const targetNode = (gData.nodes || []).find(n => String(n.id) === strNodeId);
+                if (targetNode) {
+                    const distance = 90;
+                    const hyp = Math.hypot(targetNode.x || 1, targetNode.y || 1, targetNode.z || 1);
+                    const distRatio = 1 + distance / (hyp || 1);
+                    graph3d.cameraPosition(
+                        { x: (targetNode.x || 0) * distRatio, y: (targetNode.y || 0) * distRatio, z: (targetNode.z || 0) * distRatio },
+                        targetNode,
+                        800
+                    );
+                    showDetail({ data: () => targetNode }, numComputerId);
+                }
+            }
+        }
+
+        function clearSearchHighlight() {
+        }
+
+        function clearComputerSearch(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const input = document.getElementById("computerSearchInput");
+            if (input) {
+                input.value = "";
+                input.focus();
+            }
+            const dropdown = document.getElementById("searchDropdown");
+            if (dropdown) {
+                dropdown.style.display = "none";
+                dropdown.innerHTML = "";
+            }
+            const clearBtn = document.getElementById("searchClearBtn");
+            if (clearBtn) clearBtn.style.display = "none";
+            clearSearchHighlight();
+            closeDetail();
+        }
+
+        // Close search dropdown on click outside
+        document.addEventListener("click", function (e) {
+            const searchContainer = document.querySelector(".search-container");
+            const dropdown = document.getElementById("searchDropdown");
+            if (searchContainer && dropdown && !searchContainer.contains(e.target)) {
+                dropdown.style.display = "none";
+            }
+        });
+
+        /* ── Trigger On-Demand Recalculation ────────────────────────────── */
+        let pollInterval = null;
+
+        function confirmRecalculate() {
+            const confirmModal = document.getElementById("recalc-confirm-modal");
+            if (confirmModal) confirmModal.style.display = "flex";
+        }
+
+        function closeRecalcConfirmModal() {
+            const confirmModal = document.getElementById("recalc-confirm-modal");
+            if (confirmModal) confirmModal.style.display = "none";
+        }
+
+        async function acceptRecalculate() {
+            closeRecalcConfirmModal();
+            await triggerRecalculate();
+        }
+
+        async function triggerRecalculate() {
+            const btn = document.getElementById("recalcBtn");
+            const icon = document.getElementById("recalcIcon");
+            const modal = document.getElementById("recalc-modal");
+            const logsContainer = document.getElementById("recalc-logs-container");
+            const stepBadge = document.getElementById("recalc-step-badge");
+
+            btn.disabled = true;
+            icon.style.animation = "spin 1s linear infinite";
+
+            logsContainer.innerHTML = '<div style="color:#94a3b8;">Triggering recalculation run…</div>';
+            stepBadge.textContent = "Starting";
+            stepBadge.style.background = "var(--brand-primary)";
+            const spinner = document.getElementById("recalc-spinner");
+            const title = document.getElementById("recalc-modal-title");
+            const closeBtn = document.getElementById("recalc-close-btn");
+            const footerInfo = document.getElementById("recalc-footer-info");
+            if (spinner) spinner.style.display = "block";
+            if (title) title.textContent = "Recalculating TDA Topology…";
+            if (closeBtn) closeBtn.style.display = "none";
+            if (footerInfo) footerInfo.textContent = "Updating all 6 mathematical projections";
+            modal.style.display = "flex";
+
+            try {
+                const resp = await fetch(`${ROOT_PATH}/api/v1/recalculate`, { method: "POST" });
+                if (!resp.ok && resp.status !== 409) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
+
+                // Start live status polling (every 1s)
+                if (pollInterval) clearInterval(pollInterval);
+                pollInterval = setInterval(pollRecalcStatus, 1000);
+
+            } catch (err) {
+                console.error("Recalculate trigger error:", err);
+                modal.style.display = "none";
+                btn.disabled = false;
+                icon.style.animation = "none";
+                alert(`Error starting recalculation: ${err.message}`);
+            }
+        }
+
+        async function pollRecalcStatus() {
+            try {
+                const resp = await fetch(`${ROOT_PATH}/api/v1/status`);
+                if (!resp.ok) return;
+                const status = await resp.json();
+
+                const modal = document.getElementById("recalc-modal");
+                const logsContainer = document.getElementById("recalc-logs-container");
+                const stepBadge = document.getElementById("recalc-step-badge");
+
+                if (status.current_step) {
+                    stepBadge.textContent = status.current_step;
+                }
+
+                if (status.logs && status.logs.length) {
+                    logsContainer.innerHTML = status.logs.map(line => {
+                        let color = "#e2e8f0";
+                        if (line.includes("✓")) color = "#4ade80";
+                        else if (line.includes("✗") || line.includes("Error") || line.includes("Fatal")) color = "#f87171";
+                        else if (line.includes("Warning")) color = "#fbbf24";
+                        else if (line.includes("Computing lens")) color = "#60a5fa";
+                        return `<div style="color:${color};">${line}</div>`;
+                    }).join("");
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+
+                if (!status.is_running) {
+                    // Done!
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+
+                    const btn = document.getElementById("recalcBtn");
+                    const icon = document.getElementById("recalcIcon");
+                    const spinner = document.getElementById("recalc-spinner");
+                    const title = document.getElementById("recalc-modal-title");
+                    const closeBtn = document.getElementById("recalc-close-btn");
+                    const footerInfo = document.getElementById("recalc-footer-info");
+
+                    btn.disabled = false;
+                    icon.style.animation = "none";
+
+                    if (spinner) spinner.style.display = "none";
+                    if (title) title.textContent = "Recalculation Complete";
+                    if (stepBadge) {
+                        stepBadge.textContent = "Success";
+                        stepBadge.style.background = "#16a34a";
+                    }
+                    if (footerInfo) {
+                        footerInfo.textContent = `Completed in ${status.last_run_duration || 0}s`;
+                    }
+                    if (closeBtn) {
+                        closeBtn.style.display = "inline-block";
+                    }
+
+                    // Refresh current lens or reload lenses in background
+                    if (activeLens) {
+                        const activeBtn = document.querySelector(`.lens-btn[data-lens="${activeLens}"]`);
+                        if (activeBtn) {
+                            activeLens = null; // force reload
+                            selectLens(activeBtn.getAttribute("data-lens"), activeBtn);
+                        }
+                    } else {
+                        loadLenses();
+                    }
+                }
+            } catch (err) {
+                console.error("Poll status error:", err);
+            }
+        }
+
+        function closeRecalcModal() {
+            const modal = document.getElementById("recalc-modal");
+            if (modal) modal.style.display = "none";
+        }
+
+        /* ── Bootstrap: load lens list ──────────────────────────────────── */
+        async function loadLenses() {
+            const listEl = document.getElementById("lensList");
+            try {
+                const resp = await fetch(`${ROOT_PATH}/api/v1/lenses`);
+                if (resp.status === 401 || resp.status === 403) {
+                    checkAuth();
+                    return;
+                }
+                const availableLenses = await resp.json();
+
+                // Fetch lens descriptors (label/description of built-in + custom lenses)
+                let lensDetails = [];
+                try {
+                    const [det, pfx] = await Promise.all([
+                        fetch(`${ROOT_PATH}/api/v1/lenses/details`),
+                        fetch(`${ROOT_PATH}/api/v1/config/available-prefixes`)
+                    ]);
+                    if (det.ok) lensDetails = await det.json();
+                    if (pfx.ok) {
+                        const pfxList = await pfx.json();
+                        window.tdaPrefixCatalog = {};
+                        pfxList.forEach(p => {
+                            if (p.prefix && p.name) {
+                                window.tdaPrefixCatalog[p.prefix] = p.name;
+                                window.tdaPrefixCatalog[p.prefix.toUpperCase()] = p.name;
+                            }
+                        });
+                    }
+                } catch (_) {}
+                const detailsMap = {};
+                lensDetails.forEach(s => { detailsMap[s.name] = s; });
+
+                // Display order: store descriptors first, then TDA_LENSES fallback
+                const lensesToDisplay = (lensDetails && lensDetails.length)
+                    ? lensDetails.map(s => s.name)
+                    : ((Array.isArray(CONFIGURED_LENSES) && CONFIGURED_LENSES.length > 0)
+                        ? CONFIGURED_LENSES
+                        : availableLenses);
+
+                if (!lensesToDisplay || lensesToDisplay.length === 0) {
+                    listEl.innerHTML = '<p style="font-size:0.85rem;color:var(--brand-secondary);font-style:italic;">No maps defined.<br>Click "Recalculate Now" to generate graphs, or create maps in Settings.</p>';
+                    return;
+                }
+
+                listEl.innerHTML = "";
+                lensesToDisplay.forEach(lens => {
+                    const isAvailable = availableLenses.includes(lens);
+                    const spec = detailsMap[lens];
+                    const meta = LENS_META[lens] || {
+                        label: (spec && spec.label) || lens,
+                        color: paletteFor(lens),
+                        desc: (spec && spec.description) || "",
+                    };
+                    const btn = document.createElement("button");
+                    btn.className = "lens-btn";
+                    btn.setAttribute("data-lens", lens);
+                    if (!isAvailable) {
+                        btn.style.opacity = "0.6";
+                        btn.title = "Graph not yet generated. Click Recalculate Now to generate.";
+                    }
+                    btn.innerHTML = `
+                    <span class="lens-dot" style="background:${meta.color}"></span>
+                    ${meta.label || lens.charAt(0).toUpperCase() + lens.slice(1)}
+                    <span class="lens-meta">${meta.desc || (isAvailable ? "" : "Not generated")}</span>`;
+                    btn.onclick = () => selectLens(lens, btn);
+                    listEl.appendChild(btn);
+                });
+
+                // Auto-select the lens requested via #<lens>, or the first available one
+                let targetBtn = null;
+                const hashLens = (window.location.hash || "").replace(/^#/, "");
+                if (hashLens) {
+                    targetBtn = listEl.querySelector(`.lens-btn[data-lens="${hashLens}"]`);
+                }
+                if (!targetBtn) {
+                    targetBtn = listEl.querySelector(`.lens-btn:not([style*="opacity"])`) || listEl.querySelector(".lens-btn");
+                }
+                if (targetBtn) targetBtn.click();
+
+            } catch (err) {
+                console.error("Error loading lenses:", err);
+                listEl.innerHTML = `<p style="color:var(--error, #ef4444);font-size:0.85rem;">Error loading lenses: ${err.message}</p>`;
+            }
+        }
+
+        /* ── Authentication State & Logic ──────────────────────────────── */
+        let currentUser = null;
+
+        async function checkAuth() {
+            const loginModal = document.getElementById("login-modal");
+            const profileSection = document.getElementById("userProfileSection");
+            try {
+                const resp = await fetch(`${ROOT_PATH}/api/v1/auth/me`);
+                if (resp.status === 401 || resp.status === 403) {
+                    // Show login modal
+                    loginModal.style.display = "flex";
+                    profileSection.style.display = "none";
+                    return false;
+                }
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                currentUser = await resp.json();
+                loginModal.style.display = "none";
+
+                // Render profile
+                const nameEl = document.getElementById("userName");
+                const roleEl = document.getElementById("userRole");
+                const avatarEl = document.getElementById("userAvatar");
+
+                const displayName = currentUser.first_name ? `${currentUser.first_name} ${currentUser.last_name || ""}` : currentUser.username;
+                nameEl.textContent = displayName;
+                roleEl.textContent = currentUser.is_superuser ? "Superuser" : "Staff";
+                avatarEl.textContent = (currentUser.username || "U").charAt(0).toUpperCase();
+                profileSection.style.display = "flex";
+
+                loadLenses();
+                return true;
+            } catch (err) {
+                console.error("Auth check failed:", err);
+                loginModal.style.display = "flex";
+                profileSection.style.display = "none";
+                return false;
+            }
+        }
+
+        async function submitLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById("loginUsername").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            const errEl = document.getElementById("loginError");
+            const btn = document.getElementById("loginSubmitBtn");
+
+            errEl.style.display = "none";
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff;"></div> Signing in…';
+
+            try {
+                const resp = await fetch(`${ROOT_PATH}/api/v1/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data.detail || "Authentication failed");
+                }
+
+                // Success
+                btn.disabled = false;
+                btn.innerHTML = '<span>Sign in</span>';
+                await checkAuth();
+
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Sign in</span>';
+                errEl.textContent = err.message;
+                errEl.style.display = "block";
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${ROOT_PATH}/api/v1/auth/logout`, { method: "POST" });
+            } catch (_) { }
+            // Clear all cookies
+            document.cookie = "tda_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie = "mf_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+            currentUser = null;
+            document.getElementById("userProfileSection").style.display = "none";
+            document.getElementById("lensList").innerHTML = "";
+            if (graph3d) { try { graph3d._destructor(); } catch (_) { } graph3d = null; }
+            const cyContainer = document.getElementById("cy");
+            if (cyContainer) cyContainer.innerHTML = "";
+            document.getElementById("cy-placeholder").style.display = "flex";
+            document.getElementById("statsSection").style.display = "none";
+            document.getElementById("colorLegend").classList.remove("visible");
+
+            const loginModal = document.getElementById("login-modal");
+            loginModal.style.display = "flex";
+            const passInput = document.getElementById("loginPassword");
+            if (passInput) passInput.value = "";
+        }
+
+        /* ── Bootstrap: start auth check ────────────────────────────────── */
+        checkAuth();
+    </script>
+</body>
+
+</html>

@@ -356,6 +356,7 @@ def create_paths(context):
     safe_mkdir(shares_path, 890, 890)
     stack_share = shares_path / context["STACK"]
     safe_mkdir(stack_share, 890, 890)
+    safe_mkdir(stack_share / "tda", 890, 890)
 
 
 def credentials(credential_name, user="admin", password=None):

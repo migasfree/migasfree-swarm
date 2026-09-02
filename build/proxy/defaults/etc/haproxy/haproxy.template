@@ -207,6 +207,7 @@ frontend http
     acl is_HEAD method HEAD
 
     acl url_mcp path_beg /mcp/
+    acl url_tda path_beg /tda/ /tda
 
 
     # external sources
@@ -339,6 +340,7 @@ frontend http
     http-request deny deny_status 403 if url_datashare_console !network_mng
     http-request deny deny_status 403 if url_worker_console !network_mng
     http-request deny deny_status 403 if url_portainer_console !network_mng
+    http-request deny deny_status 403 if url_tda !network_mng
     http-request deny deny_status 403 if url_manager !url_manager_public !url_manager_static !network_mng
     http-request deny deny_status 403 if url_core_mng !network_mng
     http-request deny deny_status 403 if is_stats !network_mng
@@ -355,6 +357,7 @@ frontend http
     # Allow WebSocket connections to /tunnel path
     use_backend tunnel if url_tunnel hdr_connection_upgrade hdr_upgrade_websocket
 
+    use_backend tda if network_mng url_tda
     use_backend manager if url_tunnel_register is_POST
     use_backend manager if url_manager_public
     use_backend manager if url_manager_static
@@ -454,6 +457,13 @@ backend worker_console  # Celery Flower
         server-template worker_console- 1 tasks.worker_console:5555 resolvers docker check init-addr none
 
 
+
+backend tda
+    mode http
+    balance leastconn
+    http-request replace-path ^/tda/(.*) /\1
+    http-request replace-path ^/tda$ /
+    server-template tda- 1 tasks.tda:8000 resolvers docker check init-addr none
 
 backend manager
     mode http

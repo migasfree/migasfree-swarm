@@ -487,6 +487,18 @@
         </div>
         <a id="datashare_console_link_parent" target="_blank" class="service-link" title="Datashare Console"></a>
       </div>
+
+      <div class="service-card">
+        <div class="service-icon-wrap">
+          <img src="/manager/static/img/tda.svg" alt="" />
+        </div>
+        <div class="service-footer">
+          <span class="service-indicator" id="tda"></span>
+          <span class="service-name">tda</span>
+          <span class="service-count" id="nodes_tda"></span>
+        </div>
+        <a id="tda_link_parent" target="_blank" class="service-link" title="TDA Lenses Dashboard"></a>
+      </div>
     </div>
   </div>
 
@@ -710,7 +722,7 @@
         serviceList: [
           'portainer', 'proxy', 'manager', 'mcp-server', 'console', 'certbot',
           'public', 'pms', 'worker', 'beat', 'core', 'tunnel',
-          'database', 'pgpool', 'datastore', 'datashare_console'
+          'database', 'pgpool', 'datastore', 'datashare_console', 'tda'
         ],
         consoleLinks: {
           'portainer': 'portainer_link_parent',
@@ -722,6 +734,7 @@
           'database_console': 'database_link_parent',
           'datastore_console': 'datastore_link_parent',
           'datashare_console': 'datashare_console_link_parent',
+          'tda': 'tda_link_parent',
           'public': 'public_link'
         },
         infoData: null,
@@ -840,6 +853,7 @@
           database_link_parent: `https://database-${host}`,
           datastore_link_parent: `https://datastore-${host}`,
           datashare_console_link_parent: `https://datashare-${host}`,
+          tda_link_parent: `https://${host}/tda/dashboard`,
         };
 
         Object.entries(links).forEach(([id, href]) => {
