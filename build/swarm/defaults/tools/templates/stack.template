@@ -676,7 +676,6 @@ services:
             - POSTGRES_PORT={{POSTGRES_PORT}}
             - POSTGRES_DB={{POSTGRES_DB}}
             - TDA_SCHEDULE={{TDA_SCHEDULE}}
-            - TDA_LENSES={{TDA_LENSES}}
         secrets:
             - source: {{STACK}}_mcp_ro_pass
         depends_on:

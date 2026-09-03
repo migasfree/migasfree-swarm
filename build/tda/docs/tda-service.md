@@ -208,9 +208,8 @@ Toda proyección cae a PCA cuando los datos solicitados no tienen varianza. Las 
 
 **Selección de lentes en la ejecución programada** (`tda_worker.get_lens_specs_for_run()`):
 
-- Las lentes **personalizadas siempre se ejecutan**.
-- Las lentes integradas se ejecutan salvo que `TDA_LENSES` las restrinja explícitamente (comportamiento heredado).
-- Con `TDA_LENSES` vacío/sin definir se ejecutan las 6 integradas + todas las personalizadas.
+- Se ejecutan todas las lentes (integradas o personalizadas) que tengan `"scheduled": true` (por defecto `true`).
+- Cada lente puede activarse o desactivarse de la programación automática directamente desde su configuración en Settings (`/tda/settings`).
 - Una lente concreta se puede recalcular al momento desde Settings (`POST /api/v1/lenses/{name}/recalculate`) aunque no esté en la ejecución programada.
 
 ---
@@ -510,7 +509,6 @@ stateDiagram-v2
 ```
 
 | `TDA_SCHEDULE` | `0 3 * * *` | Hora de ejecución (por defecto 03:00 cada noche) |
-| `TDA_LENSES` | `health,obsolescence,sync,diversity` | Filtro opcional de las lentes **integradas** a ejecutar (las personalizadas se ejecutan siempre) |
 
 ### Configuración dinámica (`/data/tda/config.json`)
 
@@ -649,7 +647,6 @@ tda:
         - POSTGRES_PORT={{POSTGRES_PORT}}
         - POSTGRES_DB={{POSTGRES_DB}}
         - TDA_SCHEDULE=0 3 * * *
-        - TDA_LENSES=health,obsolescence,sync,diversity
     secrets:
         - source: {{STACK}}_mcp_ro_pass
     deploy:

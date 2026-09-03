@@ -7,8 +7,6 @@ HTML visualizations to /data/tda.
 
 Environment variables:
     TDA_SCHEDULE      - Cron-like schedule (default: "0 3 * * *" = 03:00 daily)
-    TDA_LENSES        - Comma-separated list of lenses to run
-                        (default: "health,obsolescence,sync")
 """
 
 import os
@@ -115,14 +113,8 @@ def get_lens_specs_for_run():
     Determine which lenses to compute on a scheduled run.
 
     - Only lenses with scheduled=True (default: True) are run.
-    - If the TDA_LENSES env var is set, it further filters the lenses.
     """
-    specs = [s for s in load_all_lenses() if s.get("scheduled", True)]
-    env = os.getenv("TDA_LENSES", "").strip()
-    if env:
-        env_names = {n.strip() for n in env.split(",") if n.strip()}
-        return [s for s in specs if s["name"] in env_names]
-    return specs
+    return [s for s in load_all_lenses() if s.get("scheduled", True)]
 
 
 def run_analysis(only_lens=None):

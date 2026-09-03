@@ -14,6 +14,7 @@ from lens_store import (
     validate_lens,
     DATASET_METRICS,
 )
+from tda_worker import get_lens_specs_for_run
 from engine.sql_builder import (
     build_sql_errors,
     build_sql_faults,
@@ -28,6 +29,13 @@ class TestTdaEngine(unittest.TestCase):
         names = {l["name"] for l in BUILTIN_LENSES}
         expected = {"health", "obsolescence", "software", "migration", "sync", "diversity"}
         self.assertTrue(expected.issubset(names), f"Missing lenses in {names}")
+
+    def test_get_lens_specs_for_run(self):
+        """Verify get_lens_specs_for_run returns lenses with scheduled=True."""
+        specs = get_lens_specs_for_run()
+        self.assertTrue(len(specs) >= 6)
+        for spec in specs:
+            self.assertTrue(spec.get("scheduled", True))
 
     def test_sql_builder_filters(self):
         """Verify SQL builder query outputs."""

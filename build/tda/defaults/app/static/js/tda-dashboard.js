@@ -4,9 +4,7 @@
         const ROOT_PATH = "/tda";
         const FQDN = window.location.hostname;
         const MAX_LISTED = 50;           // computers listed before "show more"
-        const CONFIGURED_LENSES = (window.CONFIGURED_LENSES && Array.isArray(window.CONFIGURED_LENSES))
-            ? window.CONFIGURED_LENSES
-            : ["health", "obsolescence", "software", "migration", "sync", "diversity"];
+        const DEFAULT_LENSES = ["health", "obsolescence", "software", "migration", "sync", "diversity"];
 
         /* ── State ──────────────────────────────────────────────────────── */
         let activeLens = null;
@@ -1622,12 +1620,12 @@
                 const detailsMap = {};
                 lensDetails.forEach(s => { detailsMap[s.name] = s; });
 
-                // Display order: store descriptors first, then TDA_LENSES fallback
+                // Display order: store descriptors first, then fallback
                 const lensesToDisplay = (lensDetails && lensDetails.length)
                     ? lensDetails.map(s => s.name)
-                    : ((Array.isArray(CONFIGURED_LENSES) && CONFIGURED_LENSES.length > 0)
-                        ? CONFIGURED_LENSES
-                        : availableLenses);
+                    : (availableLenses && availableLenses.length > 0
+                        ? availableLenses
+                        : DEFAULT_LENSES);
 
                 if (!lensesToDisplay || lensesToDisplay.length === 0) {
                     listEl.innerHTML = '<p style="font-size:0.85rem;color:var(--brand-secondary);font-style:italic;">No maps defined.<br>Click "Recalculate Now" to generate graphs, or create maps in Settings.</p>';

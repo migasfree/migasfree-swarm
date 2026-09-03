@@ -1321,6 +1321,7 @@ To make sure you don’t get lost in the transition, here is a quick map of the 
 * **Windows Integration**: Although migasfree has traditionally focused on GNU/Linux environment management, version 5 aims to break barriers and enter the Microsoft world. To achieve this elegantly and without compromising our philosophy of simplicity, [windows-package-tool](https://github.com/migasfree/windows-package-tool) (WPT) has been developed, a simplified package manager specifically designed for Windows. On the server side, the new `pms-wpt` service is responsible for building the Windows package repository.
 
   But integration does not stop at software deployment. To solve one of the biggest inventory headaches in hybrid fleets—uniform hardware reporting—[lshw-windows-emulator](https://github.com/migasfree/lshw-windows-emulator) has been developed. This emulator performs detailed queries to Windows Management Instrumentation (WMI) to identically simulate the XML/JSON output structure of the classic Linux `lshw` utility. In this way, the migasfree server processes the physical inventory of a Windows computer with the same naturalness and power that you have always enjoyed in Linux, achieving an insuperable technical cohesion.
+* **Topological Data Analysis (TDA)**: Version 5 introduces computational geometry to systems management. Through the [Mapper](https://tda-mapper.readthedocs.io/en/main/) algorithm and operational lens projections, the `tda` service maps the fleet into an interactive three-dimensional environment that reveals patterns such as software drift (*Shadow IT*), real fleet diversity, or anomalous error concentrations.
 
 I look back and surprise myself remembering that old white laptop where I developed the first prototype of migasfree. Seeing how the project has evolved, I cannot help but feel emotional about how far we have come. But beyond lines of code and new features, this journey has been a continuous learning process for me. And, as I realize it, I find myself smiling.
 
@@ -3459,6 +3460,20 @@ The `tunnel` service implements a reverse relay server based on WebSockets and S
 
 Variables `REPLICAS_tunnel` and `TUNNEL_CONNECTIONS` are defined in `stack.conf`.
 
+## tda
+
+The `tda` service provides the **Topological Data Analysis** engine of the migasfree server. Its mission is to periodically process the multidimensional relationships of the fleet (hardware, formulas, packages, and synchronization events) to generate 3D topological maps that reveal the real structure and deviations of the computer fleet.
+
+### Architecture and Lifecycle
+
+1. **Web Microservice and Asynchronous Scheduler**: Developed in Python with [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://uvicorn.dev/) ASGI server, it combines a REST API on port 8000 with a background scheduler for scheduled batch or on-demand analyses.
+2. **Secure Read-Only Access**: Connects to the relational database (`database`) through non-blocking `SELECT` queries, without modifying the schema or impacting incoming synchronization performance.
+3. **Graph Persistence**: The engine applies the [Mapper](https://tda-mapper.readthedocs.io/en/main/) algorithm and stores the resulting graphs in JSON and HTML formats within the shared volume `/tda/lenses/`, ready for immediate consumption by the interactive dashboard.
+4. **Status Console Integration**: Accessed directly from `https://<FQDN>/status` by clicking on **tda**, which opens the dashboard with the interactive three-dimensional viewer.
+
+#### NOTE
+The mathematical foundations of the engine, the Mapper algorithm, and interactive three-dimensional navigation are explained in [Chapter 19 (Data)](chapter19.md#datos). The reference for its operational variables is consolidated in [Chapter 23 (Server)](chapter23.md#servidor).
+
 ## mcp-server
 
 The `mcp-server` service implements the open [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) standard developed by Anthropic, enabling Large Language Models (LLMs) and AI agents to query and interact with migasfree.
@@ -3479,7 +3494,7 @@ In this chapter we explored the modular architecture of the migasfree v5 stack i
 * **Interfaces and APIs**: The `console` web dashboard (Vue/Quasar) and the `core` REST API engine (Django/DRF).
 * **Background Processing**: Delegation of heavy asynchronous tasks to `worker` (Celery) and `beat`.
 * **Persistence and Data**: Relational database `database` (PostgreSQL), pooling layer `pgpool` (Pgpool-II), in-memory cache `datastore` (Redis), and shared storage `datashare`.
-* **Multi-platform, Tunnels, and AI**: Multi-distribution PMS indexers (APT, YUM, Pacman, APK, WPT), real-time `tunnel` relays, and `mcp-server` for AI integrations.
+* **Cross-platform, Tunnels, Analytics, and Artificial Intelligence**: Multi-format package support with `pms` (APT, YUM, Pacman, APK, WPT), secure remote access via `tunnel`, topological fleet mapping with `tda`, and the `mcp-server` gateway for natural language interaction with AI assistants.
 
 Thanks to this decoupled microservice design, migasfree isolates failures, scales horizontally, and ensures enterprise-grade robustness. In the next block, we will discover how to model and govern the entire organization through the web console.
 
@@ -6176,6 +6191,7 @@ Throughout this chapter we will explore each of its sections:
 * The operational log of **Synchronizations**, **Errors**, and proactive **Faults**.
 * Lifecycle traceability through **Status Logs** and **Migrations**.
 * Communication and alerting channels with **Messages** and **Notifications**.
+* Geometric exploration and 3D fleet mapping with **Topological Data Analysis** (TDA).
 
 \
 
@@ -6499,14 +6515,79 @@ The **Notifications** view displays administrative alerts generated automaticall
 
 \
 
+## TDA
+
+In organizations with hundreds or thousands of endpoints, classic tabular inventory has an obvious limitation: it answers precisely what a specific computer has, but is unable to show the **overall shape of the fleet**. Statistical averages (such as average RAM percentage or monthly failure rates) are like the flat shadow of a building: they cast a uniform silhouette, but conceal volumes, corners, and structural defects.
+
+To transcend flat statistics and provide administrators with a holistic view, migasfree incorporates **Topological Data Analysis** (TDA). This discipline of data science and computational geometry extracts the intrinsic structures of the fleet (homogeneous clusters, flares, bifurcations, and isolated anomalies), transforming millions of scattered rows into a **living, three-dimensional cartography** of the fleet.
+
+### The Shared Zeros Bias
+
+To compare two computers and evaluate their degree of similarity, traditional intuition would suggest using Euclidean distance in the space of packages or attributes. However, in systems management this approach suffers from the so-called **shared zeros bias**.
+
+If a corporate catalog contains 10,000 packages and two computers only have 40 distinct applications installed, Euclidean distance will conclude that both machines are 99% identical, simply because both share the absence of the remaining 9,920 packages in the repository.
+
+The migasfree TDA engine resolves this mathematical trap using the **Jaccard distance**:
+
+$$
+d_J(A, B) = 1 - \frac{|A \cap B|}{|A \cup B|}
+$$
+
+The Jaccard metric completely ignores shared absences and exclusively evaluates actual coincidence across the software and attributes effectively present on each machine.
+
+### The Mapper Algorithm in Three Steps
+
+The computational heart of the `tda` service implements the **Mapper** algorithm, which simplifies the multidimensional point cloud into an understandable graph through three successive stages:
+
+1. **Projection (Lens)**: Projects the multidimensional space onto a lower-dimensional plane (1D or 2D) using a filter function or *lens* oriented toward a specific operational goal (such as error rate or hardware capacity).
+2. **Overlapping Cover**: The projected space is divided into a grid of regular regions or hypercubes that overlap with each other (typically with 30% overlap).
+3. **Clustering and Graph Construction**: In each region, the DBSCAN algorithm clusters nearby computers into micro-clusters (nodes). Since regions overlap, endpoints falling simultaneously into two shared regions generate an **edge** between their respective nodes.
+
+The result is a **topological graph** that models the fleet:
+
+* Each **node** represents a homogeneous set of machines with similar characteristics.
+* The **node size** reflects the volume of grouped computers.
+* Each **edge** connects clusters that share machines within the overlap zone.
+* **Flares** reveal endpoints that progressively diverge from the corporate norm (software drifts or local configurations).
+* **Isolated nodes** highlight unique anomalies or atypical configurations (*hardware unicorns*).
+
+### Three-Dimensional Navigation and Detail Panel
+
+Access to the cartography is available from the central console `https://<FQDN>/status` by clicking on **TDA**, or by navigating directly to `https://<FQDN>/tda/dashboard`.
+
+The dashboard renders the graph on an interactive 3D canvas accelerated by WebGL (using *3d-force-graph*), allowing you to orbit, rotate with the mouse, and zoom in:
+
+* **Continuous Semantic Coloring**: Nodes dynamically tint using a color scale (green $to$ amber $to$ red) based on the severity of the active metric (such as failure count or synchronization duration).
+* **Foreground Distinctive Labels**: A label projects beneath each node displaying its most distinctive trait or the mean value of its primary metric, identifying cluster characteristics without opening it.
+* **Inspection Panel**: Clicking on any node opens a slide-over panel detailing the cluster composition:
+  * Exact count of grouped machines.
+  * Averages for hardware, errors, faults, and synchronization times.
+  * **Clustering Rationale (\*lift\*)**: Highlights attributes with highest prevalence and statistical overrepresentation compared to the fleet (for example, *98% of computers in “Floor-2-North” with a 4.8x lift*).
+  * Distribution across projects and lifecycle states.
+  * List of identifiers (CID) with direct links to the computer detail page in the web console, facilitating immediate remediation.
+
+### Custom Maps
+
+Beyond built-in factory maps, migasfree allows defining custom maps from the configuration panel at `/tda/settings`.
+
+Each map is self-contained within a folder inside the shared volume (`/tda/lenses/<name>/`) using a declarative JSON descriptor. You can configure:
+
+* **Projection Strategy**: Linear PCA projections, direct metric pairs on X/Y axes (`metric_pair`), single metrics (`single_metric`), or non-linear sparse matrix reduction with Jaccard distance (`mds_jaccard`).
+* **Scope Filters**: Restricting computation to computers belonging to one or more *scopes* of the authenticated user, allowing departmental administrators to generate topological maps scoped to their branches or faculties.
+* **Attribute Selection**: Filtering formula prefixes (`formula_prefix_ids`) to incorporate only relevant organizational dimensions and remove noise from the analysis.
+* **On-Demand Selective Recalculation**: Ability to recompute a specific map in the background without waiting for the scheduled window in `TDA_SCHEDULE`.
+
+\
+
 ## In this chapter we explored the data, telemetry, and observability architecture of migasfree:
 
-**Computers and Replacement**: Maintaining a live hardware and software inventory of the fleet with atomic hardware replacement workflows.
+In this chapter we explored the migasfree inventory, monitoring, and auditing engine through the **Data** module:
 
-* **Software Auditing**: The **Software Comparator** and **Package History** provide granular package-level forensic traceability.
-* **Activity and Tracking**: Continuous tracking of **Users**, **Attributes**, **Tags**, **Synchronizations**, **Status Logs**, and **Migrations**.
-* **Proactive Maintenance and Security**: Early incident detection through **Errors**, proactive **Faults**, **Messages**, **Notifications**, and the **Alert Center**.
-* With this chapter we conclude Part III (Administration & Operation). Next, we enter **Part IV: Integration and Extensibility**.
+* **Computers and Replacement**: Maintain a live inventory of the fleet, with hardware dumps, chronological traceability, synchronization simulation, and atomic workstation replacement.
+* **Software Auditing**: The **Software Comparator** and **Package History** eliminate configuration drift and audit every software transaction across the fleet.
+* **Activity and Tracking**: Continuous tracking of **Users**, **Attributes**, **Tags**, and **Synchronizations** provides an exact real-time snapshot of system activity.
+* **Proactive Maintenance and Security**: Managing **Errors**, **Faults**, **Status Logs**, **Migrations**, **Messages**, and **Notifications** enables early incident detection and strict traceability.
+* **Topological Analytics**: The **TDA** (*Topological Data Analysis*) engine and its maps transform millions of records into three-dimensional graphs, identifying clusters, hardware anomalies, and software drift before they escalate.
 
 With this chapter we conclude the **Administration** block (Part III) of migasfree, having explored in detail the server architecture, the web console, and its five major operational modules (**Configuration**, **Devices**, **Release**, **Master Images**, and **Data**).
 
@@ -7276,7 +7357,7 @@ Allows configuring the number of running instances for each stack microservice:
 | `REPLICAS_datastore_console` | RedisInsight console.  *(Default: \`\`1\`\` in development, set to \`\`0\`\` in production)*.                 |
 | `REPLICAS_worker_console`    | Celery Flower console.  *(Default: \`\`1\`\` in development, set to \`\`0\`\` in production)*.                |
 
-### Packaging Services, Maintenance, and Proxies
+### Packaging, Analytics, Maintenance, and Proxy Services
 
 | Variable             | Description                                                                                                                                                                                                    |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -7287,6 +7368,7 @@ Allows configuring the number of running instances for each stack microservice:
 | `HTTPS_PROXY`        | HTTPS proxy URL for outbound connections during build tasks.  *(Default: empty)*.                                                                                                                              |
 | `NO_PROXY`           | Comma-separated list of hostnames or IP addresses that should bypass the proxy (e.g., `localhost,127.0.0.1,.acme.com`).  *(Default: empty)*.                                                                   |
 | `HAS_KEYBOARD`       | Determines if the runtime environment has interactive keyboard/console input.  *(Default: \`\`true\`\`)*.                                                                                                      |
+| `TDA_SCHEDULE`       | Standard crontab syntax scheduling the batch recalculation of Mapper topological graphs.  *(Default: \`\`0 3 \* \* \*\`\`)*.                                                                                   |
 
 ### Saturation Control and Queuing (Anti-Collapse Strategy)
 
@@ -8338,8 +8420,14 @@ HOME Partition
 Idempotence
 : Fundamental property whereby repeated execution of a configuration operation produces exactly the same system result without cumulative side effects.
 
+Jaccard Distance
+: Statistical dissimilarity metric for binary sets that evaluates actual coincidence while ignoring shared absences (*shared zeros bias*), ideal for comparing software inventories and attributes.
+
 JWT
 : JSON Web Token. Compact open standard used by migasfree for secure user and process authentication and authorization across the REST API.
+
+Lens (TDA)
+: Filter function or mathematical projection that reduces the dimensions of the fleet to examine it from a specific operational angle (health, obsolescence, software, migration, synchronization, or diversity).
 
 Local Attribute
 : Attribute calculated and stored locally in the client workstation database, used to optimize decision making without requiring continuous network queries.
@@ -8361,6 +8449,9 @@ Manager
 
 Manufacturer
 : Administrative entity cataloging supported commercial hardware and peripheral brands.
+
+Mapper Algorithm
+: Topological analysis method that transforms multidimensional data into a simplified graph through three stages: projection with a filter function (lens), overlapping region coverage, and clustering of similar elements into micro-clusters (nodes).
 
 MCP
 : Model Context Protocol. Interoperability protocol enabling AI models and agents to interact securely with migasfree data and APIs.
@@ -8515,6 +8606,9 @@ Tag
 Tag Category
 : Taxonomic grouping used to classify and organize administrative tags (e.g., Sites, Departments, Classrooms, or User Profiles).
 
+TDA
+: Topological Data Analysis. Analytical methodology based on computational geometry that extracts the intrinsic shape of multidimensional datasets using the Mapper algorithm and projection functions (lenses).
+
 Telemetry
 : Set of performance metrics, usage statistics, status logs, and historical data gathered from each client during each sync session.
 
@@ -8523,6 +8617,9 @@ Temporary Deployment
 
 TLS/SSL Certificate
 : Digital server certificate enabling HTTPS communication encryption and authenticating the web server’s FQDN to browsers and clients.
+
+Topological Data Analysis
+: See TDA.
 
 Transactional Backup
 : Consistent backup that preserves the exact state of relational databases (PostgreSQL) and in-memory structures (Redis) at a given point in time.

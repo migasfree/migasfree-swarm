@@ -227,7 +227,6 @@ class ContextLoader:
         # TDA (Topological Data Analysis)
         # ===============================
         self.default("TDA_SCHEDULE", "0 3 * * *")
-        self.default("TDA_LENSES", "health,obsolescence,software,migration,sync,diversity")
 
         self.context["HAS_KEYBOARD"] = os.getenv("HAS_KEYBOARD", "false")
 
@@ -540,14 +539,6 @@ class ContextLoader:
 #     Cron schedule for the background Topological Data Analysis worker.
 #     Format: standard 5-field cron expression (minute hour day-of-month month day-of-week).
 #     Default: '0 3 * * *' (runs at 03:00 AM)
-# {line}
-""",
-            "TDA_LENSES": f"""# {line}
-# TDA_LENSES
-#     Optional filter for the TDA built-in lenses to compute (comma-separated).
-#     Available options: health, obsolescence, software, migration, sync, diversity
-#     User-defined lenses (created in /tda/settings) always run.
-#     Default: 'health,obsolescence,software,migration,sync,diversity'
 # {line}
 """,
         }

@@ -146,7 +146,7 @@ Allows configuring the number of running instances for each stack microservice:
 | `REPLICAS_datastore_console` | RedisInsight console.  *(Default: \`\`1\`\` in development, set to \`\`0\`\` in production)*.                 |
 | `REPLICAS_worker_console`    | Celery Flower console.  *(Default: \`\`1\`\` in development, set to \`\`0\`\` in production)*.                |
 
-### Packaging Services, Maintenance, and Proxies
+### Packaging, Analytics, Maintenance, and Proxy Services
 
 | Variable             | Description                                                                                                                                                                                                    |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -157,6 +157,7 @@ Allows configuring the number of running instances for each stack microservice:
 | `HTTPS_PROXY`        | HTTPS proxy URL for outbound connections during build tasks.  *(Default: empty)*.                                                                                                                              |
 | `NO_PROXY`           | Comma-separated list of hostnames or IP addresses that should bypass the proxy (e.g., `localhost,127.0.0.1,.acme.com`).  *(Default: empty)*.                                                                   |
 | `HAS_KEYBOARD`       | Determines if the runtime environment has interactive keyboard/console input.  *(Default: \`\`true\`\`)*.                                                                                                      |
+| `TDA_SCHEDULE`       | Standard crontab syntax scheduling the batch recalculation of Mapper topological graphs.  *(Default: \`\`0 3 \* \* \*\`\`)*.                                                                                   |
 
 ### Saturation Control and Queuing (Anti-Collapse Strategy)
 
@@ -1213,8 +1214,14 @@ HOME Partition
 Idempotence
 : Fundamental property whereby repeated execution of a configuration operation produces exactly the same system result without cumulative side effects.
 
+Jaccard Distance
+: Statistical dissimilarity metric for binary sets that evaluates actual coincidence while ignoring shared absences (*shared zeros bias*), ideal for comparing software inventories and attributes.
+
 JWT
 : JSON Web Token. Compact open standard used by migasfree for secure user and process authentication and authorization across the REST API.
+
+Lens (TDA)
+: Filter function or mathematical projection that reduces the dimensions of the fleet to examine it from a specific operational angle (health, obsolescence, software, migration, synchronization, or diversity).
 
 Local Attribute
 : Attribute calculated and stored locally in the client workstation database, used to optimize decision making without requiring continuous network queries.
@@ -1236,6 +1243,9 @@ Manager
 
 Manufacturer
 : Administrative entity cataloging supported commercial hardware and peripheral brands.
+
+Mapper Algorithm
+: Topological analysis method that transforms multidimensional data into a simplified graph through three stages: projection with a filter function (lens), overlapping region coverage, and clustering of similar elements into micro-clusters (nodes).
 
 MCP
 : Model Context Protocol. Interoperability protocol enabling AI models and agents to interact securely with migasfree data and APIs.
@@ -1390,6 +1400,9 @@ Tag
 Tag Category
 : Taxonomic grouping used to classify and organize administrative tags (e.g., Sites, Departments, Classrooms, or User Profiles).
 
+TDA
+: Topological Data Analysis. Analytical methodology based on computational geometry that extracts the intrinsic shape of multidimensional datasets using the Mapper algorithm and projection functions (lenses).
+
 Telemetry
 : Set of performance metrics, usage statistics, status logs, and historical data gathered from each client during each sync session.
 
@@ -1398,6 +1411,9 @@ Temporary Deployment
 
 TLS/SSL Certificate
 : Digital server certificate enabling HTTPS communication encryption and authenticating the web server’s FQDN to browsers and clients.
+
+Topological Data Analysis
+: See TDA.
 
 Transactional Backup
 : Consistent backup that preserves the exact state of relational databases (PostgreSQL) and in-memory structures (Redis) at a given point in time.
