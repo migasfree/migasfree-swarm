@@ -107,6 +107,9 @@ _CONFIG="/config/config.yaml"
 waiting_fs
 init_datashare
 
+_ADMIN_NAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
+_ADMIN_PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
+
 mkdir -p /config
 cat << EOF > "${_CONFIG}"
 server:
@@ -118,6 +121,8 @@ server:
   sources:
     - path: "${_ROOT}"
 auth:
+  adminUsername: "${_ADMIN_NAME}"
+  adminPassword: "${_ADMIN_PASS}"
   methods:
     password:
       enabled: true
@@ -125,6 +130,17 @@ auth:
       signup: false
     passkey:
       enabled: false
+userDefaults:
+  account:
+    permissions:
+      modify: true
+      create: true
+      delete: true
+      download: true
+      share: true
+      api: true
+      realtime: false
+      admin: false
 EOF
 
 chown -R user:user /config "${_ROOT}/consoles/datashare"
@@ -132,12 +148,9 @@ chown -R user:user /config "${_ROOT}/consoles/datashare"
 export FILEBROWSER_CONFIG="${_CONFIG}"
 export FILEBROWSER_DATABASE="${_DATABASE}"
 
-_ADMIN_NAME=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_name")
-_ADMIN_PASS=$(cat "${MIGASFREE_SECRET_DIR}/${STACK}_superadmin_pass")
-
 if ! [ -f "${_DATABASE}" ]
 then
-    su user -c "cd /home/filebrowser && FILEBROWSER_CONFIG=${_CONFIG} FILEBROWSER_DATABASE=${_DATABASE} /home/filebrowser/filebrowser set -u ${_ADMIN_NAME},${_ADMIN_PASS} -a"
+    su user -c "cd /home/filebrowser && FILEBROWSER_CONFIG=${_CONFIG} FILEBROWSER_DATABASE=${_DATABASE} /home/filebrowser/filebrowser set -u ${_ADMIN_NAME},${_ADMIN_PASS} -a -c ${_CONFIG}"
 fi
 
 send_message ""
