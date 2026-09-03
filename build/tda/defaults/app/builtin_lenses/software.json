@@ -1,0 +1,47 @@
+{
+  "name": "software",
+  "label": "Software",
+  "description": "Package drift & archetypes (Jaccard distance over installed packages + MDS).",
+  "dataset": {
+    "formula_prefix_ids": [],
+    "scope_ids": [],
+    "metric_columns": [
+      "total_packages"
+    ],
+    "metrics_interval_days": 365
+  },
+  "lens": {
+    "type": "mds_jaccard",
+    "components": 2,
+    "metric_columns": [],
+    "matrix_source": "packages"
+  },
+  "cover": {
+    "type": "cubical",
+    "n_cubes": null,
+    "overlap": null,
+    "radius": null,
+    "n_neighbors": null
+  },
+  "clustering": {
+    "scaling": true,
+    "type": "dbscan",
+    "n_clusters": null,
+    "eps": null,
+    "min_samples": null
+  },
+  "draw": {
+    "dimensions": 3,
+    "iterations": 100,
+    "seed": null,
+    "color": {
+      "columns": [
+        "total_packages"
+      ],
+      "label": "Total Installed Packages",
+      "kind": "continuous"
+    },
+    "node_label": "attribute"
+  },
+  "scheduled": true
+}

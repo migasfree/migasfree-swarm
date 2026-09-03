@@ -117,7 +117,7 @@ LENS_TYPE_LABELS = {
     "multi_lens": "Multi-Lens (PCA + Jaccard)",
 }
 
-FORMULA_PREFIX_DEFAULT = [3, 5]
+FORMULA_PREFIX_DEFAULT = []
 DEFAULT_METRICS_INTERVAL_DAYS = 365
 
 # Numeric metric columns that can be included in the DATASET feature matrix.
@@ -152,62 +152,32 @@ DEFAULT_LENS_COLOR = {"columns": ["error_count"], "label": "Error Count", "kind"
 # Legacy layout (pre-folder): /data/tda/mapper_<name>.{json,html}
 LEGACY_PREFIX = "mapper_"
 
-BUILTIN_LENSES = [
-    {
-        "name": "health",
-        "label": "Health",
-        "description": "Error & fault rate. Groups computers by operational incidents in the last 30 days.",
-        "projection": "metric_pair",
-        "metric_columns": ["error_count", "fault_count"],
-        "matrix_source": None,
-        "builtin": True,
-    },
-    {
-        "name": "obsolescence",
-        "label": "Obsolescence",
-        "description": "Hardware capacity & profiles (PCA over the full feature space).",
-        "projection": "pca",
-        "metric_columns": [],
-        "matrix_source": None,
-        "builtin": True,
-    },
-    {
-        "name": "software",
-        "label": "Software",
-        "description": "Package drift & archetypes (Jaccard distance over installed packages + MDS).",
-        "projection": "mds_jaccard",
-        "metric_columns": [],
-        "matrix_source": "packages",
-        "builtin": True,
-    },
-    {
-        "name": "migration",
-        "label": "Migration",
-        "description": "Trajectories & bottlenecks (migration count vs days since last migration).",
-        "projection": "metric_pair",
-        "metric_columns": ["migration_count", "days_since_last_migration"],
-        "matrix_source": None,
-        "builtin": True,
-    },
-    {
-        "name": "sync",
-        "label": "Sync",
-        "description": "Sync speed & PMS failures.",
-        "projection": "metric_pair",
-        "metric_columns": ["avg_sync_duration_secs", "pms_failures"],
-        "matrix_source": None,
-        "builtin": True,
-    },
-    {
-        "name": "diversity",
-        "label": "Diversity",
-        "description": "Config divergence (Jaccard distance over attributes/tags + MDS).",
-        "projection": "mds_jaccard",
-        "metric_columns": [],
-        "matrix_source": "attributes",
-        "builtin": True,
-    },
-]
+BUILTIN_LENSES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "builtin_lenses")
+
+def _load_builtin_lenses_specs() -> list:
+    specs = []
+    if os.path.isdir(BUILTIN_LENSES_DIR):
+        for fname in sorted(os.listdir(BUILTIN_LENSES_DIR)):
+            if fname.endswith(".json"):
+                try:
+                    with open(os.path.join(BUILTIN_LENSES_DIR, fname), "r", encoding="utf-8") as f:
+                        specs.append(json.load(f))
+                except Exception as e:
+                    logger.warning(f"Could not load builtin lens spec {fname}: {e}")
+    if not specs:
+        # Fallback in case directory is unavailable
+        specs = [
+            {"name": "health", "label": "Health", "description": "Error & fault rate. Groups computers by operational incidents in the last 30 days.", "projection": "metric_pair", "metric_columns": ["error_count", "fault_count"], "matrix_source": None},
+            {"name": "obsolescence", "label": "Obsolescence", "description": "Hardware capacity & profiles (PCA over the full feature space).", "projection": "pca", "metric_columns": [], "matrix_source": None},
+            {"name": "software", "label": "Software", "description": "Package drift & archetypes (Jaccard distance over installed packages + MDS).", "projection": "mds_jaccard", "metric_columns": [], "matrix_source": "packages"},
+            {"name": "migration", "label": "Migration", "description": "Trajectories & bottlenecks (migration count vs days since last migration).", "projection": "metric_pair", "metric_columns": ["migration_count", "days_since_last_migration"], "matrix_source": None},
+            {"name": "sync", "label": "Sync", "description": "Sync speed & PMS failures.", "projection": "metric_pair", "metric_columns": ["avg_sync_duration_secs", "pms_failures"], "matrix_source": None},
+            {"name": "diversity", "label": "Diversity", "description": "Config divergence (Jaccard distance over attributes/tags + MDS).", "projection": "mds_jaccard", "metric_columns": [], "matrix_source": "attributes"},
+        ]
+    return specs
+
+BUILTIN_LENSES = _load_builtin_lenses_specs()
+
 
 
 def lens_dir(name: str) -> str:

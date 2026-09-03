@@ -1,0 +1,50 @@
+{
+  "name": "obsolescence",
+  "label": "Obsolescence",
+  "description": "Hardware capacity & profiles (PCA over the full feature space).",
+  "dataset": {
+    "formula_prefix_ids": [],
+    "scope_ids": [],
+    "metric_columns": [
+      "ram_gb",
+      "disk_gb",
+      "machine_type",
+      "computer_age_days"
+    ],
+    "metrics_interval_days": 365
+  },
+  "lens": {
+    "type": "pca",
+    "components": 2,
+    "metric_columns": [],
+    "matrix_source": null
+  },
+  "cover": {
+    "type": "cubical",
+    "n_cubes": null,
+    "overlap": null,
+    "radius": null,
+    "n_neighbors": null
+  },
+  "clustering": {
+    "scaling": true,
+    "type": "dbscan",
+    "n_clusters": null,
+    "eps": null,
+    "min_samples": null
+  },
+  "draw": {
+    "dimensions": 3,
+    "iterations": 100,
+    "seed": null,
+    "color": {
+      "columns": [
+        "ram_gb"
+      ],
+      "label": "RAM (GB)",
+      "kind": "continuous"
+    },
+    "node_label": "attribute"
+  },
+  "scheduled": true
+}

@@ -1,0 +1,51 @@
+{
+  "name": "health",
+  "label": "Health",
+  "description": "Error & fault rate. Groups computers by operational incidents in the last 30 days.",
+  "dataset": {
+    "formula_prefix_ids": [],
+    "scope_ids": [],
+    "metric_columns": [
+      "error_count",
+      "fault_count"
+    ],
+    "metrics_interval_days": 365
+  },
+  "lens": {
+    "type": "identity",
+    "components": 2,
+    "metric_columns": [
+      "error_count",
+      "fault_count"
+    ],
+    "matrix_source": null
+  },
+  "cover": {
+    "type": "cubical",
+    "n_cubes": null,
+    "overlap": null,
+    "radius": null,
+    "n_neighbors": null
+  },
+  "clustering": {
+    "scaling": true,
+    "type": "dbscan",
+    "n_clusters": null,
+    "eps": null,
+    "min_samples": null
+  },
+  "draw": {
+    "dimensions": 3,
+    "iterations": 100,
+    "seed": null,
+    "color": {
+      "columns": [
+        "error_count"
+      ],
+      "label": "Error Count",
+      "kind": "continuous"
+    },
+    "node_label": "attribute"
+  },
+  "scheduled": true
+}

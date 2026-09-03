@@ -1,0 +1,51 @@
+{
+  "name": "sync",
+  "label": "Sync",
+  "description": "Sync speed & PMS failures.",
+  "dataset": {
+    "formula_prefix_ids": [],
+    "scope_ids": [],
+    "metric_columns": [
+      "avg_sync_duration_secs",
+      "pms_failures"
+    ],
+    "metrics_interval_days": 365
+  },
+  "lens": {
+    "type": "identity",
+    "components": 2,
+    "metric_columns": [
+      "avg_sync_duration_secs",
+      "pms_failures"
+    ],
+    "matrix_source": null
+  },
+  "cover": {
+    "type": "cubical",
+    "n_cubes": null,
+    "overlap": null,
+    "radius": null,
+    "n_neighbors": null
+  },
+  "clustering": {
+    "scaling": true,
+    "type": "dbscan",
+    "n_clusters": null,
+    "eps": null,
+    "min_samples": null
+  },
+  "draw": {
+    "dimensions": 3,
+    "iterations": 100,
+    "seed": null,
+    "color": {
+      "columns": [
+        "avg_sync_duration_secs"
+      ],
+      "label": "Avg Sync Duration (secs)",
+      "kind": "continuous"
+    },
+    "node_label": "attribute"
+  },
+  "scheduled": true
+}
