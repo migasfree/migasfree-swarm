@@ -154,9 +154,11 @@ El servicio incluye **6 lentes integradas** que se siembran automáticamente en 
 | `name` | `string` | Slug único `^[a-z0-9][a-z0-9_-]{1,63}$` (inmutable) |
 | `label` | `string` | Nombre visible en el dashboard |
 | `description` | `string` | Explicación mostrada junto al botón de la lente |
-| `projection` | `string` | `pca` \| `metric_pair` \| `single_metric` \| `mds_jaccard` |
-| `metric_columns` | `string[]` | Columnas numéricas usadas por la proyección (2 para `metric_pair`, 1 para `single_metric`) |
-| `matrix_source` | `string` | Solo `mds_jaccard`: `attributes` (divergencia de configuración) o `packages` (deriva de software) |
+| `projection` | `string` | `pca` \| `identity` \| `mds_jaccard` \| `umap` \| `multi_lens` |
+| `metric_columns` | `string[]` | Columnas numéricas usadas por la proyección (para `identity`) |
+| `matrix_source` | `string` | Solo `mds_jaccard`, `umap` y `multi_lens`: `attributes` (configuración) o `packages` (software) |
+| `n_neighbors` | `int` | Solo `umap`: número de vecinos $k$-NN (por defecto `15`) |
+| `min_dist` | `float` | Solo `umap`: distancia mínima en el espacio embebido (por defecto `0.1`) |
 | `color` | `object` | Métrica con la que se colorean los nodos del Mapper: `{ columns, label, kind }` con `kind` = `continuous` \| `categorical` |
 | `node_label` | `string` | Texto bajo cada nodo: `attribute` (atributo más distintivo, *motivo de agrupación*) o `metric` (valor de la métrica de color, p. ej. `48.2 GB` de RAM) |
 | `formula_prefix_ids` | `int[]` | Tipos de atributo (`core_property`) incluidos en la matriz TDA de esta lente. **Vacío = sin dimensiones de atributos** (solo métricas, hardware, paquetes y proyecto) |
@@ -168,17 +170,22 @@ El servicio incluye **6 lentes integradas** que se siembran automáticamente en 
   "name": "disk_health",
   "label": "Disk Health",
   "description": "Group computers by disk capacity and error rate",
-  "projection": "metric_pair",
-  "metric_columns": ["disk_gb", "error_count"],
-  "matrix_source": null,
+  "lens": {
+    "type": "identity",
+    "components": 2,
+    "metric_columns": ["disk_gb", "error_count"],
+    "matrix_source": null
+  },
   "color": {
     "columns": ["disk_gb"],
     "label": "Disk (GB)",
     "kind": "continuous"
   },
   "node_label": "metric",
-  "formula_prefix_ids": [3, 5],
-  "scope_ids": [],
+  "dataset": {
+    "formula_prefix_ids": [3, 5],
+    "scope_ids": []
+  },
   "builtin": false
 }
 ```
@@ -190,10 +197,11 @@ Los **scopes** son filtros por atributos definidos en migasfree (`core_scope`): 
 
 **Estrategias de proyección** (implementadas en `tda_engine.apply_lens_projection()`):
 
-- `pca` — PCA sobre todo el espacio de características normalizado (como `obsolescence`).
-- `metric_pair` — dos métricas numéricas estandarizadas como ejes X/Y (como `health`, `sync`, `migration`).
-- `single_metric` — una métrica como eje X (eje Y = 0).
+- `pca` — PCA lineal sobre el espacio normalizado (1 o 2 componentes).
+- `identity` — 1 o 2 métricas numéricas estandarizadas como ejes X/Y directos (como `health`, `sync`, `migration`).
+- `umap` — reducción no lineal y cuasi-isométrica con **UMAP** (métrica Jaccard nativa para paquetes/atributos, o Euclídea para métricas). Alta escalabilidad ($O(N \log N)$), preservando estructura local y global.
 - `mds_jaccard` — distancia de **Jaccard** sobre la matriz binaria de atributos o paquetes + **MDS** (como `diversity`/`software`).
+- `multi_lens` — proyección híbrida 2D desacoplada: Eje X = estado operativo/capacidad (PCA 1D sobre métricas), Eje Y = divergencia de software/atributos (UMAP/MDS Jaccard 1D).
 
 Toda proyección cae a PCA cuando los datos solicitados no tienen varianza. Las lentes integradas se definen con este mismo esquema:
 

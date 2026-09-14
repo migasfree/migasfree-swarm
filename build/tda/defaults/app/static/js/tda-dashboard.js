@@ -95,6 +95,34 @@
             "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
             "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
         ];
+
+        // Sort top attributes by relevance:
+        // 1. Prioritize distinctive attributes (lift >= 1.5, pct >= 10%) that explain
+        //    why this cluster is uniquely grouped vs the rest of the fleet.
+        // 2. Among distinctive attributes (or among generic baseline attributes),
+        //    rank by relevance score ((pct / 100) * lift) so high coverage wins.
+        function sortTopAttributes(list) {
+            if (!list || !list.length) return [];
+            return [...list].sort((a, b) => {
+                const isDistA = (a.distinctive !== undefined)
+                    ? (a.distinctive ? 1 : 0)
+                    : ((Number(a.lift) >= 1.5 && (Number(a.pct) || 0) >= 10 && (Number(a.count) || 2) >= 2) ? 1 : 0);
+                const isDistB = (b.distinctive !== undefined)
+                    ? (b.distinctive ? 1 : 0)
+                    : ((Number(b.lift) >= 1.5 && (Number(b.pct) || 0) >= 10 && (Number(b.count) || 2) >= 2) ? 1 : 0);
+                if (isDistA !== isDistB) {
+                    return isDistB - isDistA;
+                }
+                const scoreA = (a.score != null)
+                    ? Number(a.score)
+                    : (((a.pct != null ? Number(a.pct) : 100) / 100) * (Number(a.lift) || 1));
+                const scoreB = (b.score != null)
+                    ? Number(b.score)
+                    : (((b.pct != null ? Number(b.pct) : 100) / 100) * (Number(b.lift) || 1));
+                return scoreB - scoreA;
+            });
+        }
+
         function buildCategoryMap(nodes, mode) {
             const keys = new Set();
             const prefixFilter = mode && mode.startsWith("prefix:") ? mode.slice(7) : null;
@@ -108,28 +136,32 @@
                         keys.add(String(dom.name != null ? dom.name : (dom.id != null ? dom.id : "?")));
                     }
                 } else if (prefixFilter) {
-                    const cats = d.color_categories;
-                    if (cats) {
-                        Object.keys(cats).forEach(k => {
-                            const strK = String(k);
-                            if (strK.startsWith(prefixFilter + "-") || strK.startsWith(prefixFilter + ":") || strK === prefixFilter) {
-                                keys.add(strK);
-                            }
-                        });
-                    }
-                    const topList = d.top_attributes || [];
+                    const topList = sortTopAttributes(d.top_attributes);
+                    let hasTop = false;
                     topList.forEach(a => {
                         if (a && a.name && (a.name.startsWith(prefixFilter + "-") || a.name.startsWith(prefixFilter + ":") || a.name === prefixFilter)) {
                             keys.add(String(a.name));
+                            hasTop = true;
                         }
                     });
+                    if (!hasTop) {
+                        const cats = d.color_categories;
+                        if (cats) {
+                            Object.keys(cats).forEach(k => {
+                                const strK = String(k);
+                                if (strK.startsWith(prefixFilter + "-") || strK.startsWith(prefixFilter + ":") || strK === prefixFilter) {
+                                    keys.add(strK);
+                                }
+                            });
+                        }
+                    }
                 } else if (mode === "attributes") {
                     const cats = d.color_categories;
                     if (cats && Object.keys(cats).length) {
                         Object.keys(cats).forEach(k => keys.add(String(k)));
                     } else {
-                        const topList = d.top_attributes || [];
-                        const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+                        const topList = sortTopAttributes(d.top_attributes);
+                        const distAttr = topList[0];
                         if (distAttr && distAttr.name) keys.add(String(distAttr.name));
                     }
                 } else {
@@ -161,6 +193,15 @@
             const d = node.data || node;
             const categories = d.color_categories;
             if (prefixFilter) {
+                // 1. Prefer distinctive attributes that explain why this cluster is grouped
+                const topList = sortTopAttributes(d.top_attributes);
+                const matchAttr = topList.find(a =>
+                    a && a.name && (a.name.startsWith(prefixFilter + "-") || a.name.startsWith(prefixFilter + ":") || a.name === prefixFilter)
+                );
+                if (matchAttr) {
+                    return categoryColor(String(matchAttr.name), map);
+                }
+                // 2. Fallback to node color_categories if present
                 if (categories) {
                     const matches = Object.entries(categories).filter(([k]) =>
                         k.startsWith(prefixFilter + "-") || k.startsWith(prefixFilter + ":") || k === prefixFilter
@@ -169,13 +210,6 @@
                         return categoryColor(String(matches[0][0]), map);
                     }
                 }
-                const topList = d.top_attributes || [];
-                const matchAttr = topList.find(a =>
-                    a && a.name && (a.name.startsWith(prefixFilter + "-") || a.name.startsWith(prefixFilter + ":") || a.name === prefixFilter)
-                );
-                if (matchAttr) {
-                    return categoryColor(String(matchAttr.name), map);
-                }
                 return "#e2e8f0"; // Neutral background if node doesn't match this prefix
             }
 
@@ -183,8 +217,8 @@
                 const dominant = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
                 return categoryColor(String(dominant[0]), map);
             }
-            const topList = d.top_attributes || [];
-            const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+            const topList = sortTopAttributes(d.top_attributes);
+            const distAttr = topList[0];
             if (distAttr && distAttr.name) {
                 return categoryColor(String(distAttr.name), map);
             }
@@ -470,8 +504,8 @@
                 if (nodeLabelMode === "metric") {
                     distLabel = formatMetricValue(n.color_value, colorColumns);
                 } else {
-                    const topList = n.top_attributes || [];
-                    const distAttr = topList.find(a => a.lift >= 1.2) || topList[0];
+                    const topList = sortTopAttributes(n.top_attributes);
+                    const distAttr = topList[0];
                     distLabel = distAttr ? distAttr.name : "";
                 }
                 return {
@@ -1069,7 +1103,7 @@
                     );
                 }
                 if (activeLens === 'diversity') {
-                    const distCount = (d.top_attributes || []).filter(a => a.lift >= 1.5).length;
+                    const distCount = (d.top_attributes || []).filter(a => a.distinctive !== undefined ? Boolean(a.distinctive) : (a.lift >= 1.5)).length;
                     metricCards.splice(metricCards.length - 1, 0,
                         `<div class="metric-card amber">` +
                         `<div class="mv">${distCount}</div>` +
@@ -1088,14 +1122,14 @@
             }
 
             // Reason for grouping: characteristic attributes of the node
-            const topAttrs = d.top_attributes || [];
+            const topAttrs = sortTopAttributes(d.top_attributes);
             if (topAttrs.length) {
                 html += `<div>
                 <p class="detail-section-title">Why are these computers grouped?</p>
                 <div class="attr-reason-list">`;
                 topAttrs.forEach(a => {
                     const name = escHtml(a.name);
-                    const distinctive = a.lift >= 1.5;
+                    const distinctive = a.distinctive !== undefined ? Boolean(a.distinctive) : (a.lift >= 1.5);
                     const badge = distinctive
                         ? `<span class="attr-star" title="Atributo distintivo: mucho más presente en este nodo que en el resto de la flota">★</span>`
                         : "";

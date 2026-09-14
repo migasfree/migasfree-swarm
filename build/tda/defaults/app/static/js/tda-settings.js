@@ -16,10 +16,10 @@
         let formMetricItems = [];         // { id, name, selected }
 
         const LENS_TYPE_LABELS = {
-            identity: "Identity",
+            multi_lens: "Multi-Lens (PCA + UMAP)",
+            umap: "UMAP (Jaccard)",
             pca: "PCA",
-            mds_jaccard: "Jaccard + MDS",
-            multi_lens: "Multi-Lens (PCA + Jaccard)",
+            identity: "Identity",
         };
 
         /* ── Auth helpers ─────────────────────────────────── */
@@ -249,13 +249,13 @@
                 // Mixed continuous and binary dimensions -> recommend/select multi_lens
                 lensTypeSel.value = "multi_lens";
             } else if (hasPrefixes && !hasMetrics) {
-                // Only binary dimensions -> mds_jaccard
+                // Only binary dimensions -> umap
                 if (lensTypeSel.value === "multi_lens" || lensTypeSel.value === "identity") {
-                    lensTypeSel.value = "mds_jaccard";
+                    lensTypeSel.value = "umap";
                 }
             } else if (!hasPrefixes && hasMetrics) {
                 // Only continuous metrics -> pca
-                if (lensTypeSel.value === "multi_lens" || lensTypeSel.value === "mds_jaccard") {
+                if (lensTypeSel.value === "multi_lens" || lensTypeSel.value === "mds_jaccard" || lensTypeSel.value === "umap") {
                     lensTypeSel.value = "pca";
                 }
             }
@@ -309,12 +309,27 @@
         }
 
         /* ── Lens form ────────────────────────────────────── */
+        const LENS_HINTS = {
+            multi_lens: "💡 <b>Mixed Data:</b> Combines operational metrics on the X-axis (health/hardware) with software & attribute clusters on the Y-axis (UMAP).",
+            umap: "💡 <b>Software & Attributes:</b> High-speed non-linear projection using Jaccard metric. Best for detecting software archetypes and configuration drift.",
+            pca: "💡 <b>Numeric Metrics:</b> Standard linear projection for 3+ continuous metrics (RAM, disk, error counts).",
+            identity: "💡 <b>Direct Metrics:</b> Uses 1 or 2 numeric columns directly as (X, Y) coordinates without dimensional reduction.",
+        };
+
         function updateLensFormVisibility() {
             const type = document.getElementById("lensType").value;
-            document.getElementById("lensComponentsField").style.display = type === "pca" ? "flex" : "none";
-            document.getElementById("lensMatrixField").style.display = (type === "mds_jaccard" || type === "multi_lens") ? "flex" : "none";
+            document.getElementById("lensComponentsField").style.display = (type === "pca" || type === "umap") ? "flex" : "none";
+            document.getElementById("lensMatrixField").style.display = (type === "multi_lens" || type === "umap") ? "flex" : "none";
+            const neighborsEl = document.getElementById("lensNeighborsField");
+            if (neighborsEl) neighborsEl.style.display = type === "umap" ? "flex" : "none";
+            const minDistEl = document.getElementById("lensMinDistField");
+            if (minDistEl) minDistEl.style.display = type === "umap" ? "flex" : "none";
             document.getElementById("lensMetric1Field").style.display = type === "identity" ? "flex" : "none";
             document.getElementById("lensMetric2Field").style.display = type === "identity" ? "flex" : "none";
+            const hintEl = document.getElementById("lensTypeHint");
+            if (hintEl) {
+                hintEl.innerHTML = LENS_HINTS[type] || "";
+            }
         }
 
         function updateClusteringVisibility() {
@@ -460,6 +475,8 @@
             document.getElementById("lensType").value = "pca";
             document.getElementById("lensComponents").value = "2";
             document.getElementById("lensMatrixSource").value = "attributes";
+            if (document.getElementById("lensNeighbors")) document.getElementById("lensNeighbors").value = "";
+            if (document.getElementById("lensMinDist")) document.getElementById("lensMinDist").value = "";
             document.getElementById("lensMetric1").value = "";
             document.getElementById("lensMetric2").value = "";
             document.getElementById("coverType").value = "cubical";
@@ -525,6 +542,12 @@
             document.getElementById("lensType").value = lensCfg.type || "pca";
             document.getElementById("lensComponents").value = String(lensCfg.components == null ? 2 : lensCfg.components);
             document.getElementById("lensMatrixSource").value = lensCfg.matrix_source || "attributes";
+            if (document.getElementById("lensNeighbors")) {
+                document.getElementById("lensNeighbors").value = lensCfg.n_neighbors == null ? "" : lensCfg.n_neighbors;
+            }
+            if (document.getElementById("lensMinDist")) {
+                document.getElementById("lensMinDist").value = lensCfg.min_dist == null ? "" : lensCfg.min_dist;
+            }
             document.getElementById("lensMetric1").value = (lensCfg.metric_columns || [])[0] || "";
             document.getElementById("lensMetric2").value = (lensCfg.metric_columns || [])[1] || "";
 
@@ -552,14 +575,23 @@
             const description = document.getElementById("lensDesc").value.trim();
             const lensType = document.getElementById("lensType").value;
             const components = parseInt(document.getElementById("lensComponents").value, 10) || 2;
-            const matrix_source = (lensType === "mds_jaccard" || lensType === "multi_lens")
+            const matrix_source = (lensType === "multi_lens" || lensType === "umap")
                 ? document.getElementById("lensMatrixSource").value
                 : null;
             const m1 = document.getElementById("lensMetric1").value;
             const m2 = document.getElementById("lensMetric2").value;
             let metric_columns = [];
             if (lensType === "identity") metric_columns = [m1, m2].filter(Boolean);
-            const lens = { type: lensType, components, metric_columns, matrix_source };
+            const nNeighborsRaw = document.getElementById("lensNeighbors") ? document.getElementById("lensNeighbors").value : "";
+            const minDistRaw = document.getElementById("lensMinDist") ? document.getElementById("lensMinDist").value : "";
+            const lens = {
+                type: lensType,
+                components,
+                metric_columns,
+                matrix_source,
+                n_neighbors: nNeighborsRaw === "" ? 15 : parseInt(nNeighborsRaw, 10),
+                min_dist: minDistRaw === "" ? 0.1 : parseFloat(minDistRaw)
+            };
 
             const nCubesRaw = document.getElementById("coverNCubes").value;
             const overlapRaw = document.getElementById("coverOverlap").value;

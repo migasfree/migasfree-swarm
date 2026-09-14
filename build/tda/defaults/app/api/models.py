@@ -77,6 +77,8 @@ class LensSection(BaseModel):
     components: int = 2
     metric_columns: List[str] = []
     matrix_source: Optional[str] = None
+    n_neighbors: Optional[int] = None
+    min_dist: Optional[float] = None
 
 
 class CoverSection(BaseModel):

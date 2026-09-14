@@ -371,19 +371,55 @@ def _prefix_labels(df_computers, property_id):
     The label is the readable "PREFIX-value" of the most specific attribute
     (attribute or tag) the computer has for the property. A computer can carry
     both a generic parent value and a more specific child of the same property
-    (e.g. "CTX-AYTOZAR" + "CTX-RYS.AYTOZAR"); the deepest value wins. Missing
-    values are empty strings. Returns None when the property is not part of
-    the fleet (or the attribute catalogs are unavailable).
+    (e.g. "CTX-AYTOZAR" + "CTX-RYS.AYTOZAR"); the deepest value wins. Ubiquitous
+    attributes (present in >= 90% of computers) are deprecated in favor of specific
+    or distinctive attributes. Missing values are empty strings. Returns None when
+    the property is not part of the fleet (or catalogs are unavailable).
     """
     attr_property = getattr(df_computers, "attrs", {}).get("attr_property") or {}
     attr_names = getattr(df_computers, "attrs", {}).get("attr_names") or {}
+    matrix_attr_ids = getattr(df_computers, "attrs", {}).get("matrix_attr_ids")
     if not attr_property:
         return None
+
+    # Count fleet frequency of each attribute belonging to this property
+    attr_counts = Counter()
+    for _, row in df_computers.iterrows():
+        seen_in_row = set()
+        for col in ("attribute_ids", "tag_ids"):
+            ids = row.get(col)
+            if not isinstance(ids, (list, tuple, np.ndarray)):
+                continue
+            for aid in ids:
+                if aid is not None and not (isinstance(aid, float) and np.isnan(aid)):
+                    try:
+                        aid = int(aid)
+                    except (ValueError, TypeError):
+                        continue
+                    if attr_property.get(aid) == int(property_id):
+                        seen_in_row.add(aid)
+        for aid in seen_in_row:
+            attr_counts[aid] += 1
+
+    total_comps = max(len(df_computers), 1)
+
+    def _rank_candidate(aid):
+        name = attr_names.get(aid, f"attr-{aid}")
+        freq = attr_counts.get(aid, 0) / total_comps
+        # 1. Deprecate ubiquitous attributes (>= 90% fleet prevalence)
+        is_ubiquitous = 1 if freq >= 0.90 else 0
+        # 2. Hierarchical depth: child attributes embed dots/slashes (e.g. RYS.AYTOZAR > AYTOZAR)
+        depth = name.count(".") + name.count("/")
+        # 3. Active matrix participation
+        in_matrix = 0 if (matrix_attr_ids is not None and aid in matrix_attr_ids) else 1
+        # 4. Avoid singletons (count < 2) if non-singletons exist
+        is_singleton = 1 if attr_counts.get(aid, 0) < 2 else 0
+        return (is_ubiquitous, -depth, in_matrix, is_singleton, attr_counts.get(aid, 0), -len(name))
+
     labels = []
     seen = False
     for _, row in df_computers.iterrows():
-        label = ""
-        best_len = -1
+        cand_aids = []
         for col in ("attribute_ids", "tag_ids"):
             ids = row.get(col)
             if not isinstance(ids, (list, tuple, np.ndarray)):
@@ -396,14 +432,14 @@ def _prefix_labels(df_computers, property_id):
                 except (ValueError, TypeError):
                     continue
                 if attr_property.get(aid) == int(property_id):
-                    name = attr_names.get(aid, f"attr-{aid}")
-                    # Deepest attribute value (children embed the parent name,
-                    # e.g. "RYS.AYTOZAR" under "AYTOZAR") is the most specific.
-                    if len(name) > best_len:
-                        label = name
-                        best_len = len(name)
+                    cand_aids.append(aid)
                     seen = True
-        labels.append(label)
+        if cand_aids:
+            best_aid = sorted(cand_aids, key=_rank_candidate)[0]
+            labels.append(attr_names.get(best_aid, f"attr-{best_aid}"))
+        else:
+            labels.append("")
+
     if not seen:
         return None
     return labels
@@ -561,6 +597,9 @@ def apply_lens_projection(df_computers, feature_matrix, X_scaled, spec):
                      components, from spec.lens.components).
       - mds_jaccard: Jaccard distance on the binary attribute/package matrix
                      + MDS (2D).
+      - multi_lens:  hybrid 2D projection (PCA continuous + Jaccard binary).
+      - umap:        UMAP non-linear projection (Jaccard for binary, Euclidean
+                     for continuous metrics).
 
     Every projection falls back to PCA when the requested data has no variance.
 
@@ -660,7 +699,7 @@ def apply_lens_projection(df_computers, feature_matrix, X_scaled, spec):
                 num_scaled = StandardScaler().fit_transform(num_data[:, valid_idx])
                 lens_num = PCA(n_components=1).fit_transform(num_scaled)
 
-        # 2. Binary discrete submatrix -> Jaccard distance + MDS (1 component)
+        # 2. Binary discrete submatrix -> Jaccard distance + UMAP/MDS (1 component)
         if matrix_source == "packages":
             mat = np.array(df_computers["_pkg_matrix"].tolist(), dtype=np.float32) if "_pkg_matrix" in df_computers.columns else np.empty((n_samples, 0))
             drift_col = "software_drift_score"
@@ -672,19 +711,42 @@ def apply_lens_projection(df_computers, feature_matrix, X_scaled, spec):
         lens_bin = None
         dist_matrix = None
         if mat.size > 0 and mat.shape[1] > 0 and mat.sum() > 0:
+            used_umap = False
             try:
+                import umap
+                eff_neighbors = min(15, max(2, n_samples - 1))
+                reducer = umap.UMAP(
+                    n_components=1,
+                    n_neighbors=eff_neighbors,
+                    min_dist=0.1,
+                    metric="jaccard",
+                    random_state=42,
+                )
+                lens_bin = reducer.fit_transform(mat)
+                used_umap = True
                 if n_samples >= 3:
-                    distances = pdist(mat, metric="jaccard")
-                    dist_matrix = squareform(distances)
-                    from sklearn.manifold import MDS
-                    mds = MDS(n_components=1, dissimilarity="precomputed", random_state=42)
-                    lens_bin = mds.fit_transform(dist_matrix)
-                    df_computers[drift_col] = dist_matrix.mean(axis=1)
-                else:
-                    lens_bin = PCA(n_components=1).fit_transform(mat)
-            except Exception as ex:
-                logger.error(f"Error computing MDS Jaccard for multi_lens '{lens_name}': {ex}")
-                lens_bin = None
+                    try:
+                        distances = pdist(mat, metric="jaccard")
+                        df_computers[drift_col] = squareform(distances).mean(axis=1)
+                    except Exception:
+                        pass
+            except Exception:
+                used_umap = False
+
+            if not used_umap:
+                try:
+                    if n_samples >= 3:
+                        distances = pdist(mat, metric="jaccard")
+                        dist_matrix = squareform(distances)
+                        from sklearn.manifold import MDS
+                        mds = MDS(n_components=1, dissimilarity="precomputed", random_state=42)
+                        lens_bin = mds.fit_transform(dist_matrix)
+                        df_computers[drift_col] = dist_matrix.mean(axis=1)
+                    else:
+                        lens_bin = PCA(n_components=1).fit_transform(mat)
+                except Exception as ex:
+                    logger.error(f"Error computing MDS Jaccard for multi_lens '{lens_name}': {ex}")
+                    lens_bin = None
 
         # 3. Fuse lenses into a 2D multi-lens projection (Equalized Scale)
         if lens_num is not None and lens_bin is not None:
@@ -697,6 +759,58 @@ def apply_lens_projection(df_computers, feature_matrix, X_scaled, spec):
             from sklearn.manifold import MDS
             mds2 = MDS(n_components=2, dissimilarity="precomputed", random_state=42)
             lens = mds2.fit_transform(dist_matrix)
+        else:
+            lens = _pca_fallback()
+    elif projection == "umap":
+        n_neighbors = lens_cfg.get("n_neighbors") or 15
+        min_dist = lens_cfg.get("min_dist") if lens_cfg.get("min_dist") is not None else 0.1
+        if matrix_source == "packages":
+            if "_pkg_matrix" in df_computers.columns:
+                mat = np.array(df_computers["_pkg_matrix"].tolist(), dtype=np.float32)
+            else:
+                mat = feature_matrix
+            drift_col = "software_drift_score"
+            metric = "jaccard"
+        elif matrix_source == "attributes":
+            if "_attr_matrix" in df_computers.columns:
+                mat = np.array(df_computers["_attr_matrix"].tolist(), dtype=np.float32)
+            else:
+                mat = feature_matrix
+            drift_col = "jaccard_outlier_score"
+            metric = "jaccard"
+        else:
+            mat = X_scaled
+            drift_col = None
+            metric = "euclidean"
+
+        if drift_col:
+            df_computers[drift_col] = 0.0
+
+        if mat.size > 0 and mat.shape[1] > 0 and (mat.sum() > 0 or metric == "euclidean"):
+            try:
+                import umap
+                eff_neighbors = min(int(n_neighbors), max(2, n_samples - 1))
+                eff_components = min(int(components), max(1, n_samples - 1))
+                reducer = umap.UMAP(
+                    n_components=eff_components,
+                    n_neighbors=eff_neighbors,
+                    min_dist=float(min_dist),
+                    metric=metric,
+                    random_state=42,
+                )
+                lens = reducer.fit_transform(mat)
+                if drift_col and n_samples >= 3:
+                    try:
+                        distances = pdist(mat, metric="jaccard")
+                        df_computers[drift_col] = squareform(distances).mean(axis=1)
+                    except Exception:
+                        pass
+            except ImportError:
+                logger.warning(f"umap-learn is not installed. Falling back to PCA for lens '{lens_name}'.")
+                lens = _pca(components)
+            except Exception as ex:
+                logger.error(f"Error computing UMAP for lens '{lens_name}': {ex}. Falling back to PCA.")
+                lens = _pca(components)
         else:
             lens = _pca_fallback()
     else:
@@ -986,6 +1100,8 @@ def _graph_to_json(graph, df_computers, lens_name, color_data=None, color_label=
     fleet_counts = Counter()
     for _, row in df_computers.iterrows():
         for aid in _collect_attr_ids(row):
+            if matrix_attr_ids is not None and aid not in matrix_attr_ids:
+                continue
             fleet_counts[aid] += 1
     fleet_total = max(len(df_computers), 1)
 
@@ -1002,12 +1118,12 @@ def _graph_to_json(graph, df_computers, lens_name, color_data=None, color_label=
         node_counts = Counter()
         for _, row in member_data.iterrows():
             for aid in _collect_attr_ids(row):
+                if matrix_attr_ids is not None and aid not in matrix_attr_ids:
+                    continue
                 node_counts[aid] += 1
         node_size = max(len(members), 1)
         top_attributes = []
         for aid, cnt in node_counts.most_common(20):
-            if matrix_attr_ids is not None and aid not in matrix_attr_ids:
-                continue
             pct = cnt / node_size
             global_pct = fleet_counts.get(aid, 0) / fleet_total
             # Skip attributes present in (almost) the whole fleet: they are
@@ -1015,13 +1131,23 @@ def _graph_to_json(graph, df_computers, lens_name, color_data=None, color_label=
             if global_pct >= 0.95:
                 continue
             lift = (pct + 0.01) / (global_pct + 0.01)
+            # Distinctive attributes (lift >= 1.5 with significant presence pct >= 10%
+            # and count >= 2) explain the unique identity of the cluster and take priority
+            # over ubiquitous fleet baseline tags (e.g. No_Duplicados).
+            is_distinctive = bool(lift >= 1.5 and pct >= 0.10 and cnt >= min(2, node_size))
+            score = (pct + 0.01) * lift
             top_attributes.append({
                 "name": attr_names.get(aid, f"attr-{aid}"),
                 "count": int(cnt),
                 "pct": round(pct * 100, 1),
                 "lift": round(lift, 2),
+                "score": round(score, 2),
+                "distinctive": is_distinctive,
             })
-        top_attributes.sort(key=lambda a: a["lift"], reverse=True)
+        top_attributes.sort(
+            key=lambda a: (1 if a.get("distinctive") else 0, a.get("score", a["lift"])),
+            reverse=True,
+        )
         top_attributes = top_attributes[:8]
 
         node_cids = []

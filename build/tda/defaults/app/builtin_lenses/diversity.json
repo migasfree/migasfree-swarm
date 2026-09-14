@@ -1,7 +1,7 @@
 {
   "name": "diversity",
   "label": "Diversity",
-  "description": "Config divergence (Jaccard distance over attributes/tags + MDS).",
+  "description": "Config divergence (Jaccard distance over attributes/tags + UMAP).",
   "dataset": {
     "formula_prefix_ids": [],
     "scope_ids": [],
@@ -9,7 +9,7 @@
     "metrics_interval_days": 365
   },
   "lens": {
-    "type": "mds_jaccard",
+    "type": "umap",
     "components": 2,
     "metric_columns": [],
     "matrix_source": "attributes"

@@ -1,7 +1,7 @@
 {
   "name": "software",
   "label": "Software",
-  "description": "Package drift & archetypes (Jaccard distance over installed packages + MDS).",
+  "description": "Package drift & archetypes (Jaccard distance over installed packages + UMAP).",
   "dataset": {
     "formula_prefix_ids": [],
     "scope_ids": [],
@@ -11,7 +11,7 @@
     "metrics_interval_days": 365
   },
   "lens": {
-    "type": "mds_jaccard",
+    "type": "umap",
     "components": 2,
     "metric_columns": [],
     "matrix_source": "packages"

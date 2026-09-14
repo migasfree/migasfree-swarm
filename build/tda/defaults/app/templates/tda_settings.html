@@ -223,14 +223,15 @@
                             <div class="form-field">
                                 <label for="lensType">Projection Method</label>
                                 <select id="lensType" class="form-select" onchange="updateLensFormVisibility()">
-                                    <option value="multi_lens">Multi-Lens (PCA + Jaccard)</option>
+                                    <option value="multi_lens">Multi-Lens (PCA + UMAP)</option>
+                                    <option value="umap">UMAP (Jaccard)</option>
                                     <option value="pca">PCA</option>
-                                    <option value="mds_jaccard">Jaccard + MDS</option>
                                     <option value="identity">Identity</option>
                                 </select>
+                                <div id="lensTypeHint" style="font-size: 0.82rem; color: #8a99a8; margin-top: 6px; line-height: 1.35;"></div>
                             </div>
                             <div class="form-field" id="lensComponentsField" style="display:none;">
-                                <label for="lensComponents">PCA Components</label>
+                                <label for="lensComponents">Components</label>
                                 <select id="lensComponents" class="form-select">
                                     <option value="2">2 Components</option>
                                     <option value="1">1 Component</option>
@@ -242,6 +243,14 @@
                                     <option value="attributes">Attributes</option>
                                     <option value="packages">Packages</option>
                                 </select>
+                            </div>
+                            <div class="form-field" id="lensNeighborsField" style="display:none;">
+                                <label for="lensNeighbors">UMAP Neighbors (k-NN)</label>
+                                <input type="number" id="lensNeighbors" class="form-input" min="2" max="100" placeholder="15">
+                            </div>
+                            <div class="form-field" id="lensMinDistField" style="display:none;">
+                                <label for="lensMinDist">UMAP Min Distance</label>
+                                <input type="number" id="lensMinDist" class="form-input" min="0" max="1" step="0.05" placeholder="0.1">
                             </div>
                             <div class="form-field" id="lensMetric1Field" style="display:none;">
                                 <label for="lensMetric1">Primary Metric</label>

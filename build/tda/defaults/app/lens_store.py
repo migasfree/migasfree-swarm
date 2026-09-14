@@ -91,7 +91,7 @@ TDA_CONFIG_PATH = os.path.join(TDA_DIR, "config.json")
 
 LENS_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_\-]{1,63}$")
 
-LENS_TYPES = ("identity", "pca", "mds_jaccard", "multi_lens")
+LENS_TYPES = ("identity", "pca", "umap", "multi_lens")
 MATRIX_SOURCES = ("attributes", "packages")
 COLOR_KINDS = ("continuous", "categorical")
 NODE_LABELS = ("attribute", "metric")
@@ -102,19 +102,20 @@ CLUSTERING_TYPES = ("skip", "kmeans", "dbscan", "agglomerative")
 # Legacy projection names mapped to the new LENS types.
 LEGACY_PROJECTION_MAP = {
     "pca": "pca",
-    "mds_jaccard": "mds_jaccard",
+    "mds_jaccard": "umap",
     "multi_lens": "multi_lens",
     "hybrid": "multi_lens",
     "metric_pair": "identity",
     "single_metric": "identity",
     "identity": "identity",
+    "umap": "umap",
 }
 
 LENS_TYPE_LABELS = {
-    "identity": "Identity",
+    "multi_lens": "Multi-Lens (PCA + UMAP)",
+    "umap": "UMAP (Jaccard)",
     "pca": "PCA",
-    "mds_jaccard": "Jaccard + MDS",
-    "multi_lens": "Multi-Lens (PCA + Jaccard)",
+    "identity": "Identity",
 }
 
 FORMULA_PREFIX_DEFAULT = []
@@ -169,10 +170,10 @@ def _load_builtin_lenses_specs() -> list:
         specs = [
             {"name": "health", "label": "Health", "description": "Error & fault rate. Groups computers by operational incidents in the last 30 days.", "projection": "metric_pair", "metric_columns": ["error_count", "fault_count"], "matrix_source": None},
             {"name": "obsolescence", "label": "Obsolescence", "description": "Hardware capacity & profiles (PCA over the full feature space).", "projection": "pca", "metric_columns": [], "matrix_source": None},
-            {"name": "software", "label": "Software", "description": "Package drift & archetypes (Jaccard distance over installed packages + MDS).", "projection": "mds_jaccard", "metric_columns": [], "matrix_source": "packages"},
+            {"name": "software", "label": "Software", "description": "Package drift & archetypes (Jaccard distance over installed packages + UMAP).", "projection": "umap", "metric_columns": [], "matrix_source": "packages"},
             {"name": "migration", "label": "Migration", "description": "Trajectories & bottlenecks (migration count vs days since last migration).", "projection": "metric_pair", "metric_columns": ["migration_count", "days_since_last_migration"], "matrix_source": None},
             {"name": "sync", "label": "Sync", "description": "Sync speed & PMS failures.", "projection": "metric_pair", "metric_columns": ["avg_sync_duration_secs", "pms_failures"], "matrix_source": None},
-            {"name": "diversity", "label": "Diversity", "description": "Config divergence (Jaccard distance over attributes/tags + MDS).", "projection": "mds_jaccard", "metric_columns": [], "matrix_source": "attributes"},
+            {"name": "diversity", "label": "Diversity", "description": "Config divergence (Jaccard distance over attributes/tags + UMAP).", "projection": "umap", "metric_columns": [], "matrix_source": "attributes"},
         ]
     return specs
 
@@ -362,10 +363,10 @@ def _normalize_lens(data: dict) -> dict:
     matrix_source = nested.get("matrix_source")
     if matrix_source is None:
         matrix_source = data.get("matrix_source")
-    if lens_type not in ("mds_jaccard", "multi_lens") or matrix_source not in MATRIX_SOURCES:
-        matrix_source = "attributes" if lens_type == "multi_lens" else None
+    if lens_type not in ("multi_lens", "umap") or matrix_source not in MATRIX_SOURCES:
+        matrix_source = "attributes" if lens_type in ("multi_lens", "umap") else None
 
-    if lens_type in ("pca", "multi_lens"):
+    if lens_type in ("pca", "multi_lens", "umap"):
         raw_components = nested.get("components", 2)
         try:
             components = int(raw_components)
@@ -374,12 +375,31 @@ def _normalize_lens(data: dict) -> dict:
         if components not in (1, 2):
             components = 2
 
-    return {
+    raw_neighbors = nested.get("n_neighbors")
+    if raw_neighbors is None:
+        raw_neighbors = data.get("n_neighbors")
+    n_neighbors = _nullable_int(raw_neighbors)
+    if n_neighbors is not None and n_neighbors < 2:
+        n_neighbors = 15
+
+    raw_min_dist = nested.get("min_dist")
+    if raw_min_dist is None:
+        raw_min_dist = data.get("min_dist")
+    min_dist = _nullable_float(raw_min_dist)
+    if min_dist is not None:
+        min_dist = max(0.0, min(1.0, float(min_dist)))
+
+    result = {
         "type": lens_type,
         "components": components,
         "metric_columns": metric_columns,
         "matrix_source": matrix_source,
     }
+    if lens_type == "umap":
+        result["n_neighbors"] = n_neighbors if n_neighbors is not None else 15
+        result["min_dist"] = min_dist if min_dist is not None else 0.1
+
+    return result
 
 
 def _nullable_int(value):
@@ -553,9 +573,9 @@ def validate_lens(data: dict, current_name: Optional[str] = None) -> dict:
     lens = _normalize_lens(data)
     if lens["type"] == "identity" and not (1 <= len(lens["metric_columns"]) <= 2):
         raise ValueError("lens type 'identity' requires 1 or 2 metric_columns")
-    if lens["type"] == "mds_jaccard" and lens["matrix_source"] is None:
+    if lens["type"] == "umap" and lens["matrix_source"] is None:
         raise ValueError(
-            f"lens type 'mds_jaccard' requires matrix_source in: {', '.join(MATRIX_SOURCES)}"
+            f"lens type 'umap' requires matrix_source in: {', '.join(MATRIX_SOURCES)}"
         )
 
     return {
